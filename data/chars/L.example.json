@@ -1,0 +1,14 @@
+{
+  "id": "L",
+  "script": "latin",
+  "case": "upper",
+  "family": "straight",
+  "direction": "ltr",
+  "width": 0.75,
+  "strokes": [
+    { "kind": "line", "points": [[0.1, 0], [0.1, 1]] },
+    { "kind": "line", "points": [[0.1, 1], [0.65, 1]] }
+  ],
+  "picture": { "word": "Lion", "image": "assets/pictures/lion.svg", "audioKey": "char-L" },
+  "note": "Example only. Real character files come from recorder.html. A dot stroke looks like { \"kind\": \"dot\", \"points\": [[0.5, 0.6]] }."
+}
