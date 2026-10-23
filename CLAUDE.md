@@ -52,6 +52,6 @@ Full product spec: `docs/spec.md`. Phase 1 scope: `02-scope.md`. Build order: `0
 - Before writing code: restate the slice goal, list the files you will create or change, and wait for my OK.
 - Keep one module per concern: `input.js`, `render.js`, `game.js`, `session.js`, `storage.js`, `audio.js` in `src/`.
 - When the slice is done: run `npm test`, then give me a numbered list of what to check on the tablet.
-- I commit after every slice that passes its checks. Remind me if I forget.
+- At the end of each slice, open a pull request. I merge it on GitHub.
 - If you think something outside the slice is needed, write it in `docs/ideas.md` instead of building it.
 - I am new to coding. Explain git, GitHub and terminal steps in plain words, one step at a time.
