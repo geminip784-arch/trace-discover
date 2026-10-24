@@ -41,7 +41,7 @@ Full product spec: `docs/spec.md`. Phase 1 scope: `02-scope.md`. Build order: `0
 - Wrong direction: the glow stops and Jugnu flies the correct way once. Off path: the trail dims and she carries on. Wrong start: the start dot pulses.
 - Ink must follow her finger with no visible lag. Draw inside `requestAnimationFrame` and use `getCoalescedEvents()` when the browser offers it.
 - Kid-proofing: `touch-action: none` on the writing area; `overscroll-behavior: none` on `html` and `body` (stops pull-to-refresh); block the context menu and text selection.
-- Jugnu and buttons sit on the left side of the screen, away from her right hand.
+- Jugnu and buttons float on the left side, on top of the writing area. The whole screen stays writable; only Jugnu and the buttons themselves take taps.
 
 ## Privacy and safety
 - No network calls at runtime once installed. No analytics, no ads, no third-party scripts.
