@@ -41,24 +41,53 @@
     <canvas id="ink"></canvas>
   </div>
   <script type="module">
-    import { computeLayout, drawLines, createInk, toUnits } from './src/render.js';
+    import { computeLayout, drawLines, drawTrack, letterOffset, createInk, toUnits } from './src/render.js';
     import { trackSinglePointer } from './src/input.js';
+    import { scoreStroke } from './src/geometry.js';
+    import { createDebugPanel } from './src/debug.js';
 
+    const STAGE = 1;
     const area = document.getElementById('area');
     const svg = document.getElementById('lines');
     const ink = createInk(document.getElementById('ink'));
+    const char = await (await fetch('data/chars/L.example.json')).json();
+    const debug = new URLSearchParams(location.search).get('debug') === '1'
+      ? createDebugPanel(char.strokes.length) : null;
     let layout;
+    let offset;
 
     function applyLayout() {
       layout = computeLayout(window.innerWidth, window.innerHeight);
+      offset = letterOffset(layout, char.width);
       drawLines(svg, layout);
+      drawTrack(svg, layout, char, offset);
       ink.resize(layout);
     }
 
+    // Her stroke in the character's own line units, as [x, y] for geometry.js.
+    let stroke = [];
+    let next = 0; // the reference stroke she must draw now
+    const toChar = (u) => [u.x - offset, u.y];
+
     trackSinglePointer(area, {
-      onStart: (p) => ink.begin(toUnits(p.x, p.y, layout)),
-      onMove: (points) => ink.add(points.map((p) => toUnits(p.x, p.y, layout))),
-      onEnd: () => ink.end(),
+      onStart: (p) => {
+        const u = toUnits(p.x, p.y, layout);
+        stroke = [toChar(u)];
+        ink.begin(u);
+      },
+      onMove: (points) => {
+        const us = points.map((p) => toUnits(p.x, p.y, layout));
+        for (const u of us) stroke.push(toChar(u));
+        ink.add(us);
+      },
+      onEnd: () => {
+        ink.end();
+        const index = next;
+        const result = scoreStroke(stroke, char.strokes[index].points, STAGE);
+        // Move on only when this stroke is ok; after the last one, start again at stroke 1.
+        if (result.ok) next = (next + 1) % char.strokes.length;
+        if (debug) debug.show(index, result, next);
+      },
     });
 
     let resizePending = false;

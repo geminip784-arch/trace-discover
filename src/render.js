@@ -62,6 +62,44 @@ export function drawLines(svg, layout) {
   }
 }
 
+// Where the character box starts, in units from the left end of the lines,
+// so a character `charWidth` units wide sits in the middle of the screen.
+export function letterOffset(layout, charWidth) {
+  const available = (layout.lineEnd - layout.originX) / layout.unit;
+  return (available - charWidth) / 2;
+}
+
+const TRACK = {
+  path: { color: 'rgba(255, 255, 255, 0.16)', width: 0.14 },
+  start: { color: 'rgba(255, 255, 255, 0.4)', radius: 0.06 },
+};
+
+// The faint track of a character, added on top of the guide lines (call after drawLines).
+// `offset` is the character box's x in units, from letterOffset.
+export function drawTrack(svg, layout, char, offset) {
+  const { unit, originX, top } = layout;
+  const px = ([x, y]) => [originX + (offset + x) * unit, top + y * unit];
+  for (const stroke of char.strokes) {
+    const pts = stroke.points.map(px);
+    if (stroke.kind === 'line') {
+      const el = document.createElementNS(SVG_NS, 'polyline');
+      el.setAttribute('points', pts.map((p) => p.join(',')).join(' '));
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', TRACK.path.color);
+      el.setAttribute('stroke-width', TRACK.path.width * unit);
+      el.setAttribute('stroke-linecap', 'round');
+      el.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(el);
+    }
+    const dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('cx', pts[0][0]);
+    dot.setAttribute('cy', pts[0][1]);
+    dot.setAttribute('r', TRACK.start.radius * unit);
+    dot.setAttribute('fill', TRACK.start.color);
+    svg.appendChild(dot);
+  }
+}
+
 // Her ink. Finished strokes are baked into an off-screen canvas; each frame the
 // visible canvas copies that and redraws only the stroke she is drawing now.
 // The glow is a wide semi-transparent line under the bright core (no shadowBlur).
