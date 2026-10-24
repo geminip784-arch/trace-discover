@@ -33,5 +33,9 @@ export function createDebugPanel(strokeCount) {
       next = nextIndex;
       render();
     },
+    // A one-line note instead of the stroke rows (e.g. a missing character file).
+    message(text) {
+      panel.textContent = text;
+    },
   };
 }

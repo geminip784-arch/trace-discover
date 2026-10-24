@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1b1f3a">
+  <title>Stroke recorder</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: #1b1f3a;
+      color: #e8ecff;
+      font: 15px/1.3 system-ui, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+    /* The whole screen is writable, like index.html. Buttons float on top. */
+    #area {
+      position: fixed;
+      inset: 0;
+      touch-action: none;
+    }
+    #area > svg, #area > canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #area > svg { pointer-events: none; }
+
+    /* Button bars take taps only on the buttons themselves. */
+    .bar {
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      pointer-events: none;
+      z-index: 2;
+    }
+    #top { top: 8px; }
+    #bottom { bottom: 8px; }
+    .bar button, .bar .label { pointer-events: auto; }
+    .bar .label { pointer-events: none; opacity: 0.7; margin-right: 4px; }
+    button {
+      font: inherit;
+      color: #e8ecff;
+      background: #2c3260;
+      border: 1px solid #4a5294;
+      border-radius: 6px;
+      padding: 6px 12px;
+      min-height: 36px;
+      touch-action: manipulation;
+    }
+    button:disabled { opacity: 0.4; }
+    button.char { min-width: 52px; font-weight: 600; }
+    button.current { background: #5bb8ff; border-color: #5bb8ff; color: #10142a; }
+    button.on { background: #ffe85c; border-color: #ffe85c; color: #10142a; }
+    button.unsaved { background: #4cc25a; border-color: #4cc25a; color: #10142a; }
+
+    /* Pop-ups (discard question, export) cover the screen so nothing is drawn behind them. */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 12, 30, 0.75);
+    }
+    .overlay[hidden] { display: none; }
+    .box {
+      background: #262b52;
+      border: 1px solid #4a5294;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 90vw;
+    }
+    .box .row { display: flex; gap: 8px; justify-content: flex-end; }
+    #export-text {
+      width: 80vw;
+      height: 55vh;
+      font: 12px/1.35 monospace;
+      color: #e8ecff;
+      background: #10142a;
+      border: 1px solid #4a5294;
+      border-radius: 6px;
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: pan-y;
+      overscroll-behavior: contain;
+    }
+  </style>
+</head>
+<body>
+  <div id="area">
+    <svg id="lines" aria-hidden="true"></svg>
+    <svg id="marks" aria-hidden="true"></svg>
+    <canvas id="live"></canvas>
+  </div>
+
+  <div class="bar" id="top">
+    <span class="label">Character:</span>
+  </div>
+
+  <div class="bar" id="bottom">
+    <button id="undo">Undo last stroke</button>
+    <button id="clear">Clear character</button>
+    <button id="straighten">Straighten</button>
+    <button id="dot">Next stroke is a dot</button>
+    <button id="play">Play</button>
+    <button id="direction">Direction: left to right</button>
+    <button id="guide">Guide glyph: off</button>
+    <button id="save">Save character</button>
+    <button id="export">Export all</button>
+  </div>
+
+  <div class="overlay" id="discard" hidden>
+    <div class="box">
+      <div>Discard unsaved strokes?</div>
+      <div class="row">
+        <button id="discard-yes">Discard</button>
+        <button id="discard-no">Keep</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="export-box" hidden>
+    <div class="box">
+      <div id="export-status"></div>
+      <textarea id="export-text" readonly spellcheck="false"></textarea>
+      <div class="row">
+        <button id="export-select">Select all</button>
+        <button id="export-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/recorder.js"></script>
+</body>
+</html>

@@ -50,9 +50,13 @@
     const area = document.getElementById('area');
     const svg = document.getElementById('lines');
     const ink = createInk(document.getElementById('ink'));
-    const char = await (await fetch('data/chars/L.example.json')).json();
-    const debug = new URLSearchParams(location.search).get('debug') === '1'
-      ? createDebugPanel(char.strokes.length) : null;
+    const params = new URLSearchParams(location.search);
+    const debugOn = params.get('debug') === '1';
+    const charId = params.get('char');
+    const charRes = await fetch(charId ? `data/chars/${encodeURIComponent(charId)}.json` : 'data/chars/L.example.json');
+    if (!charRes.ok && charId && debugOn) createDebugPanel(0).message(`No file for ${charId}`);
+    const char = await charRes.json();
+    const debug = debugOn ? createDebugPanel(char.strokes.length) : null;
     let layout;
     let offset;
 
