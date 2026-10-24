@@ -6,9 +6,7 @@ export const MAX_HEIGHT = 800;
 
 // Share of the (capped) height that one line unit takes. 1.3 units then fills ~72%.
 const UNIT_SHARE = 0.55;
-// Empty strip on the left for Jugnu and buttons (later slices), as a share of the height.
-const SIDE_SHARE = 0.2;
-// Gap between the strip / right edge and the ends of the lines, in units.
+// Gap between each screen edge and the ends of the lines, in units.
 const PAD_UNITS = 0.1;
 
 export const LINES = [
@@ -27,11 +25,9 @@ const INK = {
 export function computeLayout(width, height) {
   const capped = Math.min(height, MAX_HEIGHT);
   const unit = UNIT_SHARE * capped;
-  const side = Math.round(SIDE_SHARE * capped);
-  const areaWidth = Math.max(0, width - side);
+  const areaWidth = width;
   return {
     unit,
-    side,
     areaWidth,
     areaHeight: height,
     originX: PAD_UNITS * unit,             // x = 0 of the character box, in area px

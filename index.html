@@ -19,20 +19,10 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
-    /* Left strip: kept free for Jugnu and buttons in later slices. */
-    #side {
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      width: var(--side, 0px);
-    }
+    /* The whole screen is writable. Jugnu and buttons will float on top (later slices). */
     #area {
       position: fixed;
-      top: 0;
-      bottom: 0;
-      right: 0;
-      left: var(--side, 0px);
+      inset: 0;
       touch-action: none;
     }
     #area > svg, #area > canvas {
@@ -46,7 +36,6 @@
   </style>
 </head>
 <body>
-  <div id="side"></div>
   <div id="area">
     <svg id="lines" aria-hidden="true"></svg>
     <canvas id="ink"></canvas>
@@ -62,7 +51,6 @@
 
     function applyLayout() {
       layout = computeLayout(window.innerWidth, window.innerHeight);
-      document.documentElement.style.setProperty('--side', layout.side + 'px');
       drawLines(svg, layout);
       ink.resize(layout);
     }
