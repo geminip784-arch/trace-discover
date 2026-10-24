@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#1b1f3a">
-  <title>Trace &amp; Discover — viewport check</title>
+  <title>Trace &amp; Discover</title>
   <style>
     html, body {
       margin: 0;
@@ -13,54 +13,78 @@
       overflow: hidden;
       overscroll-behavior: none;
       background: #1b1f3a;
-      color: #fff8d6;
-      font-family: system-ui, sans-serif;
       -webkit-user-select: none;
       user-select: none;
       -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
-    main {
+    /* Left strip: kept free for Jugnu and buttons in later slices. */
+    #side {
       position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: var(--side, 0px);
+    }
+    #area {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      left: var(--side, 0px);
+      touch-action: none;
+    }
+    #area > svg, #area > canvas {
+      position: absolute;
       inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2vh;
-      text-align: center;
+      width: 100%;
+      height: 100%;
+      display: block;
     }
-    .size { font-size: 14vh; font-weight: 700; line-height: 1; }
-    .dpr  { font-size: 8vh; line-height: 1; }
-    .hint { font-size: 4vh; opacity: 0.7; }
-    .rotate { display: none; font-size: 5vh; color: #ffd24a; }
-    @media (orientation: portrait) {
-      .rotate { display: block; }
-    }
+    #area > svg { pointer-events: none; }
   </style>
 </head>
 <body>
-  <main>
-    <div class="size"><span id="w">–</span> × <span id="h">–</span></div>
-    <div class="dpr">devicePixelRatio <span id="dpr">–</span></div>
-    <div class="hint">CSS px: width × height</div>
-    <div class="rotate">Turn the tablet sideways (landscape)</div>
-  </main>
+  <div id="side"></div>
+  <div id="area">
+    <svg id="lines" aria-hidden="true"></svg>
+    <canvas id="ink"></canvas>
+  </div>
   <script type="module">
-    const w = document.getElementById('w');
-    const h = document.getElementById('h');
-    const dpr = document.getElementById('dpr');
+    import { computeLayout, drawLines, createInk, toUnits } from './src/render.js';
+    import { trackSinglePointer } from './src/input.js';
 
-    function show() {
-      w.textContent = window.innerWidth;
-      h.textContent = window.innerHeight;
-      dpr.textContent = window.devicePixelRatio;
+    const area = document.getElementById('area');
+    const svg = document.getElementById('lines');
+    const ink = createInk(document.getElementById('ink'));
+    let layout;
+
+    function applyLayout() {
+      layout = computeLayout(window.innerWidth, window.innerHeight);
+      document.documentElement.style.setProperty('--side', layout.side + 'px');
+      drawLines(svg, layout);
+      ink.resize(layout);
     }
 
-    window.addEventListener('resize', show);
-    window.addEventListener('orientationchange', show);
-    document.addEventListener('contextmenu', (e) => e.preventDefault());
-    show();
+    trackSinglePointer(area, {
+      onStart: (p) => ink.begin(toUnits(p.x, p.y, layout)),
+      onMove: (points) => ink.add(points.map((p) => toUnits(p.x, p.y, layout))),
+      onEnd: () => ink.end(),
+    });
+
+    let resizePending = false;
+    window.addEventListener('resize', () => {
+      if (resizePending) return;
+      resizePending = true;
+      requestAnimationFrame(() => { resizePending = false; applyLayout(); });
+    });
+
+    for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
+      document.addEventListener(type, (e) => e.preventDefault());
+    }
+
+    applyLayout();
   </script>
 </body>
 </html>

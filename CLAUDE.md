@@ -16,6 +16,7 @@ Full product spec: `docs/spec.md`. Phase 1 scope: `02-scope.md`. Build order: `0
 - Neither tablet supports the S Pen. Input is a finger, or a thick-tipped capacitive stylus that the browser reports as an ordinary touch. Never branch on `pointerType === 'pen'`.
 - No palm rejection. The app must follow only the first pointer that goes down inside the writing area and ignore every other pointer until that one lifts.
 - Landscape only. Use the CSS viewport the tablet reports (Slice 0 measures it). Never hard-code 1920x1200: those are physical pixels.
+- Measured in Chrome (Slice 0): landscape is 1280 x 626 CSS px, portrait is 800 x 1106 CSS px, devicePixelRatio is 1.5. The full screen (installed app, no browser bars) is probably 1280 x 800 CSS px.
 
 ## Coordinates and character files
 - Characters are stored in line units: y = 0 sky line, 0.5 fence (dashed), 1 grass line, 1.3 ground line. x = 0 at the left edge of the character box.
