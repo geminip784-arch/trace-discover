@@ -5,7 +5,10 @@ import { resample, pathLength, DEFAULTS } from './geometry.js';
 
 export const CHAR_IDS = ['E', 'F', 'H', 'I', 'L', 'T', '1', '4', '7'];
 export const STROKE_POINTS = 24;  // every line stroke is stored with this many points
-export const SNAP_DEGREES = 10;   // straighten snaps to vertical/horizontal within this angle
+export const SNAP_DEGREES = 15;   // straighten snaps to vertical/horizontal within this angle
+// After snapping, straighten also puts the stroke on the guide lines:
+export const VERTICAL_LINE_SNAP = { lines: [0, 1], within: 0.15 };        // each end of a vertical stroke
+export const HORIZONTAL_LINE_SNAP = { lines: [0, 0.5, 1], within: 0.12 }; // a horizontal stroke's y
 
 export const round3 = (v) => Math.round(v * 1000) / 1000 + 0; // + 0 turns -0 into 0
 
@@ -28,16 +31,42 @@ export function tapToDot(points) {
   return [roundPoint([x, y])];
 }
 
-// A straight line from the stroke's first point to its last. The start stays put;
-// the end snaps to exactly vertical or horizontal when within SNAP_DEGREES of it.
+// The guide line nearest to y, if it is within `within`; otherwise null.
+function nearestLine(y, { lines, within }) {
+  let best = null;
+  for (const line of lines) {
+    if (Math.abs(y - line) <= within && (best === null || Math.abs(y - line) < Math.abs(y - best))) best = line;
+  }
+  return best;
+}
+
+// A straight line from the stroke's first point to its last. Within SNAP_DEGREES of
+// vertical or horizontal it is made exactly vertical (start's x) or horizontal (start's y),
+// then snapped onto the guide lines:
+// - vertical: each end moves to the sky or grass line when close to it
+//   (unless both ends would land on the same line);
+// - horizontal: when the average y of the two ends is close to the sky, fence or
+//   grass line, the whole stroke moves onto that line.
 export function straighten(points, snapDegrees = SNAP_DEGREES) {
-  const a = points[0];
+  let a = points[0];
   let b = points[points.length - 1];
   const dx = Math.abs(b[0] - a[0]);
   const dy = Math.abs(b[1] - a[1]);
   const limit = (snapDegrees * Math.PI) / 180;
-  if (Math.atan2(dx, dy) <= limit) b = [a[0], b[1]];      // near vertical
-  else if (Math.atan2(dy, dx) <= limit) b = [b[0], a[1]]; // near horizontal
+  if (Math.atan2(dx, dy) <= limit) {
+    // near vertical
+    const ya = nearestLine(a[1], VERTICAL_LINE_SNAP);
+    const yb = nearestLine(b[1], VERTICAL_LINE_SNAP);
+    const same = ya !== null && ya === yb;
+    a = [a[0], ya === null || same ? a[1] : ya];
+    b = [a[0], yb === null || same ? b[1] : yb];
+  } else if (Math.atan2(dy, dx) <= limit) {
+    // near horizontal
+    const line = nearestLine((a[1] + b[1]) / 2, HORIZONTAL_LINE_SNAP);
+    const y = line === null ? a[1] : line;
+    a = [a[0], y];
+    b = [b[0], y];
+  }
   return processStroke([a, b]);
 }
 
