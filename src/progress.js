@@ -13,6 +13,8 @@ export const CONFIG = {
   demoMs: 1500,           // Jugnu flies one stroke this slowly
   hopMs: 400,             // Jugnu hops to a start dot this fast
   sparkleMs: 600,         // the sparkle along a passed stroke lasts this long
+  pulseMs: 900,           // the start dot pulses (twice) over this long
+  trackGlowMs: 700,       // the track of a stroke glows once over this long
 };
 
 // A fresh character at the first stage.

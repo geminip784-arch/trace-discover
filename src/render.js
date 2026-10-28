@@ -112,9 +112,10 @@ const STAGE_TRACK = {
   1: { color: 'rgba(255, 255, 255, 0.18)', numbers: true, arrows: true },
   2: { color: 'rgba(255, 255, 255, 0.10)', numbers: false, arrows: false },
 };
+export const START_DOT_RADIUS = 0.075; // line units
 const GAME_TRACK = {
   done: 'rgba(255, 226, 120, 0.42)',
-  dot: { radius: 0.075, color: 'rgba(255, 255, 255, 0.4)', current: '#ffe066', halo: 'rgba(255, 224, 102, 0.3)' },
+  dot: { radius: START_DOT_RADIUS, color: 'rgba(255, 255, 255, 0.4)', current: '#ffe066', halo: 'rgba(255, 224, 102, 0.3)' },
   number: { color: '#1b1f3a', size: 0.1 },
   arrow: { color: 'rgba(255, 255, 255, 0.55)', size: 0.07, at: 0.5 },
 };
