@@ -1,3 +1,5 @@
+import { resample } from './geometry.js';
+
 // Guide lines (SVG) and her ink (canvas). Everything is sized in line units:
 // 1 unit = sky line to grass line, worked out from the viewport height.
 
@@ -19,6 +21,7 @@ export const LINES = [
 const INK = {
   glow: { color: 'rgba(255, 215, 60, 0.45)', width: 0.14 },
   core: { color: '#ffe85c', width: 0.045 },
+  dimAlpha: 0.35, // off the path, or a stroke that started in the wrong place
 };
 
 // Pure maths, no DOM: sizes for a viewport of width x height CSS px.
@@ -100,48 +103,176 @@ export function drawTrack(svg, layout, char, offset) {
   }
 }
 
+// The game's track for one stage, added on top of the guide lines (call after drawLines).
+// The path is as wide as the stage's tolerance allows on each side.
+// Stage 1: every stroke, numbered start dots and an arrow on each stroke.
+// Stage 2: thinner and fainter, no numbers or arrows, only the current start dot glows.
+// Strokes before `current` are done and stay lit.
+const STAGE_TRACK = {
+  1: { color: 'rgba(255, 255, 255, 0.18)', numbers: true, arrows: true },
+  2: { color: 'rgba(255, 255, 255, 0.10)', numbers: false, arrows: false },
+};
+export const START_DOT_RADIUS = 0.075; // line units
+const GAME_TRACK = {
+  done: 'rgba(255, 226, 120, 0.42)',
+  dot: { radius: START_DOT_RADIUS, color: 'rgba(255, 255, 255, 0.4)', current: '#ffe066', halo: 'rgba(255, 224, 102, 0.3)' },
+  number: { color: '#1b1f3a', size: 0.1 },
+  arrow: { color: 'rgba(255, 255, 255, 0.55)', size: 0.07, at: 0.5 },
+};
+
+export function drawStageTrack(svg, layout, char, offset, { stage, current, tolerance }) {
+  const { unit, originX, top } = layout;
+  const look = STAGE_TRACK[stage] ?? STAGE_TRACK[2];
+  const px = ([x, y]) => [originX + (offset + x) * unit, top + y * unit];
+  const make = (tag, attrs) => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    svg.appendChild(el);
+    return el;
+  };
+
+  char.strokes.forEach((stroke, i) => {
+    if (stroke.kind !== 'line') return;
+    make('polyline', {
+      points: stroke.points.map(px).map((p) => p.join(',')).join(' '),
+      fill: 'none',
+      stroke: i < current ? GAME_TRACK.done : look.color,
+      'stroke-width': 2 * tolerance * unit,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+    });
+  });
+
+  if (look.arrows) {
+    const { size, at, color } = GAME_TRACK.arrow;
+    for (const stroke of char.strokes) {
+      if (stroke.kind !== 'line') continue;
+      const r = resample(stroke.points, 41);
+      const m = Math.round(at * 40);
+      const [x, y] = px(r[m]);
+      const angle = Math.atan2(r[m + 1][1] - r[m - 1][1], r[m + 1][0] - r[m - 1][0]) * 180 / Math.PI;
+      const s = size * unit;
+      make('polygon', {
+        points: `${s},0 ${-s * 0.7},${-s * 0.8} ${-s * 0.7},${s * 0.8}`,
+        fill: color,
+        transform: `translate(${x} ${y}) rotate(${angle})`,
+      });
+    }
+  }
+
+  // Start dots on top, the current one last so it is never covered.
+  const { dot, number } = GAME_TRACK;
+  const order = char.strokes.map((_, i) => i).filter((i) => i !== current);
+  if (current < char.strokes.length) order.push(current);
+  for (const i of order) {
+    const isCurrent = i === current;
+    if (!look.numbers && !isCurrent) continue;
+    const [cx, cy] = px(char.strokes[i].points[0]);
+    if (isCurrent) make('circle', { cx, cy, r: dot.radius * 1.9 * unit, fill: dot.halo });
+    make('circle', { cx, cy, r: dot.radius * unit, fill: isCurrent ? dot.current : dot.color });
+    if (look.numbers) {
+      const label = make('text', {
+        x: cx,
+        y: cy,
+        fill: number.color,
+        'font-size': number.size * unit,
+        'font-family': 'sans-serif',
+        'font-weight': 'bold',
+        'text-anchor': 'middle',
+        'dominant-baseline': 'central',
+      });
+      label.textContent = String(i + 1);
+    }
+  }
+}
+
 // Her ink. Finished strokes are baked into an off-screen canvas; each frame the
 // visible canvas copies that and redraws only the stroke she is drawing now.
 // The glow is a wide semi-transparent line under the bright core (no shadowBlur).
-// Each stroke is one path, so the glow never darkens where its own segments meet.
+// Each point carries a style { dim, glow }: the segment that ends at it is drawn
+// dimmed (off the path) and/or without its glow (she went the wrong way).
+// Runs of segments with the same style are one path, so the glow never darkens
+// where its own segments meet.
+const FULL = { dim: false, glow: true };
+
 export function createInk(canvas) {
   const ctx = canvas.getContext('2d');
   const baked = document.createElement('canvas');
   const bakedCtx = baked.getContext('2d');
-  const strokes = []; // finished strokes, points in line units
+  let strokes = []; // finished strokes: { id, points (line units), styles, alpha, fade }
   let current = null;
+  let nextId = 1;
   let layout = null;
   let scale = 1;
   let framePending = false;
+  let fading = false;
 
   function setUnitTransform(c) {
     c.setTransform(scale * layout.unit, 0, 0, scale * layout.unit,
       scale * layout.originX, scale * layout.top);
   }
 
-  function strokePath(c, points) {
+  function strokeRun(c, points, from, to, style, alpha) {
     c.beginPath();
-    c.moveTo(points[0].x, points[0].y);
-    if (points.length === 1) c.lineTo(points[0].x, points[0].y); // a tap shows as a dot
-    for (let i = 1; i < points.length; i++) c.lineTo(points[i].x, points[i].y);
+    c.moveTo(points[from].x, points[from].y);
+    if (from === to) c.lineTo(points[from].x, points[from].y); // a tap shows as a dot
+    for (let i = from + 1; i <= to; i++) c.lineTo(points[i].x, points[i].y);
     c.lineCap = 'round';
     c.lineJoin = 'round';
-    c.strokeStyle = INK.glow.color;
-    c.lineWidth = INK.glow.width;
-    c.stroke();
+    c.globalAlpha = alpha * (style.dim ? INK.dimAlpha : 1);
+    if (style.glow) {
+      c.strokeStyle = INK.glow.color;
+      c.lineWidth = INK.glow.width;
+      c.stroke();
+    }
     c.strokeStyle = INK.core.color;
     c.lineWidth = INK.core.width;
     c.stroke();
   }
 
-  function frame() {
+  function drawStroke(c, s) {
+    const { points, styles } = s;
+    const same = (a, b) => a.dim === b.dim && a.glow === b.glow;
+    if (points.length === 1) {
+      strokeRun(c, points, 0, 0, styles[0], s.alpha);
+    } else {
+      let from = 0;
+      for (let i = 2; i <= points.length; i++) {
+        if (i === points.length || !same(styles[i], styles[from + 1])) {
+          strokeRun(c, points, from, i - 1, styles[from + 1], s.alpha);
+          from = i - 1;
+        }
+      }
+    }
+    c.globalAlpha = 1;
+  }
+
+  function rebake() {
+    bakedCtx.setTransform(1, 0, 0, 1, 0, 0);
+    bakedCtx.clearRect(0, 0, baked.width, baked.height);
+    setUnitTransform(bakedCtx);
+    for (const s of strokes) drawStroke(bakedCtx, s);
+  }
+
+  function frame(now) {
     framePending = false;
+    if (fading) {
+      for (const s of strokes) {
+        if (!s.fade) continue;
+        s.fade.start ??= now;
+        s.alpha = Math.max(0, 1 - (now - s.fade.start) / s.fade.ms);
+      }
+      strokes = strokes.filter((s) => !s.fade || s.alpha > 0);
+      fading = strokes.some((s) => s.fade);
+      rebake();
+      if (fading) requestFrame();
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(baked, 0, 0);
     if (current) {
       setUnitTransform(ctx);
-      strokePath(ctx, current);
+      drawStroke(ctx, current);
     }
   }
 
@@ -160,26 +291,133 @@ export function createInk(canvas) {
       const h = Math.round(layout.areaHeight * scale);
       canvas.width = baked.width = w;
       canvas.height = baked.height = h;
-      setUnitTransform(bakedCtx);
-      for (const s of strokes) strokePath(bakedCtx, s);
+      rebake();
       requestFrame();
     },
-    begin(point) {
-      current = [point];
+    begin(point, style = FULL) {
+      current = { points: [point], styles: [style], alpha: 1 };
       requestFrame();
     },
-    add(points) {
+    // styles: one per point, or one style for all of them.
+    add(points, styles = FULL) {
       if (!current) return;
-      for (const p of points) current.push(p);
+      points.forEach((p, i) => {
+        current.points.push(p);
+        current.styles.push(Array.isArray(styles) ? styles[i] : styles);
+      });
       requestFrame();
     },
+    // Returns the finished stroke's id (for fade), or null.
     end() {
-      if (!current) return;
-      strokes.push(current);
+      if (!current) return null;
+      const s = { ...current, id: nextId++ };
+      strokes.push(s);
       setUnitTransform(bakedCtx);
-      strokePath(bakedCtx, current);
+      drawStroke(bakedCtx, s);
       current = null;
       requestFrame();
+      return s.id;
+    },
+    // Fade one finished stroke out over `ms`, then forget it. Other strokes stay.
+    fade(id, ms) {
+      const s = strokes.find((t) => t.id === id);
+      if (!s) return;
+      s.fade = { ms, start: null };
+      fading = true;
+      requestFrame();
+    },
+    // Finish every fade at once (her finger is down: nothing may animate).
+    settle() {
+      if (!fading) return;
+      strokes = strokes.filter((s) => !s.fade);
+      fading = false;
+      rebake();
+      requestFrame();
+    },
+    clear() {
+      strokes = [];
+      current = null;
+      fading = false;
+      rebake();
+      requestFrame();
+    },
+  };
+}
+
+// Short effects on an SVG layer above her ink: sparkle, pulse, glow.
+// They use the Web Animations API; clear() stops them all at once.
+const FX = {
+  sparkle: { color: '#fff6c8', count: 9, radius: 0.035 },
+  pulse: { color: '#ffe066', width: 0.025 },
+  glow: { color: 'rgba(255, 230, 120, 0.85)' },
+  letter: { color: '#ffe066', glow: 'rgba(255, 215, 60, 0.5)' },
+};
+
+export function createFx(svg) {
+  let layout = null;
+  const live = new Set();
+
+  function add(tag, attrs, keyframes, options) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    el.style.transformBox = 'fill-box';
+    el.style.transformOrigin = 'center';
+    svg.appendChild(el);
+    live.add(el);
+    const anim = el.animate(keyframes, { fill: 'both', ...options });
+    anim.onfinish = () => { el.remove(); live.delete(el); };
+    return el;
+  }
+
+  const polyAttrs = (pts, width, color) => ({
+    points: pts.map((p) => p.join(',')).join(' '),
+    fill: 'none',
+    stroke: color,
+    'stroke-width': width,
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+  });
+
+  return {
+    resize(newLayout) {
+      layout = newLayout;
+      svg.setAttribute('viewBox', `0 0 ${layout.areaWidth} ${layout.areaHeight}`);
+    },
+    // Little stars twinkle along the stroke, start to end. pts in area px.
+    sparkle(pts, ms) {
+      const { count, radius, color } = FX.sparkle;
+      resample(pts, count).forEach(([cx, cy], i) => {
+        add('circle', { cx, cy, r: radius * layout.unit, fill: color },
+          [{ opacity: 0, transform: 'scale(0.3)' }, { opacity: 1, transform: 'scale(1.2)' }, { opacity: 0, transform: 'scale(0.6)' }],
+          { duration: ms / 2, delay: (i * ms) / (2 * count), easing: 'ease-out' });
+      });
+    },
+    // A ring grows out of the start dot twice.
+    pulse([cx, cy], radius, ms) {
+      add('circle', { cx, cy, r: radius, fill: 'none', stroke: FX.pulse.color, 'stroke-width': FX.pulse.width * layout.unit },
+        [{ opacity: 0.9, transform: 'scale(0.8)' }, { opacity: 0, transform: 'scale(2.2)' }],
+        { duration: ms / 2, iterations: 2, easing: 'ease-out' });
+    },
+    // The track of one stroke glows once.
+    glowPath(pts, width, ms) {
+      add('polyline', polyAttrs(pts, width, FX.glow.color),
+        [{ opacity: 0 }, { opacity: 0.7 }, { opacity: 0 }], { duration: ms, easing: 'ease-in-out' });
+    },
+    // The whole letter glows (placeholder reward). strokes: arrays of area px.
+    letterGlow(strokes, width, ms) {
+      for (const pts of strokes) {
+        add('polyline', polyAttrs(pts, width * 1.6, FX.letter.glow),
+          [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0.8, offset: 0.8 }, { opacity: 0 }], { duration: ms });
+        add('polyline', polyAttrs(pts, width * 0.5, FX.letter.color),
+          [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0.9, offset: 0.8 }, { opacity: 0 }], { duration: ms });
+      }
+    },
+    clear() {
+      for (const el of live) {
+        for (const a of el.getAnimations()) a.cancel();
+        el.remove();
+      }
+      live.clear();
     },
   };
 }

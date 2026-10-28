@@ -19,93 +19,87 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
-    /* The whole screen is writable. Jugnu and buttons will float on top (later slices). */
+    /* The whole screen is writable. Jugnu floats on top and ignores touches;
+       only the ear button takes taps. */
     #area {
       position: fixed;
       inset: 0;
       touch-action: none;
     }
-    #area > svg, #area > canvas {
+    #area > svg, #area > canvas, #dimmer {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
       display: block;
     }
-    #area > svg { pointer-events: none; }
+    #area > svg, #dimmer, #jugnu { pointer-events: none; }
+    #jugnu {
+      position: absolute;
+      left: 0;
+      top: 0;
+      will-change: transform;
+      -webkit-user-drag: none;
+    }
+    #jugnu.sleeping { filter: brightness(0.5) saturate(0.6); }
+    #dimmer {
+      background: rgba(5, 6, 20, 0.6);
+      opacity: 0;
+      transition: opacity 1.5s ease;
+    }
+    #dimmer.on { opacity: 1; }
+    #ear {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 96px;
+      height: 96px;
+      padding: 0;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.1);
+      touch-action: none;
+      z-index: 5;
+    }
+    #ear[hidden] { display: none; }
+    #ear svg { width: 60px; height: 60px; display: block; margin: auto; }
   </style>
 </head>
 <body>
   <div id="area">
     <svg id="lines" aria-hidden="true"></svg>
     <canvas id="ink"></canvas>
+    <svg id="fx" aria-hidden="true"></svg>
+    <div id="dimmer"></div>
+    <img id="jugnu" src="assets/jugnu.svg" alt="" draggable="false" hidden>
   </div>
+  <button id="ear" type="button" aria-label="Say it again" hidden>
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M18 28 C18 14 28 6 38 6 C49 6 56 15 56 26 C56 36 48 40 45 47 C42 54 42 60 33 60 C27 60 24 56 23 52"
+        fill="none" stroke="#ffe066" stroke-width="6" stroke-linecap="round"/>
+      <path d="M30 28 C30 21 34 17 39 17 C45 17 47 22 46 27 C45 32 39 33 39 39"
+        fill="none" stroke="#ffe066" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+  </button>
   <script type="module">
-    import { computeLayout, drawLines, drawTrack, letterOffset, createInk, toUnits } from './src/render.js';
-    import { trackSinglePointer } from './src/input.js';
-    import { scoreStroke } from './src/geometry.js';
-    import { createDebugPanel } from './src/debug.js';
-
-    const STAGE = 1;
-    const area = document.getElementById('area');
-    const svg = document.getElementById('lines');
-    const ink = createInk(document.getElementById('ink'));
-    const params = new URLSearchParams(location.search);
-    const debugOn = params.get('debug') === '1';
-    const charId = params.get('char');
-    const charRes = await fetch(charId ? `data/chars/${encodeURIComponent(charId)}.json` : 'data/chars/L.example.json');
-    if (!charRes.ok && charId && debugOn) createDebugPanel(0).message(`No file for ${charId}`);
-    const char = await charRes.json();
-    const debug = debugOn ? createDebugPanel(char.strokes.length) : null;
-    let layout;
-    let offset;
-
-    function applyLayout() {
-      layout = computeLayout(window.innerWidth, window.innerHeight);
-      offset = letterOffset(layout, char.width);
-      drawLines(svg, layout);
-      drawTrack(svg, layout, char, offset);
-      ink.resize(layout);
-    }
-
-    // Her stroke in the character's own line units, as [x, y] for geometry.js.
-    let stroke = [];
-    let next = 0; // the reference stroke she must draw now
-    const toChar = (u) => [u.x - offset, u.y];
-
-    trackSinglePointer(area, {
-      onStart: (p) => {
-        const u = toUnits(p.x, p.y, layout);
-        stroke = [toChar(u)];
-        ink.begin(u);
-      },
-      onMove: (points) => {
-        const us = points.map((p) => toUnits(p.x, p.y, layout));
-        for (const u of us) stroke.push(toChar(u));
-        ink.add(us);
-      },
-      onEnd: () => {
-        ink.end();
-        const index = next;
-        const result = scoreStroke(stroke, char.strokes[index].points, STAGE);
-        // Move on only when this stroke is ok; after the last one, start again at stroke 1.
-        if (result.ok) next = (next + 1) % char.strokes.length;
-        if (debug) debug.show(index, result, next);
-      },
-    });
-
-    let resizePending = false;
-    window.addEventListener('resize', () => {
-      if (resizePending) return;
-      resizePending = true;
-      requestAnimationFrame(() => { resizePending = false; applyLayout(); });
-    });
+    import { startGame } from './src/game.js';
 
     for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
-      document.addEventListener(type, (e) => e.preventDefault());
+      document.addEventListener(type, (e) => {
+        if (e.target.closest?.('textarea')) return; // the debug log box only
+        e.preventDefault();
+      });
     }
 
-    applyLayout();
+    startGame({
+      area: document.getElementById('area'),
+      lines: document.getElementById('lines'),
+      ink: document.getElementById('ink'),
+      fx: document.getElementById('fx'),
+      dimmer: document.getElementById('dimmer'),
+      jugnu: document.getElementById('jugnu'),
+      ear: document.getElementById('ear'),
+    });
   </script>
 </body>
 </html>
