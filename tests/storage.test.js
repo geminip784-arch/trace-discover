@@ -1,7 +1,10 @@
 // Run: node --test tests/storage.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendAttempt, logAttempt, readAttempts, ATTEMPTS_KEY, MAX_ATTEMPTS } from '../src/storage.js';
+import {
+  appendAttempt, logAttempt, readAttempts, ATTEMPTS_KEY, MAX_ATTEMPTS,
+  PROFILE_KEY, readProfile, saveProfile, cleanProfile,
+} from '../src/storage.js';
 
 function memoryStore() {
   const data = new Map();
@@ -31,4 +34,26 @@ test('broken or blocked storage never throws', () => {
   assert.doesNotThrow(() => logAttempt({ ok: true }, broken));
   const junk = { getItem: () => '{not json', setItem: () => {} };
   assert.deepEqual(readAttempts(junk), []);
+});
+
+test('the profile saves to td.profile and reads back trimmed', () => {
+  const store = memoryStore();
+  assert.equal(PROFILE_KEY, 'td.profile');
+  assert.equal(saveProfile({ name: '  Sam ', sayAs: ' Samm ' }, store), true);
+  assert.deepEqual(JSON.parse(store.getItem('td.profile')), { name: 'Sam', sayAs: 'Samm' });
+  assert.deepEqual(readProfile(store), { name: 'Sam', sayAs: 'Samm' });
+});
+
+test('no profile yet, junk or blocked storage: an empty profile, never a throw', () => {
+  assert.deepEqual(readProfile(memoryStore()), { name: '', sayAs: '' });
+  const junk = { getItem: () => '{not json', setItem: () => {} };
+  assert.deepEqual(readProfile(junk), { name: '', sayAs: '' });
+  const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('full'); } };
+  assert.deepEqual(readProfile(broken), { name: '', sayAs: '' });
+  assert.equal(saveProfile({ name: 'Sam' }, broken), false);
+});
+
+test('cleanProfile drops anything that is not text and caps the length', () => {
+  assert.deepEqual(cleanProfile({ name: 7, sayAs: null, extra: 'x' }), { name: '', sayAs: '' });
+  assert.equal(cleanProfile({ name: 'a'.repeat(100) }).name.length, 40);
 });

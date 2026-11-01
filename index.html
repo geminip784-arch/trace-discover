@@ -82,24 +82,29 @@
     </svg>
   </button>
   <script type="module">
-    import { startGame } from './src/game.js';
-
     for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
       document.addEventListener(type, (e) => {
-        if (e.target.closest?.('textarea')) return; // the debug log box only
+        if (e.target.closest?.('textarea, input')) return; // the debug log box and the setup fields only
         e.preventDefault();
       });
     }
 
-    startGame({
-      area: document.getElementById('area'),
-      lines: document.getElementById('lines'),
-      ink: document.getElementById('ink'),
-      fx: document.getElementById('fx'),
-      dimmer: document.getElementById('dimmer'),
-      jugnu: document.getElementById('jugnu'),
-      ear: document.getElementById('ear'),
-    });
+    // index.html?setup=1 is the parent setup page. Every other address is the game.
+    if (new URLSearchParams(location.search).get('setup') === '1') {
+      const { showSetup } = await import('./src/setup.js');
+      showSetup();
+    } else {
+      const { startGame } = await import('./src/game.js');
+      startGame({
+        area: document.getElementById('area'),
+        lines: document.getElementById('lines'),
+        ink: document.getElementById('ink'),
+        fx: document.getElementById('fx'),
+        dimmer: document.getElementById('dimmer'),
+        jugnu: document.getElementById('jugnu'),
+        ear: document.getElementById('ear'),
+      });
+    }
   </script>
 </body>
 </html>

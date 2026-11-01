@@ -12,8 +12,8 @@ import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import { variantLabel, candidatesFor, nextStrokes, pickCandidate } from './variants.js';
 import { CONFIG, initialState, applyLift, completeLetter } from './progress.js';
-import { logAttempt, readAttempts } from './storage.js';
-import { speak, replay, unlock, hush, chime } from './audio.js';
+import { logAttempt, readAttempts, readProfile } from './storage.js';
+import { speak, replay, unlock, hush, chime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
 
@@ -65,7 +65,9 @@ export async function startGame(els) {
   const debug = debugOn ? createDebugPanel(strokes.length) : null;
   if (debugOn) createCopyAttemptsButton(() => readAttempts());
 
+  setProfile(readProfile());
   let progress = initialState(strokes.length);
+  let goodStrokes = 0; // passed strokes so far: a "good" line is said once per CONFIG.goodEvery
   // What a touch does now:
   // 'trace'  she draws a stroke and it is scored
   // 'held'   Jugnu is drawing a stroke, or the reward plays: a touch pauses it
@@ -158,13 +160,13 @@ export async function startGame(els) {
     }
     if (demo) {
       // Demonstrations use the recorded order.
-      speak('way');
+      speak('wrongDirection');
       jugnu.demo(ref(), CONFIG.demoMs, CONFIG.hopMs);
     } else if (reason === 'wrong-direction') {
-      speak('way');
+      speak('wrongDirection');
       jugnu.demo(tried, CONFIG.demoMs, CONFIG.hopMs);
     } else if (reason === 'wrong-start') {
-      speak('start');
+      speak('wrongStart');
       jugnu.hopTo(startDot(), CONFIG.hopMs);
     } else {
       // off-path or too-short: Jugnu rests on the start dot and the track glows once.
@@ -176,7 +178,7 @@ export async function startGame(els) {
   // Never stuck: Jugnu draws stroke k himself, leaving a glowing trail.
   async function assist(k, letterDone) {
     phase = 'held';
-    speak('way');
+    speak('assist');
     const pts = strokes[k].points;
     const trail = fx.trail(pts.map(toPx), pathWidth());
     await jugnu.demo(pts, CONFIG.assistMs, CONFIG.hopMs, (f) => trail.set(f));
@@ -191,7 +193,7 @@ export async function startGame(els) {
   // All strokes done: the whole letter glows (placeholder reward), then it restarts.
   async function finishLetter() {
     phase = 'held';
-    speak('good');
+    speak('letterDone');
     redraw();
     const lines = strokes.filter((s) => s.kind === 'line').map((s) => s.points.map(toPx));
     fx.letterGlow(lines, pathWidth(), CONFIG.letterGlowMs);
@@ -207,7 +209,6 @@ export async function startGame(els) {
     fx.clear();
     if (done.finished) return goToSleep();
     phase = 'trace';
-    if (done.stageUp) speak('done');
     beginStroke();
   }
 
@@ -216,7 +217,7 @@ export async function startGame(els) {
     phase = 'sleep';
     redraw();
     updateDebug();
-    speak('done');
+    speak('end');
     jugnu.sleep(home());
     els.dimmer.classList.add('on');
     els.ear.hidden = true;
@@ -310,6 +311,8 @@ export async function startGame(els) {
       chime();
       fx.sparkle(pick.variant.points.map(toPx), CONFIG.sparkleMs);
       if (lift.letterDone) return finishLetter();
+      goodStrokes += 1;
+      if (goodStrokes % CONFIG.goodEvery === 0) speak('good');
       redraw();
       later(beginStroke, CONFIG.sparkleMs);
       return;
