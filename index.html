@@ -33,7 +33,16 @@
       height: 100%;
       display: block;
     }
-    #area > svg, #dimmer, #jugnu { pointer-events: none; }
+    #area > svg, #dimmer, #jugnu, #picture { pointer-events: none; }
+    /* The reward picture, in the middle of the screen over the letter. */
+    #picture {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #picture[hidden] { display: none; }
+    #picture svg { width: 100%; height: 100%; display: block; }
     #jugnu {
       position: absolute;
       left: 0;
@@ -70,6 +79,7 @@
     <svg id="lines" aria-hidden="true"></svg>
     <canvas id="ink"></canvas>
     <svg id="fx" aria-hidden="true"></svg>
+    <div id="picture" hidden></div>
     <div id="dimmer"></div>
     <img id="jugnu" src="assets/jugnu.svg" alt="" draggable="false" hidden>
   </div>
@@ -101,6 +111,7 @@
         ink: document.getElementById('ink'),
         fx: document.getElementById('fx'),
         dimmer: document.getElementById('dimmer'),
+        picture: document.getElementById('picture'),
         jugnu: document.getElementById('jugnu'),
         ear: document.getElementById('ear'),
       });

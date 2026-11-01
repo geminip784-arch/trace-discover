@@ -16,9 +16,12 @@ import { logAttempt, readAttempts, readProfile } from './storage.js';
 import { speak, replay, unlock, hush, chime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
+import { pictureFor } from './pictures.js';
 
 // Jugnu's home, near the left: area px from the left as line units, and height in line units.
 const HOME = { x: 0.35, y: 0.65 };
+// Width of Jugnu's glowing trail when he draws a stroke himself, in line units.
+const TRAIL_WIDTH = 0.16;
 
 async function loadChar(id) {
   try {
@@ -71,10 +74,12 @@ export async function startGame(els) {
   // What a touch does now:
   // 'trace'  she draws a stroke and it is scored
   // 'held'   Jugnu is drawing a stroke, or the reward plays: a touch pauses it
+  // 'free'   free drawing after the picture: her ink, not scored
   // 'sleep'  finished for now: touches do nothing until reload
   let phase = 'trace';
   let attempt = null;  // the stroke her finger is drawing now
   let holding = null;  // while a finger holds a 'held' phase: how to resume
+  let free = null;     // free drawing: { start, strokes, paths, line, timeUp }
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
   // The stroke Jugnu demonstrates: the first unfinished one in the recorded order.
@@ -134,7 +139,9 @@ export async function startGame(els) {
   function applyLayout() {
     layout = computeLayout(window.innerWidth, window.innerHeight);
     offset = letterOffset(layout, char.width);
-    redraw();
+    if (free) drawLines(els.lines, layout);
+    else redraw();
+    els.picture.style.width = els.picture.style.height = `${1.3 * layout.unit}px`;
     ink.resize(layout);
     fx.resize(layout);
     jugnu.resize(layout.unit);
@@ -180,7 +187,7 @@ export async function startGame(els) {
     phase = 'held';
     speak('assist');
     const pts = strokes[k].points;
-    const trail = fx.trail(pts.map(toPx), pathWidth());
+    const trail = fx.trail(pts.map(toPx), TRAIL_WIDTH * layout.unit);
     await jugnu.demo(pts, CONFIG.assistMs, CONFIG.hopMs, (f) => trail.set(f));
     trail.fadeOut(CONFIG.trailFadeMs);
     redraw();
@@ -190,14 +197,66 @@ export async function startGame(els) {
     beginStroke();
   }
 
-  // All strokes done: the whole letter glows (placeholder reward), then it restarts.
+  // All strokes done (an assisted letter too): the whole letter glows, then its
+  // picture comes alive, then free drawing, then the next letter.
   async function finishLetter() {
     phase = 'held';
     speak('letterDone');
     redraw();
+    updateDebug();
     const lines = strokes.filter((s) => s.kind === 'line').map((s) => s.points.map(toPx));
     fx.letterGlow(lines, pathWidth(), CONFIG.letterGlowMs);
     await wait(CONFIG.letterGlowMs);
+    await showPicture();
+    startFree();
+  }
+
+  // The letter's picture for about CONFIG.pictureMs: "L is for lamp!". None: skip.
+  async function showPicture() {
+    const picture = pictureFor(char.id);
+    if (!picture) return;
+    ink.clear();
+    fx.clear();
+    els.picture.innerHTML = picture.svg;
+    els.picture.hidden = false;
+    els.picture.animate([{ opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1 }],
+      { duration: 400, easing: 'ease-out' });
+    speak('picture', { letter: char.id, word: picture.word });
+    await wait(CONFIG.pictureMs);
+    els.picture.hidden = true;
+    els.picture.replaceChildren();
+  }
+
+  // Free drawing: the same glowing ink, nothing scored, for CONFIG.freeDrawMs.
+  // The time runs on while she draws; if her finger is down when it ends, the
+  // fade waits for her lift.
+  function startFree() {
+    ink.clear();
+    fx.clear();
+    drawLines(els.lines, layout);
+    jugnu.placeAt(home());
+    phase = 'free';
+    free = { start: performance.now(), strokes: 0, paths: [], line: null, timeUp: false };
+    speak('freeDraw');
+    setTimeout(() => {
+      free.timeUp = true;
+      if (!free.line) endFree();
+    }, CONFIG.freeDrawMs);
+  }
+
+  // Her ink fades with sparkles, the free drawing is logged, then the next letter.
+  async function endFree() {
+    const { start, strokes: count, paths } = free;
+    const ms = Math.round(performance.now() - start);
+    free = null;
+    phase = 'held';
+    logAttempt({ type: 'freeDraw', time: new Date().toISOString(), char: char.id, stage: progress.stage, ms, strokes: count });
+    const fade = els.ink.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CONFIG.freeFadeMs, fill: 'forwards' });
+    for (const pts of paths.slice(-12)) fx.sparkle(pts, CONFIG.freeFadeMs);
+    await wait(CONFIG.freeFadeMs);
+    ink.clear();
+    fx.clear();
+    fade.cancel();
     nextLetter();
   }
 
@@ -329,8 +388,21 @@ export async function startGame(els) {
       if (!layout) return;
       if (phase === 'held') return hold();
       if (phase === 'trace') startStroke(p);
+      if (phase === 'free') {
+        hush();
+        free.strokes += 1;
+        free.line = [[p.x, p.y]];
+        free.paths.push(free.line);
+        const { u } = toChar(p);
+        ink.begin(u);
+      }
     },
     onMove: (points) => {
+      if (free?.line) {
+        for (const p of points) free.line.push([p.x, p.y]);
+        ink.add(points.map((p) => toChar(p).u));
+        return;
+      }
       if (!attempt) return;
       const us = [];
       const styles = [];
@@ -347,6 +419,12 @@ export async function startGame(els) {
         const resume = holding;
         holding = null;
         resume();
+        return;
+      }
+      if (free?.line) {
+        ink.end();
+        free.line = null;
+        if (free.timeUp) endFree();
         return;
       }
       if (attempt) endStroke();
