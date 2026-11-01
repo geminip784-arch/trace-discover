@@ -2,6 +2,7 @@
 // pointer-events: none so the whole screen stays writable underneath.
 // Positions are in the character's line units; `toPx` turns them into area px.
 // Every move runs on requestAnimationFrame and stop() ends it at once.
+// pause() holds Jugnu still (her finger is down) and resume() carries on.
 
 // Where Jugnu perches, relative to a start dot, so the dot stays visible.
 export const PERCH = [-0.11, -0.13];
@@ -19,6 +20,9 @@ export function createJugnu(img, toPx) {
   let unit = 1;
   let raf = 0;
   let run = 0; // bumped by stop(), so a running sequence knows to give up
+  let paused = false;
+  let pausedSince = 0;
+  let pausedTotal = 0; // ms spent paused, ever; a move subtracts what it saw
 
   function place() {
     const [x, y] = toPx(pos);
@@ -29,8 +33,8 @@ export function createJugnu(img, toPx) {
   }
 
   // Move along `points` (line units), starting from where Jugnu is now, over `ms`.
-  // Resolves true when it arrives, false when stopped.
-  function moveAlong(points, ms, myRun) {
+  // Resolves true when it arrives, false when stopped. onProgress(f) gets 0..1.
+  function moveAlong(points, ms, myRun, onProgress) {
     const path = [pos, ...points];
     const lengths = [0];
     for (let i = 1; i < path.length; i++) {
@@ -45,10 +49,18 @@ export function createJugnu(img, toPx) {
         return resolve(true);
       }
       let start = null;
+      let pausedAtStart = 0;
       const step = (now) => {
         if (myRun !== run) return resolve(false);
-        start ??= now;
-        const t = Math.min(1, (now - start) / ms);
+        if (paused) {
+          raf = requestAnimationFrame(step);
+          return;
+        }
+        if (start === null) {
+          start = now;
+          pausedAtStart = pausedTotal;
+        }
+        const t = Math.min(1, Math.max(0, (now - start - (pausedTotal - pausedAtStart)) / ms));
         const d = easeInOut(t) * total;
         let i = 1;
         while (i < path.length - 1 && lengths[i] < d) i++;
@@ -58,6 +70,7 @@ export function createJugnu(img, toPx) {
         const b = path[i];
         pos = [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])];
         place();
+        onProgress?.(total > 0 ? d / total : 1);
         if (t < 1) raf = requestAnimationFrame(step);
         else resolve(true);
       };
@@ -95,17 +108,31 @@ export function createJugnu(img, toPx) {
       return moveAlong(hopPath(perchOf(dot)), ms, myRun);
     },
     // Fly along a stroke once (points in line units), then perch at its start dot.
-    async demo(points, ms, hopMs) {
+    // onProgress(f) reports how far along the stroke itself Jugnu is (0..1).
+    async demo(points, ms, hopMs, onProgress) {
       const myRun = ++run;
       cancelAnimationFrame(raf);
       if (!(await moveAlong([points[0]], hopMs, myRun))) return false;
-      if (!(await moveAlong(points.slice(1), ms, myRun))) return false;
+      onProgress?.(0);
+      if (!(await moveAlong(points.slice(1), ms, myRun, onProgress))) return false;
+      onProgress?.(1);
       return moveAlong(hopPath(perchOf(points[0])), hopMs, myRun);
     },
     // Stop whatever Jugnu is doing, right where it is.
     stop() {
       run++;
       cancelAnimationFrame(raf);
+      this.resume();
+    },
+    pause() {
+      if (paused) return;
+      paused = true;
+      pausedSince = performance.now();
+    },
+    resume() {
+      if (!paused) return;
+      paused = false;
+      pausedTotal += performance.now() - pausedSince;
     },
     sleep(point) {
       this.placeAt(point);

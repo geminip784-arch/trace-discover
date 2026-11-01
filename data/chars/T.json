@@ -5,6 +5,7 @@
   "family": "straight",
   "direction": "ltr",
   "width": 0.773,
+  "anyOrder": [[0, 1]],
   "strokes": [
     {
       "kind": "line",

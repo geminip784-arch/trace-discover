@@ -9,9 +9,9 @@ export const DEFAULTS = {
   minLength: 0.05,      // shorter than this = a tap, not a stroke
   backtrack: 0.15,      // live: progress may slip back this much before "wrong way"
   stages: {
-    1: { startRadius: 0.18, tolerance: 0.16, dotRadius: 0.16 },
-    2: { startRadius: 0.14, tolerance: 0.12, dotRadius: 0.13 },
-    3: { startRadius: 0.12, tolerance: 0.10, dotRadius: 0.11 },
+    1: { startRadius: 0.18, tolerance: 0.20, dotRadius: 0.16 },
+    2: { startRadius: 0.14, tolerance: 0.16, dotRadius: 0.13 },
+    3: { startRadius: 0.12, tolerance: 0.16, dotRadius: 0.11 },
   },
 };
 
