@@ -106,8 +106,9 @@ export function drawTrack(svg, layout, char, offset) {
 // The game's track for one stage, added on top of the guide lines (call after drawLines).
 // The path is as wide as the stage's tolerance allows on each side.
 // Stage 1: every stroke, numbered start dots and an arrow on each stroke.
-// Stage 2: thinner and fainter, no numbers or arrows, only the current start dot glows.
-// Strokes before `current` are done and stay lit.
+// Stage 2: thinner and fainter, no numbers or arrows, only the active start dots glow.
+// `done[i]`: stroke i is finished and stays lit. `active`: the strokes she may draw
+// next (more than one when the character has an anyOrder group); their dots glow.
 const STAGE_TRACK = {
   1: { color: 'rgba(255, 255, 255, 0.18)', numbers: true, arrows: true },
   2: { color: 'rgba(255, 255, 255, 0.10)', numbers: false, arrows: false },
@@ -120,7 +121,7 @@ const GAME_TRACK = {
   arrow: { color: 'rgba(255, 255, 255, 0.55)', size: 0.07, at: 0.5 },
 };
 
-export function drawStageTrack(svg, layout, char, offset, { stage, current, tolerance }) {
+export function drawStageTrack(svg, layout, char, offset, { stage, done, active, tolerance }) {
   const { unit, originX, top } = layout;
   const look = STAGE_TRACK[stage] ?? STAGE_TRACK[2];
   const px = ([x, y]) => [originX + (offset + x) * unit, top + y * unit];
@@ -136,7 +137,7 @@ export function drawStageTrack(svg, layout, char, offset, { stage, current, tole
     make('polyline', {
       points: stroke.points.map(px).map((p) => p.join(',')).join(' '),
       fill: 'none',
-      stroke: i < current ? GAME_TRACK.done : look.color,
+      stroke: done[i] ? GAME_TRACK.done : look.color,
       'stroke-width': 2 * tolerance * unit,
       'stroke-linecap': 'round',
       'stroke-linejoin': 'round',
@@ -160,12 +161,12 @@ export function drawStageTrack(svg, layout, char, offset, { stage, current, tole
     }
   }
 
-  // Start dots on top, the current one last so it is never covered.
+  // Start dots on top, the active ones last so they are never covered.
   const { dot, number } = GAME_TRACK;
-  const order = char.strokes.map((_, i) => i).filter((i) => i !== current);
-  if (current < char.strokes.length) order.push(current);
+  const order = char.strokes.map((_, i) => i).filter((i) => !active.includes(i));
+  order.push(...active);
   for (const i of order) {
-    const isCurrent = i === current;
+    const isCurrent = active.includes(i);
     if (!look.numbers && !isCurrent) continue;
     const [cx, cy] = px(char.strokes[i].points[0]);
     if (isCurrent) make('circle', { cx, cy, r: dot.radius * 1.9 * unit, fill: dot.halo });
@@ -411,6 +412,33 @@ export function createFx(svg) {
         add('polyline', polyAttrs(pts, width * 0.5, FX.letter.color),
           [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0.9, offset: 0.8 }, { opacity: 0 }], { duration: ms });
       }
+    },
+    // Jugnu's glowing trail along a stroke (pts in area px). set(f) shows the first
+    // f (0..1) of it; fadeOut(ms) fades it away. clear() removes it too.
+    trail(pts, width) {
+      const els = [
+        polyAttrs(pts, width * 1.6, FX.letter.glow),
+        polyAttrs(pts, width * 0.5, FX.letter.color),
+      ].map((attrs) => {
+        const el = document.createElementNS(SVG_NS, 'polyline');
+        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+        el.setAttribute('pathLength', '1');
+        el.setAttribute('stroke-dasharray', '0 2');
+        svg.appendChild(el);
+        live.add(el);
+        return el;
+      });
+      return {
+        set(f) {
+          for (const el of els) el.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, f))} 2`);
+        },
+        fadeOut(ms) {
+          for (const el of els) {
+            const anim = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, fill: 'both' });
+            anim.onfinish = () => { el.remove(); live.delete(el); };
+          }
+        },
+      };
     },
     clear() {
       for (const el of live) {
