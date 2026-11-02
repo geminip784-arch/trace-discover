@@ -162,3 +162,28 @@ export function letterChime() {
     });
   } catch { /* stay silent */ }
 }
+
+// One soft note that can glide (from mockup 4). slide: the pitch ends at freq * slide.
+function tone(freq, dur, type, vol, slide = 1) {
+  if (!audioCtx) return;
+  try {
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (slide !== 1) osc.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  } catch { /* stay silent */ }
+}
+
+// The front door swings open: a warm rising glide.
+export const doorSound = () => tone(196, 0.6, 'triangle', 0.14, 1.6);
+// A book opens or a character is picked: a soft pop.
+export const popSound = () => tone(620, 0.1, 'triangle', 0.16, 0.6);

@@ -29,7 +29,7 @@ export const BOARDS = {
 
 // Tile colors: each is dark enough to read on white (contrast at least 4.5 : 1;
 // tests/session.test.js checks it). No red: red is never used for her letters.
-export const TILE_COLORS = ['#1565C0', '#2E7D32', '#6A1B9A', '#AD1457', '#00695C', '#BF360C', '#4527A0', '#00838F'];
+export const TILE_COLORS = ['#1565C0', '#2E7D32', '#6A1B9A', '#AD1457', '#00695C', '#8D5B00', '#4527A0', '#00838F'];
 
 export const tileColor = (index) => TILE_COLORS[index % TILE_COLORS.length];
 
