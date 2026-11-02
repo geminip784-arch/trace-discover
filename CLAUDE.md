@@ -36,7 +36,7 @@ Full product spec: `docs/spec.md`. Phase 1 scope: `02-scope.md`. Build order: `0
 
 ## Child-screen rules (every screen she sees)
 - No text. All prompts are audio. An ear button replays the last prompt.
-- At most 3 choices on a screen. Child touch targets at least 88 CSS px.
+- At most 3 choices per question or prompt. Menus (the bookshelf and the character boards) are exempt. Child touch targets at least 88 CSS px.
 - Never red, never a buzzer, never erase her whole letter, never snap her ink onto the path.
 - Wrong direction: the glow stops and Jugnu flies the correct way once. Off path: the trail dims and she carries on. Wrong start: the start dot pulses.
 - Ink must follow her finger with no visible lag. Draw inside `requestAnimationFrame` and use `getCoalescedEvents()` when the browser offers it.
