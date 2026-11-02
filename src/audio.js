@@ -2,6 +2,10 @@
 // own speech in English (recorded family voices come later).
 // Works offline when the tablet has an on-device voice; silent if unsupported.
 
+// Speech is switched off (Slice 5A): the robotic voice is gone until recorded
+// prompts arrive. The code stays; set this to true to hear it again.
+export const SPEECH_ON = false;
+
 // Everything the voice says. Change the wording here.
 // {name}: her name (or how to say it, from the setup page). With no name set,
 // the name part is dropped: "Start here, {name}!" becomes "Start here!".
@@ -71,6 +75,7 @@ export function speak(key, vars = {}) {
 }
 
 export function sayText(text) {
+  if (!SPEECH_ON) return;
   lastText = text;
   if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
   try {
@@ -90,6 +95,9 @@ export function replay() {
   try { synth?.cancel(); } catch { /* ignore */ }
   sayText(lastText);
 }
+
+// The shared Web Audio context (null until the first touch); music.js uses it too.
+export const audioContext = () => audioCtx;
 
 // Call on every touch: browsers only allow sound after one.
 export function unlock() {
@@ -130,5 +138,27 @@ export function chime() {
       osc.stop(t + 1);
     }
     chimeGain = gain;
+  } catch { /* stay silent */ }
+}
+
+// The letter is complete: four rising notes, soft and short (from mockup 4).
+export function letterChime() {
+  if (!audioCtx) return;
+  try {
+    const t0 = audioCtx.currentTime;
+    [523, 659, 784, 1047].forEach((freq, i) => {
+      const t = t0 + i * 0.09;
+      const gain = audioCtx.createGain();
+      gain.connect(audioCtx.destination);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.14, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      osc.start(t);
+      osc.stop(t + 0.45);
+    });
   } catch { /* stay silent */ }
 }

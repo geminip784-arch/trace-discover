@@ -29,9 +29,6 @@ test('the config holds the numbers this slice asks for', () => {
   assert.equal(CONFIG.failsForDemo, 3);
   assert.equal(CONFIG.failsForAssist, 5);
   assert.equal(CONFIG.maxAssistedInRow, 2);
-  assert.equal(CONFIG.pictureMs, 3000);
-  assert.equal(CONFIG.freeDrawMs, 12000);
-  assert.equal(CONFIG.freeFadeMs, 1000);
   assert.equal(CONFIG.goodEvery, 2);
   assert.equal(CONFIG.letterGlowMs, 2000);
   assert.equal(CONFIG.fadeMs, 500);

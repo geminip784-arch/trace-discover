@@ -26,23 +26,14 @@
       inset: 0;
       touch-action: none;
     }
-    #area > svg, #area > canvas, #dimmer {
+    #area > svg, #area > canvas {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
       display: block;
     }
-    #area > svg, #dimmer, #jugnu, #picture { pointer-events: none; }
-    /* The reward picture, in the middle of the screen over the letter. */
-    #picture {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-    }
-    #picture[hidden] { display: none; }
-    #picture svg { width: 100%; height: 100%; display: block; }
+    #area > svg, #jugnu { pointer-events: none; }
     #jugnu {
       position: absolute;
       left: 0;
@@ -50,28 +41,6 @@
       will-change: transform;
       -webkit-user-drag: none;
     }
-    #jugnu.sleeping { filter: brightness(0.5) saturate(0.6); }
-    #dimmer {
-      background: rgba(5, 6, 20, 0.6);
-      opacity: 0;
-      transition: opacity 1.5s ease;
-    }
-    #dimmer.on { opacity: 1; }
-    #ear {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      width: 96px;
-      height: 96px;
-      padding: 0;
-      border-radius: 50%;
-      border: 3px solid rgba(255, 255, 255, 0.35);
-      background: rgba(255, 255, 255, 0.1);
-      touch-action: none;
-      z-index: 5;
-    }
-    #ear[hidden] { display: none; }
-    #ear svg { width: 60px; height: 60px; display: block; margin: auto; }
   </style>
 </head>
 <body>
@@ -79,18 +48,8 @@
     <svg id="lines" aria-hidden="true"></svg>
     <canvas id="ink"></canvas>
     <svg id="fx" aria-hidden="true"></svg>
-    <div id="picture" hidden></div>
-    <div id="dimmer"></div>
     <img id="jugnu" src="assets/jugnu.svg" alt="" draggable="false" hidden>
   </div>
-  <button id="ear" type="button" aria-label="Say it again" hidden>
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <path d="M18 28 C18 14 28 6 38 6 C49 6 56 15 56 26 C56 36 48 40 45 47 C42 54 42 60 33 60 C27 60 24 56 23 52"
-        fill="none" stroke="#ffe066" stroke-width="6" stroke-linecap="round"/>
-      <path d="M30 28 C30 21 34 17 39 17 C45 17 47 22 46 27 C45 32 39 33 39 39"
-        fill="none" stroke="#ffe066" stroke-width="5" stroke-linecap="round"/>
-    </svg>
-  </button>
   <script type="module">
     for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
       document.addEventListener(type, (e) => {
@@ -105,16 +64,16 @@
       showSetup();
     } else {
       const { startGame } = await import('./src/game.js');
+      const params = new URLSearchParams(location.search);
+      let manifest = [];
+      try { manifest = await (await fetch('data/chars/index.json')).json(); } catch { /* none: nothing loads */ }
       startGame({
         area: document.getElementById('area'),
         lines: document.getElementById('lines'),
         ink: document.getElementById('ink'),
         fx: document.getElementById('fx'),
-        dimmer: document.getElementById('dimmer'),
-        picture: document.getElementById('picture'),
         jugnu: document.getElementById('jugnu'),
-        ear: document.getElementById('ear'),
-      });
+      }, { charId: params.get('char') || 'L', manifest, debugOn: params.get('debug') === '1' });
     }
   </script>
 </body>

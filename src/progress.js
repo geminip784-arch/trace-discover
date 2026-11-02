@@ -20,9 +20,6 @@ export const CONFIG = {
   pulseMs: 900,           // the start dot pulses (twice) over this long
   trackGlowMs: 700,       // the track of a stroke glows once over this long
   goodEvery: 2,           // speak a "good" line at most once per this many good strokes
-  pictureMs: 3000,        // the reward picture stays this long
-  freeDrawMs: 12000,      // free drawing after the picture lasts this long
-  freeFadeMs: 1000,       // at the end of free drawing her ink fades with sparkles over this long
 };
 
 const noneDone = (n) => new Array(n).fill(false);
