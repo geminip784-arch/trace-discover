@@ -56,16 +56,29 @@ export function boardTiles(book, manifest, stars = []) {
 // The app only ever requests character files listed in the manifest.
 export const canLoad = (id, manifest) => typeof id === 'string' && manifest.includes(id);
 
+// The board on screen, in CSS px: it starts right of the left button column,
+// keeps `margin` from the other edges, and its frame (border plus padding)
+// takes `frame` from each of its width and height. screens.js uses these too.
+export const BOARD_BOX = { left: 136, margin: 24, frame: 60, gap: 12 };
+
+// The space the tiles have on a w x h screen.
+export const boardSpace = (w, h, box = BOARD_BOX) => ({
+  w: w - box.left - box.margin - box.frame,
+  h: h - 2 * box.margin - box.frame,
+});
+
 // Columns and tile size (CSS px) for n square tiles in a w x h box, with `gap`
 // between them: the column count that gives the biggest tiles, capped at `max`.
+// When several give the same size, the one with the fewest empty spaces wins.
 export function gridFor(n, w, h, gap = 12, max = 190) {
-  let best = { cols: 1, rows: n, size: 0 };
+  let best = null;
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols);
-    const size = Math.min((w - gap * (cols - 1)) / cols, (h - gap * (rows - 1)) / rows, max);
-    if (size > best.size + 0.01) best = { cols, rows, size };
+    const size = Math.floor(Math.min((w - gap * (cols - 1)) / cols, (h - gap * (rows - 1)) / rows, max));
+    const empty = cols * rows - n;
+    if (!best || size > best.size || (size === best.size && empty < best.empty)) best = { cols, rows, size, empty };
   }
-  return { ...best, size: Math.floor(best.size) };
+  return { cols: best.cols, rows: best.rows, size: best.size };
 }
 
 // ---------------------------------------------------------------------------

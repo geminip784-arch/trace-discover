@@ -55,3 +55,67 @@ export function saveProfile(profile, store = globalThis.localStorage) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// The app shell (Slice 5A): the day of the last visit, the gold stars, the music.
+
+export const LAST_VISIT_KEY = 'td.lastVisit'; // 'YYYY-MM-DD', set when she opens the door
+export const STARS_KEY = 'td.stars';          // ids of the characters she completed
+export const MUSIC_KEY = 'td.music';          // 'on' or 'off'
+
+export function readLastVisit(store = globalThis.localStorage) {
+  try {
+    const day = store.getItem(LAST_VISIT_KEY);
+    return typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastVisit(day, store = globalThis.localStorage) {
+  try {
+    store.setItem(LAST_VISIT_KEY, day);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function readStars(store = globalThis.localStorage) {
+  try {
+    const list = JSON.parse(store.getItem(STARS_KEY) ?? '[]');
+    return Array.isArray(list) ? list.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+// Pure: the star list with `id` added once.
+export const addStar = (list, id) => (list.includes(id) ? list : [...list, id]);
+
+export function saveStar(id, store = globalThis.localStorage) {
+  try {
+    store.setItem(STARS_KEY, JSON.stringify(addStar(readStars(store), id)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Music is off until she (or a parent) turns it on.
+export function readMusic(store = globalThis.localStorage) {
+  try {
+    return store.getItem(MUSIC_KEY) === 'on';
+  } catch {
+    return false;
+  }
+}
+
+export function saveMusic(on, store = globalThis.localStorage) {
+  try {
+    store.setItem(MUSIC_KEY, on ? 'on' : 'off');
+    return true;
+  } catch {
+    return false;
+  }
+}
