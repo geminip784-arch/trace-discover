@@ -21,7 +21,7 @@ const TILE_PICK_MS = 220;  // a bright character pops, then writing starts
 
 const JUGNU_IMG = '<img class="buddy" src="assets/jugnu.svg" alt="" draggable="false">';
 
-// els: { shell, area, lines, ink, fx, jugnu, home, back, music }
+// els: { shell, area, lines, ink, fx, jugnu, rounds, home, back, music }
 // options: { manifest, params (URLSearchParams), now (Date) }
 export function startShell(els, { manifest, params, now = new Date() }) {
   const debugOn = params.get('debug') === '1';
@@ -76,7 +76,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     document.body.dataset.screen = screen;
     els.home.hidden = screen === 'door' || screen === 'shelf';
     els.back.hidden = screen !== 'games';
-    els.music.hidden = screen === 'door' || screen === 'write';
+    els.music.hidden = screen === 'door';
     setTune(tuneFor(screen));
 
     const writing = screen === 'write';
@@ -210,11 +210,11 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       charId: state.char,
       manifest,
       debugOn,
-      onDone: ({ id, assisted }) => {
+      onDone: ({ id, star }) => {
         if (state !== mine) return;
-        // A letter Jugnu helped with still glows and chimes, but earns no star.
-        if (!assisted) saveStar(id);
-        go(navigate(state, { type: 'letterDone' }), { newStar: assisted ? null : id });
+        // A practice Jugnu helped with still glows and chimes, but earns no gold star.
+        if (star) saveStar(id);
+        go(navigate(state, { type: 'letterDone' }), { newStar: star ? id : null });
       },
     });
     // She may have pressed home while the character was loading.

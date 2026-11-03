@@ -1,4 +1,4 @@
-import { resample } from './geometry.js';
+import { resample, pathLength } from './geometry.js';
 
 // Guide lines (SVG) and her ink (canvas). Everything is sized in line units:
 // 1 unit = sky line to grass line, worked out from the viewport height.
@@ -18,9 +18,14 @@ export const LINES = [
   { y: 1.3, color: '#b9834d', width: 0.018 },                       // ground
 ];
 
-const INK = {
-  glow: { color: 'rgba(255, 215, 60, 0.45)', width: 0.14 },
-  core: { color: '#ffe85c', width: 0.045 },
+// Her ink: a strong blue, as in docs/mockups/mockup4.html (42, 26 and 12 px at 340 px).
+// The glow is two soft layers under the core. Never red.
+export const INK = {
+  glow: [
+    { color: '#4D6BFF', alpha: 0.28, width: 0.124 },
+    { color: '#4D6BFF', alpha: 0.5, width: 0.076 },
+  ],
+  core: { color: '#1D2B8F', width: 0.035 },
   dimAlpha: 0.35, // off the path, or a stroke that started in the wrong place
 };
 
@@ -46,10 +51,21 @@ export function toUnits(px, py, layout) {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+// The writing board (mockup4): a white board with a soft frame, inset from the
+// screen edges so the light page background shows round it. CSS px.
+export const BOARD = { inset: 12, radius: 32, frame: 8, fill: '#FFFFFF', frameColor: '#D6E6F5' };
+
 export function drawLines(svg, layout) {
   const { unit, areaWidth, areaHeight, originX, top, lineEnd } = layout;
   svg.setAttribute('viewBox', `0 0 ${areaWidth} ${areaHeight}`);
   svg.replaceChildren();
+  const board = document.createElementNS(SVG_NS, 'rect');
+  const edge = BOARD.inset + BOARD.frame / 2;
+  for (const [k, v] of Object.entries({
+    x: edge, y: edge, width: areaWidth - 2 * edge, height: areaHeight - 2 * edge,
+    rx: BOARD.radius, fill: BOARD.fill, stroke: BOARD.frameColor, 'stroke-width': BOARD.frame,
+  })) board.setAttribute(k, v);
+  svg.appendChild(board);
   for (const line of LINES) {
     const el = document.createElementNS(SVG_NS, 'line');
     const y = top + line.y * unit;
@@ -104,26 +120,106 @@ export function drawTrack(svg, layout, char, offset) {
 }
 
 // The game's track for one stage, added on top of the guide lines (call after drawLines).
-// The path is as wide as the stage's tolerance allows on each side.
-// Stage 1: every stroke, numbered start dots and an arrow on each stroke.
-// Stage 2: thinner and fainter, no numbers or arrows, only the active start dots glow.
-// `done[i]`: stroke i is finished and stays lit. `active`: the strokes she may draw
-// next (more than one when the character has an anyOrder group); their dots glow.
-const STAGE_TRACK = {
-  1: { color: 'rgba(255, 255, 255, 0.18)', numbers: true, arrows: true },
-  2: { color: 'rgba(255, 255, 255, 0.10)', numbers: false, arrows: false },
+// Every width here is a fixed look from docs/mockups/mockup4.html (its pixel sizes
+// divided by its 340 px letter height). None of them comes from the scoring
+// tolerance: that stays invisible (tests/track.test.js checks this).
+// Stage 1: a soft band with a dotted centre line. Stage 2: a thinner band.
+// Stage 3: a faint band. A finished stroke: a gold core with a soft halo.
+// `done[i]`: stroke i is finished and stays lit.
+export const TRACK_COLOR = '#4D6BFF';
+export const TRACK_LOOKS = {
+  1: { band: 0.18, opacity: 0.16, dots: { color: '#2F4BD6', opacity: 0.85, width: 0.018, gap: 0.047 } },
+  2: { band: 0.09, opacity: 0.12 },
+  3: { band: 0.065, opacity: 0.05 },
 };
-export const START_DOT_RADIUS = 0.075; // line units
-const GAME_TRACK = {
-  done: 'rgba(255, 226, 120, 0.42)',
-  dot: { radius: START_DOT_RADIUS, color: 'rgba(255, 255, 255, 0.4)', current: '#ffe066', halo: 'rgba(255, 224, 102, 0.3)' },
-  number: { color: '#1b1f3a', size: 0.1 },
-  arrow: { color: 'rgba(255, 255, 255, 0.55)', size: 0.07, at: 0.5 },
+export const DONE_LOOK = { core: 0.08, halo: 0.19, shine: 0.03, color: '#FFD43B', haloOpacity: 0.4, shineColor: '#FFFBE0' };
+export const trackLook = (stage) => TRACK_LOOKS[stage] ?? TRACK_LOOKS[3];
+
+// Every width the track draws for a stage, in line units (the tests read this).
+export function trackWidths(stage) {
+  const look = trackLook(stage);
+  const widths = [look.band, DONE_LOOK.core, DONE_LOOK.halo, DONE_LOOK.shine];
+  if (look.dots) widths.push(look.dots.width);
+  return widths;
+}
+
+export const START_DOT_RADIUS = 0.075; // line units, the big numbered dot (26 px in mockup4)
+
+// The start markers, in line units, worked out without the DOM (the tests use this).
+// Only the next stroke (`current`, the first unfinished in the recorded order)
+// gets a big dot. Stage 1: the big dot is numbered with an arrow beside it, and
+// every other unfinished stroke gets a small number about 18% along its own path
+// (never at its start, where it would hide under another dot). A small number
+// that would touch another marker slides further along until it is clear.
+// Stage 2: only the next stroke's start dot, no number. Stage 3: one small start
+// dot before the first stroke only.
+export const MARKERS = {
+  ring: 0.012,                    // white ring round every dot
+  big: START_DOT_RADIUS,
+  small: { radius: 0.042, at: 0.18, step: 0.02, upTo: 0.9 },
+  arrow: { radius: 0.042, along: 0.135 },
+  stage2: 0.059,                  // 20 px in mockup4
+  stage3: 0.038,                  // 13 px in mockup4
+  gap: 0.01,                      // markers keep at least this apart
 };
 
-export function drawStageTrack(svg, layout, char, offset, { stage, done, active, tolerance }) {
+// Point and direction (radians) at distance d along a stroke.
+function pointAlong(points, d) {
+  for (let i = 1; i < points.length; i++) {
+    const [ax, ay] = points[i - 1];
+    const [bx, by] = points[i];
+    const seg = Math.hypot(bx - ax, by - ay);
+    if (seg > 0 && (d <= seg || i === points.length - 1)) {
+      const t = Math.min(1, d / seg);
+      return { at: [ax + t * (bx - ax), ay + t * (by - ay)], angle: Math.atan2(by - ay, bx - ax) };
+    }
+    d -= seg;
+  }
+  return { at: points[0], angle: 0 };
+}
+
+export const outerRadius = (m) => m.r + (m.kind === 'arrow' ? 0 : MARKERS.ring);
+
+export function startMarkers(char, done, stage) {
+  const current = done.indexOf(false);
+  if (current === -1) return [];
+  const first = char.strokes[current].points;
+  if (stage === 2) return [{ kind: 'dot', stroke: current, at: first[0], r: MARKERS.stage2 }];
+  if (stage !== 1) {
+    return done.every((d) => !d) ? [{ kind: 'dot', stroke: current, at: first[0], r: MARKERS.stage3 }] : [];
+  }
+  const out = [{ kind: 'big', stroke: current, at: first[0], r: MARKERS.big, label: current + 1 }];
+  if (char.strokes[current].kind === 'line' && pathLength(first) > MARKERS.arrow.along) {
+    const { at, angle } = pointAlong(first, MARKERS.arrow.along);
+    out.push({ kind: 'arrow', stroke: current, at, angle, r: MARKERS.arrow.radius });
+  }
+  const clearance = (m) => Math.min(...out.map((o) => Math.hypot(m.at[0] - o.at[0], m.at[1] - o.at[1]) - outerRadius(o) - outerRadius(m)));
+  char.strokes.forEach((stroke, i) => {
+    if (done[i] || i === current) return;
+    const { radius, at, step, upTo } = MARKERS.small;
+    const len = pathLength(stroke.points);
+    let best = null;
+    for (let f = at; f <= upTo + 1e-9; f += step) {
+      const m = { kind: 'small', stroke: i, at: pointAlong(stroke.points, f * len).at, r: radius, label: i + 1, f };
+      const c = clearance(m);
+      if (!best || c > best.c) best = { m, c };
+      if (c >= MARKERS.gap) break;
+    }
+    out.push(best.m);
+  });
+  return out;
+}
+
+const GAME_TRACK = {
+  dot: { color: '#35D07F', ring: '#fff' },
+  number: { color: '#fff', size: 0.1 },
+  small: { fill: '#fff', ring: '#35D07F', color: '#2F4BD6', size: 0.058 },
+  arrow: { color: '#2F4BD6', size: 0.042 },
+};
+
+export function drawStageTrack(svg, layout, char, offset, { stage, done }) {
   const { unit, originX, top } = layout;
-  const look = STAGE_TRACK[stage] ?? STAGE_TRACK[2];
+  const look = trackLook(stage);
   const px = ([x, y]) => [originX + (offset + x) * unit, top + y * unit];
   const make = (tag, attrs) => {
     const el = document.createElementNS(SVG_NS, tag);
@@ -131,65 +227,71 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done, active,
     svg.appendChild(el);
     return el;
   };
+  const path = (points, color, width, extra = {}) => make('polyline', {
+    points: points.map(px).map((p) => p.join(',')).join(' '),
+    fill: 'none',
+    stroke: color,
+    'stroke-width': width * unit,
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+    ...extra,
+  });
+  const label = (cx, cy, text, color, size) => {
+    const el = make('text', {
+      x: cx,
+      y: cy,
+      fill: color,
+      'font-size': size * unit,
+      'font-family': 'Fredoka, sans-serif',
+      'font-weight': '600',
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+    });
+    el.textContent = String(text);
+  };
 
   char.strokes.forEach((stroke, i) => {
     if (stroke.kind !== 'line') return;
-    make('polyline', {
-      points: stroke.points.map(px).map((p) => p.join(',')).join(' '),
-      fill: 'none',
-      stroke: done[i] ? GAME_TRACK.done : look.color,
-      'stroke-width': 2 * tolerance * unit,
-      'stroke-linecap': 'round',
-      'stroke-linejoin': 'round',
-    });
+    if (done[i]) {
+      path(stroke.points, DONE_LOOK.color, DONE_LOOK.halo, { 'stroke-opacity': DONE_LOOK.haloOpacity });
+      path(stroke.points, DONE_LOOK.color, DONE_LOOK.core);
+      path(stroke.points, DONE_LOOK.shineColor, DONE_LOOK.shine);
+      return;
+    }
+    path(stroke.points, TRACK_COLOR, look.band, { 'stroke-opacity': look.opacity });
+    if (look.dots) {
+      const { color, opacity, width, gap } = look.dots;
+      path(stroke.points, color, width, { 'stroke-opacity': opacity, 'stroke-dasharray': `0.1 ${gap * unit}` });
+    }
   });
 
-  if (look.arrows) {
-    const { size, at, color } = GAME_TRACK.arrow;
-    for (const stroke of char.strokes) {
-      if (stroke.kind !== 'line') continue;
-      const r = resample(stroke.points, 41);
-      const m = Math.round(at * 40);
-      const [x, y] = px(r[m]);
-      const angle = Math.atan2(r[m + 1][1] - r[m - 1][1], r[m + 1][0] - r[m - 1][0]) * 180 / Math.PI;
-      const s = size * unit;
+  // Small numbers first, the next stroke's dot last, so nothing covers it.
+  const markers = startMarkers(char, done, stage);
+  markers.sort((a, b) => (a.kind === 'small' ? 0 : 1) - (b.kind === 'small' ? 0 : 1));
+  const ring = MARKERS.ring * unit;
+  for (const m of markers) {
+    const [cx, cy] = px(m.at);
+    if (m.kind === 'arrow') {
+      const s = GAME_TRACK.arrow.size * unit;
       make('polygon', {
         points: `${s},0 ${-s * 0.7},${-s * 0.8} ${-s * 0.7},${s * 0.8}`,
-        fill: color,
-        transform: `translate(${x} ${y}) rotate(${angle})`,
+        fill: GAME_TRACK.arrow.color,
+        transform: `translate(${cx} ${cy}) rotate(${m.angle * 180 / Math.PI})`,
       });
-    }
-  }
-
-  // Start dots on top, the active ones last so they are never covered.
-  const { dot, number } = GAME_TRACK;
-  const order = char.strokes.map((_, i) => i).filter((i) => !active.includes(i));
-  order.push(...active);
-  for (const i of order) {
-    const isCurrent = active.includes(i);
-    if (!look.numbers && !isCurrent) continue;
-    const [cx, cy] = px(char.strokes[i].points[0]);
-    if (isCurrent) make('circle', { cx, cy, r: dot.radius * 1.9 * unit, fill: dot.halo });
-    make('circle', { cx, cy, r: dot.radius * unit, fill: isCurrent ? dot.current : dot.color });
-    if (look.numbers) {
-      const label = make('text', {
-        x: cx,
-        y: cy,
-        fill: number.color,
-        'font-size': number.size * unit,
-        'font-family': 'sans-serif',
-        'font-weight': 'bold',
-        'text-anchor': 'middle',
-        'dominant-baseline': 'central',
-      });
-      label.textContent = String(i + 1);
+    } else if (m.kind === 'small') {
+      const { fill, ring: ringColor, color, size } = GAME_TRACK.small;
+      make('circle', { cx, cy, r: m.r * unit, fill, stroke: ringColor, 'stroke-width': ring });
+      label(cx, cy, m.label, color, size);
+    } else {
+      make('circle', { cx, cy, r: m.r * unit, fill: GAME_TRACK.dot.color, stroke: GAME_TRACK.dot.ring, 'stroke-width': ring });
+      if (m.label) label(cx, cy, m.label, GAME_TRACK.number.color, GAME_TRACK.number.size);
     }
   }
 }
 
 // Her ink. Finished strokes are baked into an off-screen canvas; each frame the
 // visible canvas copies that and redraws only the stroke she is drawing now.
-// The glow is a wide semi-transparent line under the bright core (no shadowBlur).
+// The glow is wide semi-transparent lines under the strong core (no shadowBlur).
 // Each point carries a style { dim, glow }: the segment that ends at it is drawn
 // dimmed (off the path) and/or without its glow (she went the wrong way).
 // Runs of segments with the same style are one path, so the glow never darkens
@@ -220,12 +322,16 @@ export function createInk(canvas) {
     for (let i = from + 1; i <= to; i++) c.lineTo(points[i].x, points[i].y);
     c.lineCap = 'round';
     c.lineJoin = 'round';
-    c.globalAlpha = alpha * (style.dim ? INK.dimAlpha : 1);
+    const base = alpha * (style.dim ? INK.dimAlpha : 1);
     if (style.glow) {
-      c.strokeStyle = INK.glow.color;
-      c.lineWidth = INK.glow.width;
-      c.stroke();
+      for (const layer of INK.glow) {
+        c.globalAlpha = base * layer.alpha;
+        c.strokeStyle = layer.color;
+        c.lineWidth = layer.width;
+        c.stroke();
+      }
     }
+    c.globalAlpha = base;
     c.strokeStyle = INK.core.color;
     c.lineWidth = INK.core.width;
     c.stroke();
@@ -348,10 +454,10 @@ export function createInk(canvas) {
 // Short effects on an SVG layer above her ink: sparkle, pulse, glow.
 // They use the Web Animations API; clear() stops them all at once.
 const FX = {
-  sparkle: { color: '#fff6c8', count: 9, radius: 0.035 },
-  pulse: { color: '#ffe066', width: 0.025 },
-  glow: { color: 'rgba(255, 230, 120, 0.85)' },
-  letter: { color: '#ffe066', glow: 'rgba(255, 215, 60, 0.5)' },
+  sparkle: { color: '#FFC21A', count: 9, radius: 0.035 },
+  pulse: { color: '#35D07F', width: 0.025 },
+  glow: { color: 'rgba(77, 107, 255, 0.5)' },
+  letter: { color: '#FFD43B', glow: 'rgba(255, 212, 59, 0.45)' },
 };
 
 export function createFx(svg) {

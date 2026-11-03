@@ -62,6 +62,7 @@ export function saveProfile(profile, store = globalThis.localStorage) {
 export const LAST_VISIT_KEY = 'td.lastVisit'; // 'YYYY-MM-DD', set when she opens the door
 export const STARS_KEY = 'td.stars';          // ids of the characters she completed
 export const MUSIC_KEY = 'td.music';          // 'on' or 'off'
+export const ROUNDS_KEY = 'td.rounds';        // { [character id]: { round, helped } }: practice she left mid-way
 
 export function readLastVisit(store = globalThis.localStorage) {
   try {
@@ -114,6 +115,44 @@ export function readMusic(store = globalThis.localStorage) {
 export function saveMusic(on, store = globalThis.localStorage) {
   try {
     store.setItem(MUSIC_KEY, on ? 'on' : 'off');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Practice rounds, per character. A character with no entry starts at round 1.
+function readAllRounds(store) {
+  try {
+    const all = JSON.parse(store.getItem(ROUNDS_KEY) ?? '{}');
+    return all && typeof all === 'object' && !Array.isArray(all) ? all : {};
+  } catch {
+    return {};
+  }
+}
+
+export function readRounds(id, store = globalThis.localStorage) {
+  const entry = readAllRounds(store)[id];
+  return entry && typeof entry === 'object' ? entry : null;
+}
+
+export function saveRounds(id, { round, helped }, store = globalThis.localStorage) {
+  try {
+    const all = readAllRounds(store);
+    all[id] = { round, helped: helped === true };
+    store.setItem(ROUNDS_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// The practice is finished: next time she starts again at round 1.
+export function clearRounds(id, store = globalThis.localStorage) {
+  try {
+    const all = readAllRounds(store);
+    delete all[id];
+    store.setItem(ROUNDS_KEY, JSON.stringify(all));
     return true;
   } catch {
     return false;

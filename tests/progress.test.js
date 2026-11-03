@@ -252,3 +252,96 @@ test('strokes may be finished out of order (T: bar first, then stem)', () => {
   const r = applyLift(s, { ok: true, from: 0 });
   assert.equal(r.letterDone, true);
 });
+
+// ---------------------------------------------------------------------------
+// Practice rounds
+
+import {
+  ROUNDS, roundCount, stageForRound, ROUND_CONFIG, startRounds, markHelp, isHelp,
+  finishRound, starEarned, roundLights,
+} from '../src/progress.js';
+
+test('3 practice rounds by default, and the setting stays between 3 and 5', () => {
+  assert.equal(ROUNDS, 3);
+  assert.equal(roundCount(), 3);
+  assert.equal(roundCount(1), 3);
+  assert.equal(roundCount(4), 4);
+  assert.equal(roundCount(9), 5);
+  assert.equal(roundCount('junk'), 3);
+});
+
+test('rounds map to stages: the last is Stage 3, the rest Stage 1 then Stage 2', () => {
+  const stages = (n) => Array.from({ length: n }, (_, r) => stageForRound(r, n));
+  assert.deepEqual(stages(3), [1, 2, 3]);
+  assert.deepEqual(stages(4), [1, 1, 2, 3]);
+  assert.deepEqual(stages(5), [1, 1, 2, 2, 3]);
+});
+
+test('inside a round the stage never drops, however many misses', () => {
+  let s = { ...initialState(3), stage: 3 };
+  const dropped = [];
+  for (let i = 0; i < 4; i++) {
+    const r = applyLift(s, { ok: false }, ROUND_CONFIG);
+    dropped.push(r.droppedStage);
+    s = r.state;
+  }
+  assert.deepEqual(dropped, [false, false, false, false]);
+  assert.equal(s.stage, 3);
+  // The game outside rounds keeps its old rule.
+  assert.equal(CONFIG.dropStage, true);
+});
+
+test('a round counts only when she drew every stroke; then the next round comes', () => {
+  let rp = startRounds(null);
+  assert.deepEqual(rp, { round: 0, helped: false });
+  let r = finishRound(rp, { assisted: false });
+  assert.deepEqual(r, { state: { round: 1, helped: false }, repeat: false, allDone: false });
+  r = finishRound(r.state, { assisted: false });
+  assert.equal(r.state.round, 2);
+  assert.equal(r.allDone, false);
+  r = finishRound(r.state, { assisted: false });
+  assert.equal(r.allDone, true);
+});
+
+test('when Jugnu drew a stroke the round starts again, and the help is kept', () => {
+  const r = finishRound({ round: 1, helped: false }, { assisted: true });
+  assert.deepEqual(r, { state: { round: 1, helped: true }, repeat: true, allDone: false });
+});
+
+test('she resumes at the round she left; broken saves start fresh', () => {
+  assert.deepEqual(startRounds({ round: 2, helped: false }), { round: 2, helped: false });
+  assert.deepEqual(startRounds({ round: 0, helped: true }), { round: 0, helped: true });
+  assert.deepEqual(startRounds({ round: 3, helped: true }), { round: 0, helped: false }); // past the end
+  assert.deepEqual(startRounds({ round: -1 }), { round: 0, helped: false });
+  assert.deepEqual(startRounds({ round: '1' }), { round: 0, helped: false });
+  assert.deepEqual(startRounds({ round: 4 }, 5), { round: 4, helped: false });
+});
+
+test('help is an assist, or a demonstration after misses in a Stage 2 or 3 round', () => {
+  const lift = (o) => ({ assist: false, demo: false, ...o });
+  assert.equal(isHelp(1, lift({ assist: true })), true);
+  assert.equal(isHelp(1, lift({ demo: true })), false); // Stage 1 demonstrations are the lesson
+  assert.equal(isHelp(2, lift({ demo: true })), true);
+  assert.equal(isHelp(3, lift({ demo: true })), true);
+  assert.equal(isHelp(3, lift({})), false);
+});
+
+test('a gold star only when no round needed Jugnu', () => {
+  let rp = startRounds(null);
+  for (let i = 0; i < 3; i++) rp = finishRound(rp, { assisted: false }).state;
+  assert.equal(starEarned(rp), true);
+  rp = markHelp(startRounds(null));
+  for (let i = 0; i < 3; i++) rp = finishRound(rp, { assisted: false }).state;
+  assert.equal(starEarned(rp), false);
+  // A repeated round (Jugnu drew a stroke) loses the star too.
+  rp = finishRound(startRounds(null), { assisted: true }).state;
+  for (let i = 0; i < 3; i++) rp = finishRound(rp, { assisted: false }).state;
+  assert.equal(starEarned(rp), false);
+});
+
+test('the round lights: done, now, to come', () => {
+  assert.deepEqual(roundLights({ round: 0 }), ['now', 'next', 'next']);
+  assert.deepEqual(roundLights({ round: 1 }), ['done', 'now', 'next']);
+  assert.deepEqual(roundLights({ round: 2 }), ['done', 'done', 'now']);
+  assert.deepEqual(roundLights({ round: 1 }, 5), ['done', 'now', 'next', 'next', 'next']);
+});

@@ -5,6 +5,7 @@ import {
   appendAttempt, logAttempt, readAttempts, ATTEMPTS_KEY, MAX_ATTEMPTS,
   PROFILE_KEY, readProfile, saveProfile, cleanProfile,
   readLastVisit, saveLastVisit, readStars, saveStar, addStar, readMusic, saveMusic,
+  ROUNDS_KEY, readRounds, saveRounds, clearRounds,
 } from '../src/storage.js';
 
 function memoryStore() {
@@ -101,4 +102,26 @@ test('shell settings never throw with broken storage', () => {
   assert.equal(saveMusic(true, broken), false);
   const junk = { getItem: () => '{not json', setItem: () => {} };
   assert.deepEqual(readStars(junk), []);
+});
+
+test('practice rounds save per character in td.rounds and clear when finished', () => {
+  const store = memoryStore();
+  assert.equal(readRounds('F', store), null);
+  saveRounds('F', { round: 1, helped: false }, store);
+  saveRounds('4', { round: 2, helped: true }, store);
+  assert.deepEqual(readRounds('F', store), { round: 1, helped: false });
+  assert.deepEqual(readRounds('4', store), { round: 2, helped: true });
+  assert.deepEqual(Object.keys(JSON.parse(store.getItem(ROUNDS_KEY))).sort(), ['4', 'F']);
+  clearRounds('F', store);
+  assert.equal(readRounds('F', store), null);
+  assert.deepEqual(readRounds('4', store), { round: 2, helped: true });
+});
+
+test('broken round saves never throw', () => {
+  const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('full'); } };
+  assert.equal(readRounds('F', broken), null);
+  assert.equal(saveRounds('F', { round: 1 }, broken), false);
+  assert.equal(clearRounds('F', broken), false);
+  const junk = { getItem: () => '[1,2]', setItem: () => {} };
+  assert.equal(readRounds('F', junk), null);
 });
