@@ -12,7 +12,7 @@ export const HINT_MS = 10000;    // no find for this long: the objects left to f
 export const WORD_MS = 2000;     // a wrong tap shows that object's own word this long
 export const GOLD_CHANCE = 0.25; // one golden item in the group she counts
 export const MAX_FINDS = 500;    // the collection keeps this many, newest last
-export const SHELF_SHOWS = 24;   // the shelf of finds shows the newest 24 (mockup4)
+export const SHELF_SHOWS = 24;   // the shelf of finds shows up to the newest 24 (mockup4)
 
 const pick = (list, rand) => list[Math.floor(rand() * list.length)];
 
