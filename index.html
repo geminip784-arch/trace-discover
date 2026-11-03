@@ -234,6 +234,116 @@
     .view-games { background: radial-gradient(circle at 50% 45%, #FFE0B2, #FFB74D); }
     .in-middle { left: calc(50% - 100px); top: calc(50% - 100px); width: 200px; }
 
+    /* ---- Slice 5C: the find and count scenes. The room covers the screen,
+       Jugnu stays on the left, and only objects, groups and items take taps. ---- */
+    .view-find { background: #FFF7E8; touch-action: none; }
+    .sc-stage { position: absolute; left: 0; top: 0; width: 1280px; height: 640px; transform-origin: 0 0; }
+    .sc-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+    .sc-obj, .sc-group { position: absolute; transform-origin: 50% 100%; touch-action: none; cursor: pointer; }
+    .sc-obj svg, .sc-group svg, .sc-ghost svg, .sc-mini svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .sc-obj svg, .sc-group svg { pointer-events: none; }
+    .sc-obj.found { z-index: 2; pointer-events: none; filter: drop-shadow(0 0 12px #FFE066) drop-shadow(0 0 26px #FFD43B); }
+    .sc-obj.gone, .sc-group.gone { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+    .wig { animation: wiggle 0.6s ease; }
+    .sc-word {
+      position: absolute; left: 50%; top: 100%; margin-top: 4px; transform: translateX(-50%);
+      padding: 0 18px 4px; border-radius: 28px; background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.08); color: #2A2370; font-size: 38px; line-height: 1.25;
+      white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.25s;
+    }
+    .sc-word.above { top: auto; bottom: 100%; margin: 0 0 6px; }
+    .sc-word.show { opacity: 1; }
+    .sc-dots { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 14px; pointer-events: none; }
+    .sc-dots i { box-sizing: border-box; width: 48px; height: 48px; border-radius: 50%; background: #EEF4FB; border: 5px solid #D6E6F5; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08); }
+    .sc-dots i.on { background: #FFD43B; border-color: #fff; box-shadow: 0 0 18px #FFD43B, 0 4px 0 rgba(0, 0, 0, 0.12); animation: lightup 0.5s ease; }
+    .sc-basket { position: absolute; right: 24px; top: 12px; z-index: 5; width: 140px; height: 140px; pointer-events: none; transform-origin: 50% 100%; }
+    .sc-basket > svg { position: relative; display: block; width: 140px; height: 140px; }
+    /* found objects sit in the basket: drawn first, so its front covers their lower half */
+    .sc-minis { position: absolute; left: -10px; right: -10px; top: 18px; display: flex; justify-content: center; align-items: flex-end; gap: 0; }
+    .sc-mini { width: 56px; }
+    .sc-ghost { position: absolute; z-index: 6; pointer-events: none; transition: left 0.7s cubic-bezier(.3,.9,.3,1), top 0.7s cubic-bezier(.3,.9,.3,1), width 0.7s cubic-bezier(.3,.9,.3,1); }
+    .sc-done .sc-basket, .sc-done .sc-dots { filter: drop-shadow(0 0 16px #FFD43B); }
+    .sc-done .buddy { animation-name: bob, glow; animation-duration: 2.6s, 1.4s; animation-iteration-count: infinite; }
+    .sc-group.sc-counting { z-index: 6; cursor: default; transition: left 0.8s cubic-bezier(.3,.9,.3,1), top 0.8s cubic-bezier(.3,.9,.3,1), width 0.8s cubic-bezier(.3,.9,.3,1); }
+    .sc-counting.ready .cnt { pointer-events: auto; cursor: pointer; }
+    .sc-counting .cnt { transform-box: fill-box; transform-origin: center; }
+    .sc-counting.ready .cnt:not(.counted) { animation: breathe 1.1s ease-in-out infinite; }
+    .sc-counting .counted { animation: countpop 0.35s ease; }
+    .art .counted .num { opacity: 1; }
+    .art .cnt.gold { filter: sepia(1) saturate(5) hue-rotate(5deg) brightness(1.15) drop-shadow(0 0 6px #FFD43B); }
+    @keyframes breathe { 50% { transform: scale(1.07); } }
+    @keyframes countpop { 50% { transform: scale(1.25) translateY(-8px); } }
+    .sc-counting.cheer { animation: cheer 0.6s ease 2; }
+    @keyframes cheer { 50% { transform: translateY(-24px) scale(1.04); } }
+    .sc-count-word {
+      position: absolute; z-index: 6; transform: translateX(-50%); padding: 0 28px 6px; border-radius: 40px;
+      background: rgba(255, 255, 255, 0.94); box-shadow: 0 6px 0 rgba(0, 0, 0, 0.08); color: #2A2370;
+      font-size: 60px; line-height: 1.2; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    }
+    .sc-count-word.show { opacity: 1; }
+    /* mockup4's little reward each object plays when she finds it */
+    .art .glow { transition: opacity .6s; transform-box: fill-box; transform-origin: center; }
+    .sc-obj.rw-lamp .glow { opacity: 1 !important; animation: rw-pulse 1.3s ease-in-out infinite; }
+    @keyframes rw-pulse { 50% { transform: scale(1.12); } }
+    @keyframes rw-spin { to { transform: rotate(360deg); } }
+    .sc-obj.rw-fan .blades { animation: rw-spin .55s linear infinite; }
+    @keyframes rw-rub { from { transform: translateX(-14px) rotate(-4deg); } to { transform: translateX(14px) rotate(4deg); } }
+    .sc-obj.rw-eraser .wob { animation: rw-rub .45s ease-in-out infinite alternate; }
+    .art .pop { opacity: 0; }
+    .sc-obj.rw-lunch .lid { animation: rw-openlid 1.2s ease forwards; }
+    @keyframes rw-openlid { to { transform: rotate(-56deg); } }
+    .sc-obj.rw-lunch .pop { animation: rw-popup 1.6s .7s ease forwards; }
+    @keyframes rw-popup { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(-58px); opacity: 1; } }
+    .sc-obj.rw-flag .cloth { animation: rw-flutter .5s ease-in-out infinite alternate; }
+    @keyframes rw-flutter { from { transform: skewY(-7deg); } to { transform: skewY(7deg); } }
+    .sc-obj.rw-egg .egg { animation: rw-wobble .5s ease-in-out infinite alternate; }
+    @keyframes rw-wobble { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+    .sc-obj.rw-hat .swing { animation: rw-swing .8s ease-in-out infinite alternate; }
+    @keyframes rw-swing { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+    .sc-obj.rw-heart .beat { animation: rw-beat .7s ease-in-out infinite; }
+    @keyframes rw-beat { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.14); } }
+    .sc-obj.rw-ink .bottle { animation: rw-rub .5s ease-in-out infinite alternate; }
+    .sc-obj.rw-ink .drop { animation: rw-dropfall 1.1s ease-in infinite; }
+    @keyframes rw-dropfall { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(120px); opacity: 0; } }
+    .sc-obj.rw-insect .bug { animation: rw-crawl .6s ease-in-out infinite alternate; }
+    @keyframes rw-crawl { from { transform: translateX(-12px) rotate(-6deg); } to { transform: translateX(12px) rotate(6deg); } }
+    .sc-obj.rw-toys .tb1 { animation: rw-hop2 .8s ease-in-out infinite; }
+    .sc-obj.rw-toys .tb2 { animation: rw-hop2 .8s .2s ease-in-out infinite; }
+    .sc-obj.rw-toys .tcar { animation: rw-drive 1s ease-in-out infinite alternate; }
+    @keyframes rw-hop2 { 50% { transform: translateY(-16px); } }
+    @keyframes rw-drive { from { transform: translateX(-12px); } to { transform: translateX(4px); } }
+    .sc-obj.rw-tiger .tilt { animation: rw-tilt .7s ease-in-out infinite alternate; }
+    @keyframes rw-tilt { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+    .sc-obj.rw-fork .fk { animation: rw-wobble .4s ease-in-out infinite alternate; }
+    .sc-obj.rw-honey .jar { animation: rw-wobble .6s ease-in-out infinite alternate; }
+    .sc-obj.rw-honey .drip { animation: rw-dropfall 1.1s ease-in infinite; }
+    .sc-obj.rw-ice .scoop2 { animation: rw-popin .5s .3s ease both; }
+    .sc-obj.rw-ice .cherry { animation: rw-cherryup .5s .3s ease both; }
+    @keyframes rw-popin { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes rw-cherryup { to { transform: translateY(-44px); } }
+    .sc-obj.rw-lemon .lem { animation: rw-wobble .45s ease-in-out infinite alternate; }
+    .sc-obj.rw-lemon .drops { opacity: 1; animation: rw-rise 1.4s ease-out infinite; }
+    .sc-obj.rw-tomato .tom { animation: rw-hop2 .6s ease-in-out infinite; }
+    .art .num { opacity: 0; }
+    .art .steam, .art .scoop2, .art .drops { opacity: 0; }
+    @keyframes rw-rise { from { transform: translateY(60px); opacity: 0; } 30% { opacity: .75; } to { transform: translateY(-80px); opacity: 0; } }
+
+    /* ---- her shelf of finds (mockup4): planks, the newest 24, a tap wiggles one ---- */
+    .toybox-btn { position: absolute; left: 16px; top: 16px; width: 96px; height: 96px; padding: 6px; box-sizing: border-box; border-radius: 50%; background: #fff; box-shadow: 0 7px 0 rgba(0, 0, 0, 0.18); touch-action: none; cursor: pointer; z-index: 3; }
+    .toybox-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.18); }
+    .toybox-btn svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+    .view-toys {
+      background-color: #FDE9C9;
+      background-image: radial-gradient(rgba(214, 150, 80, 0.16) 7px, transparent 8px);
+      background-size: 64px 64px;
+    }
+    .finds { position: absolute; left: 136px; right: 24px; top: 24px; bottom: 24px; display: flex; flex-direction: column; justify-content: space-evenly; }
+    .finds-row { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; align-items: end; padding: 0 8px; }
+    .finds-row::after { content: ''; position: absolute; left: 0; right: 0; bottom: -22px; height: 22px; border-radius: 6px; background: linear-gradient(#C98E55, #A9723F); box-shadow: 0 8px 0 #8A5A2E; }
+    .find { display: flex; align-items: flex-end; justify-content: center; height: var(--row, 130px); touch-action: none; cursor: pointer; transform-origin: 50% 100%; }
+    .find svg { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+    .find.wide { grid-column: span 2; }
+
     /* ---- landscape only: upright, this covers everything and takes every tap ---- */
     #turn {
       position: fixed;
