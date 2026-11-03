@@ -234,6 +234,36 @@
     .view-games { background: radial-gradient(circle at 50% 45%, #FFE0B2, #FFB74D); }
     .in-middle { left: calc(50% - 100px); top: calc(50% - 100px); width: 200px; }
 
+    /* ---- landscape only: upright, this covers everything and takes every tap ---- */
+    #turn {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #CFE9FB;
+      touch-action: none;
+    }
+    #turn svg { width: min(92vw, 150vh); height: auto; display: block; overflow: visible; }
+    #turn .turn-tab { transform-box: view-box; transform-origin: 300px 205px; animation: turn-tab 3.2s ease-in-out infinite; }
+    @keyframes turn-tab {
+      0%, 18% { transform: rotate(0); opacity: 1; }
+      48%, 82% { transform: rotate(90deg); opacity: 1; }
+      92% { transform: rotate(90deg); opacity: 0; }
+      93% { transform: rotate(0); opacity: 0; }
+      100% { transform: rotate(0); opacity: 1; }
+    }
+    #turn .turn-lines { transform-box: view-box; transform-origin: 300px 205px; animation: turn-lines 3.2s ease-in-out infinite; }
+    @keyframes turn-lines {
+      0%, 18% { transform: rotate(0); opacity: 0.3; }
+      48%, 92% { transform: rotate(-90deg); opacity: 1; }
+      93%, 100% { transform: rotate(0); opacity: 0.3; }
+    }
+    #turn .turn-arrow { animation: turn-arrow 3.2s ease-in-out infinite; }
+    @keyframes turn-arrow { 0%, 12% { opacity: 0.35; } 30%, 50% { opacity: 1; } 70%, 100% { opacity: 0.35; } }
+    #turn .turn-jugnu { transform-box: fill-box; transform-origin: center; animation: bob 2.6s ease-in-out infinite; filter: drop-shadow(0 0 14px rgba(255, 224, 102, 0.9)); }
+
     /* Portrait (not her setup, but keep it usable): the shelf uses the full width. */
     @media (max-width: 900px) {
       .shelf { left: 16px; right: 16px; }
@@ -253,6 +283,7 @@
   <button id="home" class="btn" type="button" aria-label="Home" hidden></button>
   <button id="back" class="btn" type="button" aria-label="Back" hidden></button>
   <button id="music" class="btn" type="button" aria-label="Music" hidden></button>
+  <div id="turn" aria-hidden="true" hidden></div>
   <script type="module">
     for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
       document.addEventListener(type, (e) => {
@@ -265,7 +296,7 @@
     const $ = (id) => document.getElementById(id);
     // index.html?setup=1 is the parent setup page. Every other address is the app.
     if (params.get('setup') === '1') {
-      for (const id of ['shell', 'home', 'back', 'music', 'rounds']) $(id).remove();
+      for (const id of ['shell', 'home', 'back', 'music', 'rounds', 'turn']) $(id).remove();
       const { showSetup } = await import('./src/setup.js');
       showSetup();
     } else {
@@ -278,7 +309,7 @@
       const { startShell } = await import('./src/screens.js');
       startShell({
         shell: $('shell'), area: $('area'), lines: $('lines'), ink: $('ink'), fx: $('fx'), jugnu: $('jugnu'), rounds: $('rounds'),
-        home: $('home'), back: $('back'), music: $('music'),
+        home: $('home'), back: $('back'), music: $('music'), turn: $('turn'),
       }, { manifest, params });
     }
   </script>

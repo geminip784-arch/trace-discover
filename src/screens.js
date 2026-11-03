@@ -13,7 +13,8 @@ import { readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
 import { startGame } from './game.js';
-import { HOUSE, DOOR, ICONS, STAR, bookCover } from './art.js';
+import { HOUSE, DOOR, ICONS, STAR, TURN, bookCover } from './art.js';
+import { isUpright } from './render.js';
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
 const BOOK_OPEN_MS = 650;  // a book's cover opens, then its screen
@@ -21,7 +22,7 @@ const TILE_PICK_MS = 220;  // a bright character pops, then writing starts
 
 const JUGNU_IMG = '<img class="buddy" src="assets/jugnu.svg" alt="" draggable="false">';
 
-// els: { shell, area, lines, ink, fx, jugnu, rounds, home, back, music }
+// els: { shell, area, lines, ink, fx, jugnu, rounds, home, back, music, turn }
 // options: { manifest, params (URLSearchParams), now (Date) }
 export function startShell(els, { manifest, params, now = new Date() }) {
   const debugOn = params.get('debug') === '1';
@@ -34,6 +35,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   let busy = false;   // an opening animation is playing: taps wait
   let game = null;    // the running tracing game, while she writes
   let musicOn = readMusic();
+  let upright = false; // the tablet is upright: the turn picture covers everything
 
   // ---- buttons ----
   els.home.innerHTML = ICONS.home;
@@ -51,7 +53,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     musicOn = !musicOn;
     saveMusic(musicOn);
     showMusicIcon();
-    setMusicOn(musicOn);
+    setMusicOn(musicOn && !upright);
   });
 
   // Sound may only start after a touch: every touch unlocks it.
@@ -219,8 +221,41 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     });
     // She may have pressed home while the character was loading.
     if (state !== mine) running.stop();
-    else game = running;
+    else {
+      game = running;
+      if (upright) {
+        // Pausing holds every animation on the page: take the picture away for
+        // that moment, so its own animation starts again when it comes back.
+        els.turn.hidden = true;
+        game.pause?.();
+        els.turn.hidden = false;
+      }
+    }
   }
 
+  // ---- landscape only ----
+  // Upright: pause the game and the music, then cover the screen with Jugnu and
+  // a tablet turning sideways. Landscape again: the picture goes, and she carries
+  // on where she was.
+  if (els.turn) els.turn.innerHTML = TURN;
+  function checkTurn() {
+    if (!els.turn) return;
+    const now = isUpright(window.innerWidth, window.innerHeight);
+    if (now === upright) return;
+    upright = now;
+    if (upright) {
+      game?.pause?.(); // before the picture shows, so its own animation keeps playing
+      setMusicOn(false);
+      els.turn.hidden = false;
+    } else {
+      els.turn.hidden = true;
+      setMusicOn(musicOn);
+      game?.resume?.();
+    }
+  }
+  window.addEventListener('resize', checkTurn);
+  window.matchMedia?.('(orientation: portrait)').addEventListener?.('change', checkTurn);
+
+  checkTurn();
   render();
 }
