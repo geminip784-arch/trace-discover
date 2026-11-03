@@ -2,7 +2,7 @@
 // The pure parts of audio.js: filling in lines, the spoken name, the voice choice.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LINES, fillLine, spokenName, pickLine, chooseVoice } from '../src/audio.js';
+import { LINES, fillLine, spokenName, pickLine, chooseVoice, SPEECH_ON } from '../src/audio.js';
 
 test('every line in the table, with a name', () => {
   const n = { name: 'Sam' };
@@ -52,4 +52,8 @@ test('chooseVoice: Australian English first, on-device first, then any English, 
   assert.equal(chooseVoice([v('fr-FR'), v('en-US', false, 'net'), v('en-GB', true, 'gb')]).name, 'gb');
   assert.equal(chooseVoice([v('ur-PK'), v('fr-FR')]), null);
   assert.equal(chooseVoice([]), null);
+});
+
+test('speech is switched off in Slice 5A (the code stays in place)', () => {
+  assert.equal(SPEECH_ON, false);
 });

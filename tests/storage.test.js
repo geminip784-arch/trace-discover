@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   appendAttempt, logAttempt, readAttempts, ATTEMPTS_KEY, MAX_ATTEMPTS,
   PROFILE_KEY, readProfile, saveProfile, cleanProfile,
+  readLastVisit, saveLastVisit, readStars, saveStar, addStar, readMusic, saveMusic,
 } from '../src/storage.js';
 
 function memoryStore() {
@@ -56,4 +57,48 @@ test('no profile yet, junk or blocked storage: an empty profile, never a throw',
 test('cleanProfile drops anything that is not text and caps the length', () => {
   assert.deepEqual(cleanProfile({ name: 7, sayAs: null, extra: 'x' }), { name: '', sayAs: '' });
   assert.equal(cleanProfile({ name: 'a'.repeat(100) }).name.length, 40);
+});
+
+test('the last visit day saves to td.lastVisit; junk reads as no visit', () => {
+  const store = memoryStore();
+  assert.equal(readLastVisit(store), null);
+  assert.equal(saveLastVisit('2026-11-02', store), true);
+  assert.equal(store.getItem('td.lastVisit'), '2026-11-02');
+  assert.equal(readLastVisit(store), '2026-11-02');
+  store.setItem('td.lastVisit', 'yesterday');
+  assert.equal(readLastVisit(store), null);
+});
+
+test('stars save to td.stars, each id once', () => {
+  const store = memoryStore();
+  assert.deepEqual(readStars(store), []);
+  saveStar('L', store);
+  saveStar('ur-be', store);
+  saveStar('L', store);
+  assert.deepEqual(readStars(store), ['L', 'ur-be']);
+  assert.deepEqual(addStar(['L'], 'L'), ['L']);
+  store.setItem('td.stars', '[1, "E", null]');
+  assert.deepEqual(readStars(store), ['E']);
+});
+
+test('the music setting saves to td.music and is off by default', () => {
+  const store = memoryStore();
+  assert.equal(readMusic(store), false);
+  saveMusic(true, store);
+  assert.equal(store.getItem('td.music'), 'on');
+  assert.equal(readMusic(store), true);
+  saveMusic(false, store);
+  assert.equal(readMusic(store), false);
+});
+
+test('shell settings never throw with broken storage', () => {
+  const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('full'); } };
+  assert.equal(readLastVisit(broken), null);
+  assert.equal(saveLastVisit('2026-11-02', broken), false);
+  assert.deepEqual(readStars(broken), []);
+  assert.equal(saveStar('L', broken), false);
+  assert.equal(readMusic(broken), false);
+  assert.equal(saveMusic(true, broken), false);
+  const junk = { getItem: () => '{not json', setItem: () => {} };
+  assert.deepEqual(readStars(junk), []);
 });

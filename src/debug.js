@@ -46,6 +46,9 @@ export function createDebugPanel(strokeCount) {
     message(text) {
       panel.textContent = text;
     },
+    remove() {
+      panel.remove();
+    },
   };
 }
 
@@ -77,4 +80,5 @@ export function createCopyAttemptsButton(getAttempts) {
   });
   wrap.append(box, button);
   document.body.appendChild(wrap);
+  return () => wrap.remove();
 }

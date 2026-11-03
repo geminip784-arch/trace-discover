@@ -1,11 +1,13 @@
 // Run: node --test tests/chars.test.js
-// Checks every recorded character file in data/chars/ (not the *.example.json files).
+// Checks every recorded character file in data/chars/ (not the *.example.json files)
+// and the manifest data/chars/index.json that lists them.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
+import { bookOf, BOARDS } from '../src/session.js';
 
 const dir = new URL('../data/chars/', import.meta.url);
-const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.endsWith('.example.json'));
+const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.endsWith('.example.json') && f !== 'index.json');
 
 const inRange = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
 
@@ -63,5 +65,30 @@ test('the anyOrder check rejects bad groups', () => {
   assert.doesNotThrow(() => checkAnyOrder([], 2));
   for (const bad of [{}, [0, 1], [[0]], [[0, 3]], [[0, 0]], [[0, 1], [1, 2]], [[0, 1.5]], [[-1, 0]]]) {
     assert.throws(() => checkAnyOrder(bad, 3), JSON.stringify(bad));
+  }
+});
+
+// The manifest: the app reads it and never requests a file that is not in it.
+test('data/chars/index.json lists exactly the recorded character files', () => {
+  const manifest = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
+  assert.ok(Array.isArray(manifest), 'the manifest is a list of ids');
+  assert.equal(new Set(manifest).size, manifest.length, 'no id is listed twice');
+  const ids = files.map((f) => f.slice(0, -'.json'.length));
+  for (const id of manifest) assert.ok(ids.includes(id), `${id} is in the manifest but data/chars/${id}.json is missing`);
+  for (const id of ids) assert.ok(manifest.includes(id), `data/chars/${id}.json exists but ${id} is not in the manifest`);
+  for (const id of manifest) assert.ok(bookOf(id), `${id} is on one of the boards`);
+});
+
+// Character ids are plain ASCII, so file names never hold Urdu letters. An Urdu
+// file stores its letter in "letter", and it must match the Urdu board.
+test('character ids are ASCII; Urdu files carry the matching letter', () => {
+  for (const file of files) {
+    const char = JSON.parse(readFileSync(new URL(file, dir), 'utf8'));
+    assert.match(char.id, /^[A-Za-z0-9-]+$/, `${file}: the id is ASCII`);
+    if (char.id.startsWith('ur-')) {
+      const tile = BOARDS.urdu.tiles.find((t) => t.id === char.id);
+      assert.ok(tile, `${file}: ${char.id} is an Urdu board id`);
+      assert.equal(char.letter, tile.glyph, `${file}: "letter" is ${tile.glyph}`);
+    }
   }
 });

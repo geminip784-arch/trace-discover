@@ -2,8 +2,11 @@
 // Rules it keeps (CLAUDE.md): no text, never red, never a buzzer, never erase the
 // whole letter, never snap her ink. Nothing animates and nothing plays while her
 // finger is down: while she traces, a touch-down stops Jugnu, effects, fades and
-// speech at once; while Jugnu draws a stroke or the reward plays, a touch-down
+// speech at once; while Jugnu draws a stroke or the letter glows, a touch-down
 // pauses everything and her lift lets it carry on.
+//
+// Slice 5A: one completed letter at Stage 1 is the whole round. The letter
+// glows, a chime plays, then onDone({ id, assisted }) hands back to the shell.
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, toUnits, START_DOT_RADIUS,
@@ -11,19 +14,21 @@ import {
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import { variantLabel, candidatesFor, nextStrokes, pickCandidate } from './variants.js';
-import { CONFIG, initialState, applyLift, completeLetter } from './progress.js';
+import { CONFIG, initialState, applyLift } from './progress.js';
 import { logAttempt, readAttempts, readProfile } from './storage.js';
-import { speak, replay, unlock, hush, chime, setProfile } from './audio.js';
+import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
-import { pictureFor } from './pictures.js';
+import { canLoad } from './session.js';
 
 // Jugnu's home, near the left: area px from the left as line units, and height in line units.
 const HOME = { x: 0.35, y: 0.65 };
 // Width of Jugnu's glowing trail when he draws a stroke himself, in line units.
 const TRAIL_WIDTH = 0.16;
 
-async function loadChar(id) {
+// Only ids in the manifest are ever requested.
+async function loadChar(id, manifest) {
+  if (!canLoad(id, manifest)) return null;
   try {
     const res = await fetch(`data/chars/${encodeURIComponent(id)}.json`);
     if (!res.ok) return null;
@@ -47,15 +52,15 @@ function pauseAnimations() {
   return () => { for (const a of paused) a.play(); };
 }
 
-export async function startGame(els) {
-  const params = new URLSearchParams(location.search);
-  const debugOn = params.get('debug') === '1';
-  const charId = params.get('char') || 'L';
-  const char = await loadChar(charId);
+// Plays one character. els: { area, lines, ink, fx, jugnu }.
+// Returns { stop() }: stop() ends everything at once (the home button).
+// A character that cannot be loaded gives an empty screen; only the debug panel says why.
+export async function startGame(els, { charId, manifest = [], debugOn = false, onDone = () => {} }) {
+  const char = await loadChar(charId, manifest);
   if (!char) {
-    // An empty screen. Only the debug panel says why.
-    if (debugOn) createDebugPanel(0).message(`No file for ${charId}`);
-    return;
+    const panel = debugOn ? createDebugPanel(0) : null;
+    panel?.message(canLoad(charId, manifest) ? `No file for ${charId}` : `${charId} is not in data/chars/index.json`);
+    return { stop: () => panel?.remove() };
   }
 
   const strokes = char.strokes;
@@ -66,20 +71,19 @@ export async function startGame(els) {
   const toPx = ([x, y]) => [layout.originX + (offset + x) * layout.unit, layout.top + y * layout.unit];
   const jugnu = createJugnu(els.jugnu, (p) => (layout ? toPx(p) : [0, 0]));
   const debug = debugOn ? createDebugPanel(strokes.length) : null;
-  if (debugOn) createCopyAttemptsButton(() => readAttempts());
+  const removeCopyButton = debugOn ? createCopyAttemptsButton(() => readAttempts()) : null;
 
   setProfile(readProfile());
   let progress = initialState(strokes.length);
   let goodStrokes = 0; // passed strokes so far: a "good" line is said once per CONFIG.goodEvery
   // What a touch does now:
   // 'trace'  she draws a stroke and it is scored
-  // 'held'   Jugnu is drawing a stroke, or the reward plays: a touch pauses it
-  // 'free'   free drawing after the picture: her ink, not scored
-  // 'sleep'  finished for now: touches do nothing until reload
+  // 'held'   Jugnu is drawing a stroke, or the letter glows: a touch pauses it
+  // 'done'   the letter is finished and the shell takes over: touches do nothing
   let phase = 'trace';
+  let alive = true;    // false once stop() ran: async steps give up
   let attempt = null;  // the stroke her finger is drawing now
   let holding = null;  // while a finger holds a 'held' phase: how to resume
-  let free = null;     // free drawing: { start, strokes, paths, line, timeUp }
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
   // The stroke Jugnu demonstrates: the first unfinished one in the recorded order.
@@ -119,15 +123,12 @@ export async function startGame(els) {
 
   function updateDebug() {
     if (!debug) return;
-    const { stage, streak, completed, finished, assisted, assistedInRow } = progress;
-    debug.status(`stage ${stage}  streak ${streak}  letters ${completed}/${CONFIG.lettersPerStage}` +
-      `  assisted ${assisted ? 'yes' : 'no'} (${assistedInRow} in a row)` +
-      (finished ? '  finished for now' : ''), progress.current);
+    const { stage, streak, assisted } = progress;
+    debug.status(`${char.id}  stage ${stage}  streak ${streak}  assisted ${assisted ? 'yes (no star)' : 'no'}`, progress.current);
   }
 
   function redraw() {
     drawLines(els.lines, layout);
-    if (progress.finished) return;
     drawStageTrack(els.lines, layout, char, offset, {
       stage: progress.stage,
       done: progress.done,
@@ -139,9 +140,7 @@ export async function startGame(els) {
   function applyLayout() {
     layout = computeLayout(window.innerWidth, window.innerHeight);
     offset = letterOffset(layout, char.width);
-    if (free) drawLines(els.lines, layout);
-    else redraw();
-    els.picture.style.width = els.picture.style.height = `${1.3 * layout.unit}px`;
+    redraw();
     ink.resize(layout);
     fx.resize(layout);
     jugnu.resize(layout.unit);
@@ -189,97 +188,31 @@ export async function startGame(els) {
     const pts = strokes[k].points;
     const trail = fx.trail(pts.map(toPx), TRAIL_WIDTH * layout.unit);
     await jugnu.demo(pts, CONFIG.assistMs, CONFIG.hopMs, (f) => trail.set(f));
+    if (!alive) return;
     trail.fadeOut(CONFIG.trailFadeMs);
     redraw();
     await wait(CONFIG.trailFadeMs);
+    if (!alive) return;
     if (letterDone) return finishLetter();
     phase = 'trace';
     beginStroke();
   }
 
-  // All strokes done (an assisted letter too): the whole letter glows, then its
-  // picture comes alive, then free drawing, then the next letter.
+  // All strokes done (an assisted letter too): the whole letter glows and a
+  // chime plays, then the shell takes her back to the board. A letter Jugnu
+  // helped with comes back with assisted: true (no star).
   async function finishLetter() {
     phase = 'held';
-    speak('letterDone');
     redraw();
     updateDebug();
+    speak('letterDone');
+    letterChime();
     const lines = strokes.filter((s) => s.kind === 'line').map((s) => s.points.map(toPx));
     fx.letterGlow(lines, pathWidth(), CONFIG.letterGlowMs);
     await wait(CONFIG.letterGlowMs);
-    await showPicture();
-    startFree();
-  }
-
-  // The letter's picture for about CONFIG.pictureMs: "L is for lamp!". None: skip.
-  async function showPicture() {
-    const picture = pictureFor(char.id);
-    if (!picture) return;
-    ink.clear();
-    fx.clear();
-    els.picture.innerHTML = picture.svg;
-    els.picture.hidden = false;
-    els.picture.animate([{ opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1 }],
-      { duration: 400, easing: 'ease-out' });
-    speak('picture', { letter: char.id, word: picture.word });
-    await wait(CONFIG.pictureMs);
-    els.picture.hidden = true;
-    els.picture.replaceChildren();
-  }
-
-  // Free drawing: the same glowing ink, nothing scored, for CONFIG.freeDrawMs.
-  // The time runs on while she draws; if her finger is down when it ends, the
-  // fade waits for her lift.
-  function startFree() {
-    ink.clear();
-    fx.clear();
-    drawLines(els.lines, layout);
-    jugnu.placeAt(home());
-    phase = 'free';
-    free = { start: performance.now(), strokes: 0, paths: [], line: null, timeUp: false };
-    speak('freeDraw');
-    setTimeout(() => {
-      free.timeUp = true;
-      if (!free.line) endFree();
-    }, CONFIG.freeDrawMs);
-  }
-
-  // Her ink fades with sparkles, the free drawing is logged, then the next letter.
-  async function endFree() {
-    const { start, strokes: count, paths } = free;
-    const ms = Math.round(performance.now() - start);
-    free = null;
-    phase = 'held';
-    logAttempt({ type: 'freeDraw', time: new Date().toISOString(), char: char.id, stage: progress.stage, ms, strokes: count });
-    const fade = els.ink.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CONFIG.freeFadeMs, fill: 'forwards' });
-    for (const pts of paths.slice(-12)) fx.sparkle(pts, CONFIG.freeFadeMs);
-    await wait(CONFIG.freeFadeMs);
-    ink.clear();
-    fx.clear();
-    fade.cancel();
-    nextLetter();
-  }
-
-  // Count the letter, then the next stage, the same stage again, or finished for now.
-  function nextLetter() {
-    const done = completeLetter(progress);
-    progress = done.state;
-    ink.clear();
-    fx.clear();
-    if (done.finished) return goToSleep();
-    phase = 'trace';
-    beginStroke();
-  }
-
-  // Finished for now: Jugnu sleeps, the screen dims, touches do nothing until reload.
-  function goToSleep() {
-    phase = 'sleep';
-    redraw();
-    updateDebug();
-    speak('end');
-    jugnu.sleep(home());
-    els.dimmer.classList.add('on');
-    els.ear.hidden = true;
+    if (!alive) return;
+    phase = 'done';
+    onDone({ id: char.id, assisted: progress.assisted });
   }
 
   // Ink style for her next point, from the live trackers. She is on the path when
@@ -382,27 +315,14 @@ export async function startGame(els) {
     react(result.reason, lift.demo, strokes[pick.variant.from].points);
   }
 
-  trackSinglePointer(els.area, {
+  const stopTracking = trackSinglePointer(els.area, {
     onStart: (p) => {
       unlock();
       if (!layout) return;
       if (phase === 'held') return hold();
       if (phase === 'trace') startStroke(p);
-      if (phase === 'free') {
-        hush();
-        free.strokes += 1;
-        free.line = [[p.x, p.y]];
-        free.paths.push(free.line);
-        const { u } = toChar(p);
-        ink.begin(u);
-      }
     },
     onMove: (points) => {
-      if (free?.line) {
-        for (const p of points) free.line.push([p.x, p.y]);
-        ink.add(points.map((p) => toChar(p).u));
-        return;
-      }
       if (!attempt) return;
       const us = [];
       const styles = [];
@@ -421,31 +341,39 @@ export async function startGame(els) {
         resume();
         return;
       }
-      if (free?.line) {
-        ink.end();
-        free.line = null;
-        if (free.timeUp) endFree();
-        return;
-      }
       if (attempt) endStroke();
     },
   });
 
-  els.ear.addEventListener('pointerdown', () => unlock());
-  els.ear.addEventListener('click', () => {
-    if (!attempt && !holding && phase !== 'sleep') replay();
-  });
-
+  const listening = new AbortController();
   let resizePending = false;
   window.addEventListener('resize', () => {
     if (resizePending) return;
     resizePending = true;
-    requestAnimationFrame(() => { resizePending = false; applyLayout(); });
-  });
+    requestAnimationFrame(() => { resizePending = false; if (alive) applyLayout(); });
+  }, { signal: listening.signal });
 
   applyLayout();
   els.jugnu.hidden = false;
-  els.ear.hidden = false;
   jugnu.placeAt(home());
   beginStroke();
+
+  return {
+    // She left (the home button): stop everything and leave a clean screen.
+    stop() {
+      if (!alive) return;
+      alive = false;
+      stopTracking();
+      listening.abort();
+      cancelLater();
+      hush();
+      jugnu.stop();
+      fx.clear();
+      ink.clear();
+      els.lines.replaceChildren();
+      els.jugnu.hidden = true;
+      debug?.remove();
+      removeCopyButton?.();
+    },
+  };
 }
