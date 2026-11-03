@@ -77,3 +77,25 @@ export function bookCover(book) {
   ${book.open ? '' : LOCK}
 </svg>`;
 }
+
+// The tablet is upright: Jugnu beside a tablet that turns onto its side, over
+// and over, with a green arrow showing the way. No text. 600 x 400; the classes
+// are animated in index.html (#turn).
+export const TURN = `<svg ${NS} viewBox="0 0 600 400" aria-hidden="true">
+  <g class="turn-arrow" fill="none" stroke="#35D07F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M300 36 A 176 176 0 0 1 470 160"/>
+    <path d="M440 150 L472 166 L488 132"/>
+  </g>
+  <g class="turn-tab">
+    <rect x="215" y="70" width="170" height="270" rx="24" fill="#2A2370"/>
+    <rect x="229" y="86" width="142" height="238" rx="12" fill="#FFFFFF"/>
+    <g class="turn-lines">
+    <line x1="245" y1="160" x2="355" y2="160" stroke="#5bb8ff" stroke-width="5" stroke-linecap="round"/>
+    <line x1="245" y1="195" x2="355" y2="195" stroke="#9aa0b8" stroke-width="4" stroke-dasharray="10 8" stroke-linecap="round"/>
+    <line x1="245" y1="230" x2="355" y2="230" stroke="#4cc25a" stroke-width="5" stroke-linecap="round"/>
+    <line x1="245" y1="252" x2="355" y2="252" stroke="#b9834d" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <circle cx="300" cy="332" r="4" fill="#6C6FA8"/>
+  </g>
+  <image class="turn-jugnu" href="assets/jugnu.svg" x="20" y="200" width="170" height="170"/>
+</svg>`;

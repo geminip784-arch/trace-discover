@@ -49,6 +49,38 @@ export function toUnits(px, py, layout) {
   return { x: (px - layout.originX) / layout.unit, y: (py - layout.top) / layout.unit };
 }
 
+// Letter units (x = 0 at the left of the character box, `offset` units from the
+// start of the lines) <-> area px. The guide, the track, her ink, the effects and
+// Jugnu all use these two, so they always agree, whatever size the screen is.
+export function letterToPx(layout, offset) {
+  return ([x, y]) => [layout.originX + (offset + x) * layout.unit, layout.top + y * layout.unit];
+}
+export function pxToLetter(p, layout, offset) {
+  const u = toUnits(p.x, p.y, layout);
+  return [u.x - offset, u.y];
+}
+
+// Canvas transform [a, b, c, d, e, f] that draws letter units at device px
+// (`scale` device px per CSS px).
+export function inkTransform(layout, offset, scale) {
+  const [ex, ey] = letterToPx(layout, offset)([0, 0]);
+  const k = scale * layout.unit;
+  return [k, 0, 0, k, scale * ex, scale * ey];
+}
+
+// The screen changed size: area px drawn for (`from`, `fromOffset`) -> area px for
+// (`to`, `toOffset`), as a uniform scale k plus a shift. Effects already on
+// screen are moved with this, so they stay on the letter.
+export function remapPx(from, fromOffset, to, toOffset) {
+  const k = to.unit / from.unit;
+  const [fx, fy] = letterToPx(from, fromOffset)([0, 0]);
+  const [tx, ty] = letterToPx(to, toOffset)([0, 0]);
+  return { k, dx: tx - k * fx, dy: ty - k * fy };
+}
+
+// Landscape only: a screen taller than it is wide pauses the app.
+export const isUpright = (width, height) => height > width;
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // The writing board (mockup4): a white board with a soft frame, inset from the
@@ -96,8 +128,8 @@ const TRACK = {
 // The faint track of a character, added on top of the guide lines (call after drawLines).
 // `offset` is the character box's x in units, from letterOffset.
 export function drawTrack(svg, layout, char, offset) {
-  const { unit, originX, top } = layout;
-  const px = ([x, y]) => [originX + (offset + x) * unit, top + y * unit];
+  const { unit } = layout;
+  const px = letterToPx(layout, offset);
   for (const stroke of char.strokes) {
     const pts = stroke.points.map(px);
     if (stroke.kind === 'line') {
@@ -218,9 +250,9 @@ const GAME_TRACK = {
 };
 
 export function drawStageTrack(svg, layout, char, offset, { stage, done }) {
-  const { unit, originX, top } = layout;
+  const { unit } = layout;
   const look = trackLook(stage);
-  const px = ([x, y]) => [originX + (offset + x) * unit, top + y * unit];
+  const px = letterToPx(layout, offset);
   const make = (tag, attrs) => {
     const el = document.createElementNS(SVG_NS, tag);
     for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
@@ -289,7 +321,10 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done }) {
   }
 }
 
-// Her ink. Finished strokes are baked into an off-screen canvas; each frame the
+// Her ink. Every point is stored in letter units ({ x, y }, as the character
+// file), never in px, so after any change of screen size (rotation, the browser
+// bar, split screen) resize() redraws all of it exactly on the letter again.
+// Finished strokes are baked into an off-screen canvas; each frame the
 // visible canvas copies that and redraws only the stroke she is drawing now.
 // The glow is wide semi-transparent lines under the strong core (no shadowBlur).
 // Each point carries a style { dim, glow }: the segment that ends at it is drawn
@@ -306,13 +341,13 @@ export function createInk(canvas) {
   let current = null;
   let nextId = 1;
   let layout = null;
+  let offset = 0;
   let scale = 1;
   let framePending = false;
   let fading = false;
 
   function setUnitTransform(c) {
-    c.setTransform(scale * layout.unit, 0, 0, scale * layout.unit,
-      scale * layout.originX, scale * layout.top);
+    c.setTransform(...inkTransform(layout, offset, scale));
   }
 
   function strokeRun(c, points, from, to, style, alpha) {
@@ -391,8 +426,10 @@ export function createInk(canvas) {
   }
 
   return {
-    resize(newLayout) {
+    // A new screen size: `newOffset` is the character box's x, from letterOffset.
+    resize(newLayout, newOffset = 0) {
       layout = newLayout;
+      offset = newOffset;
       scale = window.devicePixelRatio || 1;
       const w = Math.round(layout.areaWidth * scale);
       const h = Math.round(layout.areaHeight * scale);
@@ -424,6 +461,11 @@ export function createInk(canvas) {
       current = null;
       requestFrame();
       return s.id;
+    },
+    // Forget the stroke her finger is drawing now, without finishing it.
+    drop() {
+      current = null;
+      requestFrame();
     },
     // Fade one finished stroke out over `ms`, then forget it. Other strokes stay.
     fade(id, ms) {
@@ -460,16 +502,30 @@ const FX = {
   letter: { color: '#FFD43B', glow: 'rgba(255, 212, 59, 0.45)' },
 };
 
+// Effects are drawn in area px. Each screen size gets its own group; when the
+// size changes, the older groups are moved (remapPx) so they stay on the letter.
 export function createFx(svg) {
   let layout = null;
+  let offset = 0;
+  let group = null; // { el, layout, offset }: where new effects go
+  let groups = [];
   const live = new Set();
+
+  function target() {
+    if (!group) {
+      group = { el: document.createElementNS(SVG_NS, 'g'), layout, offset };
+      svg.appendChild(group.el);
+      groups.push(group);
+    }
+    return group.el;
+  }
 
   function add(tag, attrs, keyframes, options) {
     const el = document.createElementNS(SVG_NS, tag);
     for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
     el.style.transformBox = 'fill-box';
     el.style.transformOrigin = 'center';
-    svg.appendChild(el);
+    target().appendChild(el);
     live.add(el);
     const anim = el.animate(keyframes, { fill: 'both', ...options });
     anim.onfinish = () => { el.remove(); live.delete(el); };
@@ -486,9 +542,16 @@ export function createFx(svg) {
   });
 
   return {
-    resize(newLayout) {
+    resize(newLayout, newOffset = 0) {
       layout = newLayout;
+      offset = newOffset;
       svg.setAttribute('viewBox', `0 0 ${layout.areaWidth} ${layout.areaHeight}`);
+      groups = groups.filter((g) => g.el.isConnected && g.el.childNodes.length > 0);
+      for (const g of groups) {
+        const { k, dx, dy } = remapPx(g.layout, g.offset, layout, offset);
+        g.el.setAttribute('transform', `translate(${dx} ${dy}) scale(${k})`);
+      }
+      group = null; // effects from now on are drawn for the new size
     },
     // Little stars twinkle along the stroke, start to end. pts in area px.
     sparkle(pts, ms) {
@@ -530,7 +593,7 @@ export function createFx(svg) {
         for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
         el.setAttribute('pathLength', '1');
         el.setAttribute('stroke-dasharray', '0 2');
-        svg.appendChild(el);
+        target().appendChild(el);
         live.add(el);
         return el;
       });
@@ -552,6 +615,9 @@ export function createFx(svg) {
         el.remove();
       }
       live.clear();
+      for (const g of groups) g.el.remove();
+      groups = [];
+      group = null;
     },
   };
 }

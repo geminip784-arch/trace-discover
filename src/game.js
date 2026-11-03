@@ -11,9 +11,15 @@
 // saved per character, so she resumes at the same round. After the last one
 // the letter glows, a chime plays, then onDone({ id, star }) hands back to the
 // shell: star is true when no round needed Jugnu's help.
+//
+// Screen size: everything she draws is kept in letter units, and every change of
+// size (rotation, the browser bar, split screen) redraws the guide, the track, her
+// ink, the effects and Jugnu from those units. pause() and resume() hold the game
+// while the tablet is upright; her place, round and strokes are kept.
 
 import {
-  computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, toUnits, START_DOT_RADIUS, trackLook,
+  computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
+  START_DOT_RADIUS, trackLook,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
@@ -78,7 +84,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   const fx = createFx(els.fx);
   let layout = null;
   let offset = 0;
-  const toPx = ([x, y]) => [layout.originX + (offset + x) * layout.unit, layout.top + y * layout.unit];
+  const toPx = (p) => letterToPx(layout, offset)(p);
   const jugnu = createJugnu(els.jugnu, (p) => (layout ? toPx(p) : [0, 0]));
   const debug = debugOn ? createDebugPanel(strokes.length) : null;
   const removeCopyButton = debugOn ? createCopyAttemptsButton(() => readAttempts()) : null;
@@ -97,6 +103,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   let alive = true;    // false once stop() ran: async steps give up
   let attempt = null;  // the stroke her finger is drawing now
   let holding = null;  // while a finger holds a 'held' phase: how to resume
+  let turned = null;   // while the tablet is upright (pause()): how to carry on
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
   // The stroke Jugnu demonstrates: the first unfinished one in the recorded order.
@@ -159,12 +166,16 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     });
   }
 
+  // The writing area's own size (it fills the screen), so the browser bar
+  // showing or hiding is always seen.
   function applyLayout() {
-    layout = computeLayout(window.innerWidth, window.innerHeight);
+    const w = els.area.clientWidth || window.innerWidth;
+    const h = els.area.clientHeight || window.innerHeight;
+    layout = computeLayout(w, h);
     offset = letterOffset(layout, char.width);
     redraw();
-    ink.resize(layout);
-    fx.resize(layout);
+    ink.resize(layout, offset);
+    fx.resize(layout, offset);
     jugnu.resize(layout.unit);
   }
 
@@ -274,9 +285,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     return { dim: !attempt.startOk || on.length === 0, glow: !attempt.wrongWay };
   }
 
+  // A touch in area px -> letter units: q for scoring, u for her ink.
   const toChar = (p) => {
-    const u = toUnits(p.x, p.y, layout);
-    return { u, q: [u.x - offset, u.y] };
+    const q = pxToLetter(p, layout, offset);
+    return { u: { x: q[0], y: q[1] }, q };
   };
 
   // Her finger went down while Jugnu draws or the reward plays: hold everything still.
@@ -373,7 +385,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   const stopTracking = trackSinglePointer(els.area, {
     onStart: (p) => {
       unlock();
-      if (!layout) return;
+      if (!layout || turned) return;
       if (phase === 'held') return hold();
       if (phase === 'trace') startStroke(p);
     },
@@ -414,7 +426,43 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   drawLights();
   beginStroke();
 
+  // The tablet is upright: hold everything still. A stroke her finger is drawing
+  // is dropped without being scored or logged; nothing else is lost.
+  function pause() {
+    if (turned || !alive) return;
+    if (holding) {
+      const h = holding;
+      holding = null;
+      h(); // undo her finger's hold first; the pause below holds everything again
+    }
+    if (attempt) {
+      attempt = null;
+      ink.drop();
+    }
+    hush();
+    ink.settle();
+    jugnu.pause();
+    pauseLater();
+    const playAnimations = pauseAnimations();
+    turned = () => {
+      playAnimations();
+      jugnu.rewind(); // a stroke Jugnu was demonstrating starts again from its start
+      jugnu.resume();
+      resumeLater();
+    };
+  }
+
+  // Landscape again: carry on.
+  function resume() {
+    if (!turned) return;
+    const carryOn = turned;
+    turned = null;
+    if (alive) carryOn();
+  }
+
   return {
+    pause,
+    resume,
     // She left (the home button): stop everything and leave a clean screen.
     stop() {
       if (!alive) return;

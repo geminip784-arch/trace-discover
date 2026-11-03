@@ -3,6 +3,7 @@
 // Positions are in the character's line units; `toPx` turns them into area px.
 // Every move runs on requestAnimationFrame and stop() ends it at once.
 // pause() holds Jugnu still (her finger is down) and resume() carries on.
+// rewind() sends a stroke he is in the middle of demonstrating back to its start.
 
 // Where Jugnu perches, relative to a start dot, so the dot stays visible.
 export const PERCH = [-0.11, -0.13];
@@ -23,6 +24,7 @@ export function createJugnu(img, toPx) {
   let paused = false;
   let pausedSince = 0;
   let pausedTotal = 0; // ms spent paused, ever; a move subtracts what it saw
+  let rewinds = 0;     // bumped by rewind(); a demonstrated stroke starts over when it sees a new value
 
   function place() {
     const [x, y] = toPx(pos);
@@ -34,7 +36,8 @@ export function createJugnu(img, toPx) {
 
   // Move along `points` (line units), starting from where Jugnu is now, over `ms`.
   // Resolves true when it arrives, false when stopped. onProgress(f) gets 0..1.
-  function moveAlong(points, ms, myRun, onProgress) {
+  // `rewindable`: this move is a stroke being demonstrated, and rewind() restarts it.
+  function moveAlong(points, ms, myRun, onProgress, rewindable = false) {
     const path = [pos, ...points];
     const lengths = [0];
     for (let i = 1; i < path.length; i++) {
@@ -50,11 +53,16 @@ export function createJugnu(img, toPx) {
       }
       let start = null;
       let pausedAtStart = 0;
+      let seenRewinds = rewinds;
       const step = (now) => {
         if (myRun !== run) return resolve(false);
         if (paused) {
           raf = requestAnimationFrame(step);
           return;
+        }
+        if (rewindable && seenRewinds !== rewinds) {
+          seenRewinds = rewinds;
+          start = null; // back to the first point of the stroke
         }
         if (start === null) {
           start = now;
@@ -114,7 +122,7 @@ export function createJugnu(img, toPx) {
       cancelAnimationFrame(raf);
       if (!(await moveAlong([points[0]], hopMs, myRun))) return false;
       onProgress?.(0);
-      if (!(await moveAlong(points.slice(1), ms, myRun, onProgress))) return false;
+      if (!(await moveAlong(points.slice(1), ms, myRun, onProgress, true))) return false;
       onProgress?.(1);
       return moveAlong(hopPath(perchOf(points[0])), hopMs, myRun);
     },
@@ -133,6 +141,11 @@ export function createJugnu(img, toPx) {
       if (!paused) return;
       paused = false;
       pausedTotal += performance.now() - pausedSince;
+    },
+    // If Jugnu is part way along a stroke he is demonstrating, start that stroke
+    // again from its first point (on his next frame). Otherwise nothing changes.
+    rewind() {
+      rewinds++;
     },
     sleep(point) {
       this.placeAt(point);
