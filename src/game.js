@@ -5,8 +5,12 @@
 // speech at once; while Jugnu draws a stroke or the letter glows, a touch-down
 // pauses everything and her lift lets it carry on.
 //
-// Slice 5A: one completed letter at Stage 1 is the whole round. The letter
-// glows, a chime plays, then onDone({ id, assisted }) hands back to the shell.
+// Slice 5B: practice rounds (src/progress.js). Each round is the whole letter
+// at its round's stage: full track and Jugnu's demonstrations, then a thinner
+// track with the next start dot, then a faint track. Every finished round is
+// saved per character, so she resumes at the same round. After the last one
+// the letter glows, a chime plays, then onDone({ id, star }) hands back to the
+// shell: star is true when no round needed Jugnu's help.
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, toUnits, START_DOT_RADIUS, trackLook,
@@ -14,8 +18,11 @@ import {
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import { variantLabel, candidatesFor, nextStrokes, pickCandidate } from './variants.js';
-import { CONFIG, initialState, applyLift } from './progress.js';
-import { logAttempt, readAttempts, readProfile } from './storage.js';
+import {
+  CONFIG, ROUND_CONFIG, ROUNDS, initialState, applyLift, roundCount, stageForRound,
+  startRounds, markHelp, isHelp, finishRound, starEarned, roundLights,
+} from './progress.js';
+import { logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
@@ -55,7 +62,7 @@ function pauseAnimations() {
   return () => { for (const a of paused) a.play(); };
 }
 
-// Plays one character. els: { area, lines, ink, fx, jugnu }.
+// Plays one character. els: { area, lines, ink, fx, jugnu, rounds }.
 // Returns { stop() }: stop() ends everything at once (the home button).
 // A character that cannot be loaded gives an empty screen; only the debug panel says why.
 export async function startGame(els, { charId, manifest = [], debugOn = false, onDone = () => {} }) {
@@ -77,7 +84,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   const removeCopyButton = debugOn ? createCopyAttemptsButton(() => readAttempts()) : null;
 
   setProfile(readProfile());
-  let progress = initialState(strokes.length);
+  const rounds = roundCount(ROUNDS);
+  let rp = startRounds(readRounds(char.id), rounds); // { round, helped }
+  const freshRound = () => ({ ...initialState(strokes.length), stage: stageForRound(rp.round, rounds) });
+  let progress = freshRound();
   let goodStrokes = 0; // passed strokes so far: a "good" line is said once per CONFIG.goodEvery
   // What a touch does now:
   // 'trace'  she draws a stroke and it is scored
@@ -127,7 +137,18 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   function updateDebug() {
     if (!debug) return;
     const { stage, streak, assisted } = progress;
-    debug.status(`${char.id}  stage ${stage}  streak ${streak}  assisted ${assisted ? 'yes (no star)' : 'no'}`, progress.current);
+    debug.status(`${char.id}  round ${rp.round + 1}/${rounds}  stage ${stage}  streak ${streak}  assisted ${assisted ? 'yes' : 'no'}  help ${rp.helped ? 'yes (no star)' : 'no'}`, progress.current);
+  }
+
+  // The round lights, top right: done, now, to come. `lit` lights one up.
+  function drawLights(lit = -1) {
+    if (!els.rounds) return;
+    els.rounds.replaceChildren(...roundLights(rp, rounds).map((kind, i) => {
+      const el = document.createElement('i');
+      el.className = `rl ${kind}${i === lit ? ' lit' : ''}`;
+      return el;
+    }));
+    els.rounds.hidden = false;
   }
 
   function redraw() {
@@ -148,13 +169,15 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   }
 
   // A stroke has just become the current one.
-  // Stage 1: Jugnu flies it once, then perches at its start dot. Stage 2: Jugnu just perches.
+  // Stage 1: Jugnu flies it once, then perches at its start dot. Stage 2: Jugnu just
+  // perches. Stage 3: Jugnu waits at home, out of the way.
   function beginStroke() {
     redraw();
     updateDebug();
     if (progress.done.every((d) => !d)) speak('start');
     if (progress.stage === 1) jugnu.demo(ref(), CONFIG.demoMs, CONFIG.hopMs);
-    else jugnu.hopTo(startDot(), CONFIG.hopMs);
+    else if (progress.stage === 2) jugnu.hopTo(startDot(), CONFIG.hopMs);
+    else jugnu.hopTo(home(), CONFIG.hopMs);
   }
 
   // What happens after a stroke that did not count. The reward waits; she tries again.
@@ -194,14 +217,40 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     redraw();
     await wait(CONFIG.trailFadeMs);
     if (!alive) return;
-    if (letterDone) return finishLetter();
+    if (letterDone) return endRound();
     phase = 'trace';
     beginStroke();
   }
 
-  // All strokes done (an assisted letter too): the whole letter glows and a
-  // chime plays, then the shell takes her back to the board. A letter Jugnu
-  // helped with comes back with assisted: true (no star).
+  // Every stroke of the round is done. If Jugnu drew one, the round starts
+  // again; otherwise its light comes on and the next round starts. After the
+  // last round the whole letter glows.
+  async function endRound() {
+    phase = 'held';
+    redraw();
+    const r = finishRound(rp, { assisted: progress.assisted }, rounds);
+    const finished = rp.round;
+    rp = r.state;
+    if (r.allDone) {
+      clearRounds(char.id);
+      drawLights(finished);
+      return finishLetter();
+    }
+    saveRounds(char.id, rp);
+    drawLights(r.repeat ? -1 : finished);
+    letterChime();
+    updateDebug();
+    await wait(CONFIG.roundPauseMs);
+    if (!alive) return;
+    ink.clear();
+    fx.clear();
+    progress = freshRound();
+    phase = 'trace';
+    beginStroke();
+  }
+
+  // The last round is done: the whole letter glows and a chime plays, then the
+  // shell takes her back to the board. star: no round needed Jugnu's help.
   async function finishLetter() {
     phase = 'held';
     redraw();
@@ -213,7 +262,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     await wait(CONFIG.letterGlowMs);
     if (!alive) return;
     phase = 'done';
-    onDone({ id: char.id, assisted: progress.assisted });
+    onDone({ id: char.id, star: starEarned(rp) });
   }
 
   // Ink style for her next point, from the live trackers. She is on the path when
@@ -250,7 +299,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     cancelLater();
     fx.clear();
     ink.settle();
-    jugnu.restAt(startDot());
+    if (progress.stage === 3) jugnu.stop(); // stays out of the way, right where it is
+    else jugnu.restAt(startDot());
     const { u, q } = toChar(p);
     const candidates = candidatesFor(char, progress.done);
     attempt = {
@@ -276,7 +326,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     const counted = result.reason !== 'too-short';
     if (counted && !a.startOk) result = { ...result, ok: false, reason: 'wrong-start', startOk: false };
     const variant = result.ok ? variantLabel(pick.variant) : 'none';
-    const lift = applyLift(progress, { ok: result.ok, from: pick.variant.from, to: pick.variant.to, counted });
+    const lift = applyLift(progress, { ok: result.ok, from: pick.variant.from, to: pick.variant.to, counted }, ROUND_CONFIG);
 
     logAttempt({
       time: new Date().toISOString(),
@@ -295,6 +345,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     });
 
     progress = lift.state;
+    if (!rp.helped && isHelp(stage, lift)) {
+      rp = markHelp(rp);
+      saveRounds(char.id, rp); // she may leave now: the help is remembered
+    }
     if (debug) {
       debug.show(pick.variant.from, { ...result, variant, counted, assisted: lift.assist }, progress.current);
       updateDebug();
@@ -303,7 +357,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     if (result.ok) {
       chime();
       fx.sparkle(pick.variant.points.map(toPx), CONFIG.sparkleMs);
-      if (lift.letterDone) return finishLetter();
+      if (lift.letterDone) return endRound();
       goodStrokes += 1;
       if (goodStrokes % CONFIG.goodEvery === 0) speak('good');
       redraw();
@@ -357,6 +411,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   applyLayout();
   els.jugnu.hidden = false;
   jugnu.placeAt(home());
+  drawLights();
   beginStroke();
 
   return {
@@ -373,6 +428,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
       ink.clear();
       els.lines.replaceChildren();
       els.jugnu.hidden = true;
+      if (els.rounds) {
+        els.rounds.replaceChildren();
+        els.rounds.hidden = true;
+      }
       debug?.remove();
       removeCopyButton?.();
     },

@@ -51,10 +51,21 @@ export function toUnits(px, py, layout) {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+// The writing board (mockup4): a white board with a soft frame, inset from the
+// screen edges so the light page background shows round it. CSS px.
+export const BOARD = { inset: 12, radius: 32, frame: 8, fill: '#FFFFFF', frameColor: '#D6E6F5' };
+
 export function drawLines(svg, layout) {
   const { unit, areaWidth, areaHeight, originX, top, lineEnd } = layout;
   svg.setAttribute('viewBox', `0 0 ${areaWidth} ${areaHeight}`);
   svg.replaceChildren();
+  const board = document.createElementNS(SVG_NS, 'rect');
+  const edge = BOARD.inset + BOARD.frame / 2;
+  for (const [k, v] of Object.entries({
+    x: edge, y: edge, width: areaWidth - 2 * edge, height: areaHeight - 2 * edge,
+    rx: BOARD.radius, fill: BOARD.fill, stroke: BOARD.frameColor, 'stroke-width': BOARD.frame,
+  })) board.setAttribute(k, v);
+  svg.appendChild(board);
   for (const line of LINES) {
     const el = document.createElementNS(SVG_NS, 'line');
     const y = top + line.y * unit;

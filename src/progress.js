@@ -20,6 +20,7 @@ export const CONFIG = {
   pulseMs: 900,           // the start dot pulses (twice) over this long
   trackGlowMs: 700,       // the track of a stroke glows once over this long
   goodEvery: 2,           // speak a "good" line at most once per this many good strokes
+  roundPauseMs: 1100,     // after a round, its light comes on; the next round starts after this long
   dropStage: true,        // 3 fails in a row drop the letter one stage (the practice rounds turn this off)
 };
 

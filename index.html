@@ -38,6 +38,7 @@
       position: fixed;
       inset: 0;
       touch-action: none;
+      background: #E6F4FF; /* light page round the white writing board */
     }
     #area > svg, #area > canvas {
       position: absolute;
@@ -54,6 +55,30 @@
       will-change: transform;
     }
 
+    /* ---- the round lights, top right (mockup4): done, now, to come. They never take taps. ---- */
+    #rounds {
+      position: fixed;
+      top: 20px;
+      right: 28px;
+      z-index: 20;
+      display: flex;
+      gap: 12px;
+      pointer-events: none;
+    }
+    #rounds .rl {
+      box-sizing: border-box;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #EEF4FB;
+      border: 5px solid #D6E6F5;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    #rounds .rl.now { background: #fff; border-color: #35D07F; }
+    #rounds .rl.done { background: #FFD43B; border-color: #fff; box-shadow: 0 0 18px #FFD43B, 0 4px 0 rgba(0, 0, 0, 0.12); }
+    #rounds .rl.lit { animation: lightup 0.5s ease; }
+    @keyframes lightup { 50% { transform: scale(1.3); } }
     /* ---- buttons: float on the left, 96 px ---- */
     .btn {
       position: fixed;
@@ -224,6 +249,7 @@
     <svg id="fx" aria-hidden="true"></svg>
     <img id="jugnu" src="assets/jugnu.svg" alt="" draggable="false" hidden>
   </div>
+  <div id="rounds" aria-hidden="true" hidden></div>
   <button id="home" class="btn" type="button" aria-label="Home" hidden></button>
   <button id="back" class="btn" type="button" aria-label="Back" hidden></button>
   <button id="music" class="btn" type="button" aria-label="Music" hidden></button>
@@ -239,7 +265,7 @@
     const $ = (id) => document.getElementById(id);
     // index.html?setup=1 is the parent setup page. Every other address is the app.
     if (params.get('setup') === '1') {
-      for (const id of ['shell', 'home', 'back', 'music']) $(id).remove();
+      for (const id of ['shell', 'home', 'back', 'music', 'rounds']) $(id).remove();
       const { showSetup } = await import('./src/setup.js');
       showSetup();
     } else {
@@ -251,7 +277,7 @@
       } catch { /* none: every character stays faint */ }
       const { startShell } = await import('./src/screens.js');
       startShell({
-        shell: $('shell'), area: $('area'), lines: $('lines'), ink: $('ink'), fx: $('fx'), jugnu: $('jugnu'),
+        shell: $('shell'), area: $('area'), lines: $('lines'), ink: $('ink'), fx: $('fx'), jugnu: $('jugnu'), rounds: $('rounds'),
         home: $('home'), back: $('back'), music: $('music'),
       }, { manifest, params });
     }
