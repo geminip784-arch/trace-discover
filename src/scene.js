@@ -217,6 +217,9 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
       const from = it.el.getBoundingClientRect();
       const el = it.el;
       el.classList.add('sc-counting');
+      const veil = document.createElement('div');
+      veil.className = 'sc-veil'; // the room fades back a little, so the group stands out
+      view.appendChild(veil);
       view.appendChild(el);
       Object.assign(el.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px` });
       const word = document.createElement('div');

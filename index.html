@@ -264,6 +264,8 @@
     .sc-ghost { position: absolute; z-index: 6; pointer-events: none; transition: left 0.7s cubic-bezier(.3,.9,.3,1), top 0.7s cubic-bezier(.3,.9,.3,1), width 0.7s cubic-bezier(.3,.9,.3,1); }
     .sc-done .sc-basket, .sc-done .sc-dots { filter: drop-shadow(0 0 16px #FFD43B); }
     .sc-done .buddy { animation-name: bob, glow; animation-duration: 2.6s, 1.4s; animation-iteration-count: infinite; }
+    .view-find .buddy { z-index: 7; }
+    .sc-veil { position: absolute; inset: 0; z-index: 5; background: rgba(255, 255, 255, 0.55); pointer-events: none; animation: view-in 0.6s ease-out both; }
     .sc-group.sc-counting { z-index: 6; cursor: default; transition: left 0.8s cubic-bezier(.3,.9,.3,1), top 0.8s cubic-bezier(.3,.9,.3,1), width 0.8s cubic-bezier(.3,.9,.3,1); }
     .sc-counting.ready .cnt { pointer-events: auto; cursor: pointer; }
     .sc-counting .cnt { transform-box: fill-box; transform-origin: center; }
