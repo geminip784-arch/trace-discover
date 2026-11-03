@@ -6,6 +6,7 @@ import {
   BOARDS, URDU, BOOKS, TILE_COLORS, boardTiles, bookOf, canLoad, gridFor, boardSpace, BOARD_BOX,
   localDay, isFirstVisitToday, startScreen, navigate, tuneFor, isBookOpen,
 } from '../src/session.js';
+import { tileColorOf } from '../src/session.js';
 
 const MANIFEST = ['E', 'F', 'H', 'I', 'L', 'T', '1', '4', '7'];
 
@@ -202,4 +203,28 @@ test('the writing tune is calmer and plays at a third of the volume', async () =
   assert.ok(TUNES.write.bpm < TUNES.shelf.bpm && TUNES.write.bpm < TUNES.board.bpm);
   const rests = (t) => t.mel.filter((n) => n === null).length / t.mel.length;
   assert.ok(rests(TUNES.write) > rests(TUNES.board));
+});
+
+test('Slice 5C: write -> find scene -> its board; the shelf -> her finds and back', () => {
+  const write = { screen: 'write', char: 'E', book: 'abc' };
+  const find = navigate(write, { type: 'openScene' });
+  assert.deepEqual(find, { screen: 'find', char: 'E', book: 'abc' });
+  assert.deepEqual(navigate(find, { type: 'letterDone' }), ABC);
+  assert.deepEqual(navigate({ screen: 'find', char: '4', book: 'num' }, { type: 'letterDone' }), { screen: 'board', book: 'num' });
+  assert.equal(navigate(ABC, { type: 'openScene' }), ABC);
+  assert.deepEqual(navigate(find, { type: 'home' }), SHELF);
+  const toys = navigate(SHELF, { type: 'openToys' });
+  assert.deepEqual(toys, { screen: 'toys' });
+  assert.deepEqual(navigate(toys, { type: 'home' }), SHELF);
+  assert.deepEqual(navigate(toys, { type: 'back' }), SHELF);
+  assert.equal(navigate(ABC, { type: 'openToys' }), ABC);
+  assert.equal(tuneFor('find'), 'board');
+  assert.equal(tuneFor('toys'), 'shelf');
+});
+
+test('a character\'s tile color, for her letter in a find scene', () => {
+  assert.equal(tileColorOf('A'), TILE_COLORS[0]);
+  assert.equal(tileColorOf('E'), TILE_COLORS[4]);
+  assert.equal(tileColorOf('4'), TILE_COLORS[4]);
+  assert.equal(tileColorOf('zz'), null);
 });

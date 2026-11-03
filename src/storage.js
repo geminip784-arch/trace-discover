@@ -1,6 +1,8 @@
 // storage.js — settings and progress in localStorage. Every read and write is
 // wrapped in try/catch: a full or blocked storage must never stop the game.
 
+import { addFind, cleanFinds } from './finds.js';
+
 export const ATTEMPTS_KEY = 'td.attempts';
 export const MAX_ATTEMPTS = 2000;
 
@@ -153,6 +155,28 @@ export function clearRounds(id, store = globalThis.localStorage) {
     const all = readAllRounds(store);
     delete all[id];
     store.setItem(ROUNDS_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Her collection (Slice 5C): every find, newest last. { o } or { g, n, gold }.
+
+export const FINDS_KEY = 'td.finds';
+
+export function readFinds(store = globalThis.localStorage) {
+  try {
+    return cleanFinds(JSON.parse(store.getItem(FINDS_KEY) ?? '[]'));
+  } catch {
+    return [];
+  }
+}
+
+export function saveFind(entry, store = globalThis.localStorage) {
+  try {
+    store.setItem(FINDS_KEY, JSON.stringify(addFind(readFinds(store), entry)));
     return true;
   } catch {
     return false;

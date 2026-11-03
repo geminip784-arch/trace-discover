@@ -33,6 +33,15 @@ export const TILE_COLORS = ['#1565C0', '#2E7D32', '#6A1B9A', '#AD1457', '#00695C
 
 export const tileColor = (index) => TILE_COLORS[index % TILE_COLORS.length];
 
+// A character's tile color on its board (her letter's color in a find scene), or null.
+export function tileColorOf(id) {
+  for (const board of Object.values(BOARDS)) {
+    const i = board.tiles.findIndex((t) => t.id === id);
+    if (i >= 0) return tileColor(i);
+  }
+  return null;
+}
+
 // The board each character is on, or null.
 export function bookOf(id) {
   for (const [book, board] of Object.entries(BOARDS)) {
@@ -119,6 +128,8 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   board  a letter board: book is 'abc', 'num' or 'urdu'
 //   games  the games book (a placeholder for now)
 //   write  the tracing game for char; book is the board she returns to (or null)
+//   find   the find or count scene after the last round of char (same book)
+//   toys   her shelf of finds, from the toy box on the bookshelf
 
 // The first screen. ?char=X goes straight to writing X; ?door=1 always shows the door.
 export function startScreen({ lastVisit = null, today, forceDoor = false, char = null } = {}) {
@@ -134,8 +145,10 @@ const SHELF = { screen: 'shelf' };
 //   { type: 'openDoor' }                 door  -> shelf
 //   { type: 'openBook', book }           shelf -> board or games (locked books: no change)
 //   { type: 'openChar', id, manifest }   board -> write (faint characters: no change)
-//   { type: 'letterDone' }               write -> its board (or the shelf)
-//   { type: 'back' }                     games -> shelf
+//   { type: 'openScene' }                write -> find (the same char and book)
+//   { type: 'letterDone' }               write or find -> its board (or the shelf)
+//   { type: 'openToys' }                 shelf -> toys
+//   { type: 'back' }                     games or toys -> shelf
 //   { type: 'home' }                     any screen -> shelf
 export function navigate(state, event) {
   const { screen } = state;
@@ -155,11 +168,15 @@ export function navigate(state, event) {
       if (!onBoard || !canLoad(event.id, event.manifest ?? [])) return state;
       return { screen: 'write', char: event.id, book: state.book };
     }
+    case 'openScene':
+      return screen === 'write' ? { screen: 'find', char: state.char, book: state.book } : state;
     case 'letterDone':
-      if (screen !== 'write') return state;
+      if (screen !== 'write' && screen !== 'find') return state;
       return state.book ? { screen: 'board', book: state.book } : SHELF;
+    case 'openToys':
+      return screen === 'shelf' ? { screen: 'toys' } : state;
     case 'back':
-      return screen === 'games' ? SHELF : state;
+      return screen === 'games' || screen === 'toys' ? SHELF : state;
     default:
       return state;
   }
@@ -167,8 +184,8 @@ export function navigate(state, event) {
 
 // Which background tune plays on a screen: none at the door; a calm, quiet one while she writes.
 export function tuneFor(screen) {
-  if (screen === 'shelf' || screen === 'games') return 'shelf';
-  if (screen === 'board') return 'board';
+  if (screen === 'shelf' || screen === 'games' || screen === 'toys') return 'shelf';
+  if (screen === 'board' || screen === 'find') return 'board';
   if (screen === 'write') return 'write';
   return null;
 }
