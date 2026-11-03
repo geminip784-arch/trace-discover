@@ -1,5 +1,6 @@
 // screens.js — the app shell: front door, bookshelf, letter boards, the games
-// book, and the writing screen around game.js. session.js decides where each
+// book, the writing screen around game.js, the find and count scene after it
+// (scene.js) and her shelf of finds. session.js decides where each
 // tap leads; this file draws the screens and plays the little animations.
 // Child-screen rules: no text but the characters themselves, nothing red as
 // feedback, every child target at least 88 CSS px, only Jugnu and the buttons
@@ -7,14 +8,19 @@
 
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, gridFor, localDay,
-  startScreen, navigate, tuneFor,
+  startScreen, navigate, tuneFor, bookOf, tileColorOf,
 } from './session.js';
-import { readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic } from './storage.js';
+import {
+  readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
+} from './storage.js';
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
 import { startGame } from './game.js';
 import { HOUSE, DOOR, ICONS, STAR, TURN, bookCover } from './art.js';
 import { isUpright } from './render.js';
+import { startScene } from './scene.js';
+import { hasLetterScene, hasNumberScene, lastGroupKind, makeGroup, SHELF_SHOWS } from './finds.js';
+import { OBJECTS, TOYBOX } from '../data/finds.js';
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
 const BOOK_OPEN_MS = 650;  // a book's cover opens, then its screen
@@ -32,6 +38,9 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     forceDoor: params.get('door') === '1',
     char: params.get('char'),
   });
+  // index.html?scene=E opens the find (or count) scene of E straight away (for checks).
+  const sceneChar = params.get('scene');
+  if (sceneChar && bookOf(sceneChar)) state = navigate({ screen: 'write', char: sceneChar, book: bookOf(sceneChar) }, { type: 'openScene' });
   let busy = false;   // an opening animation is playing: taps wait
   let game = null;    // the running tracing game, while she writes
   let musicOn = readMusic();
@@ -94,6 +103,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     else if (screen === 'shelf') drawShelf(view);
     else if (screen === 'board') drawBoard(view, extra.newStar);
     else if (screen === 'games') drawGames(view);
+    else if (screen === 'find') drawFind(view, extra.newStar);
+    else if (screen === 'toys') drawToys(view);
   }
 
   // ---- the front door ----
@@ -119,7 +130,13 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   // ---- the bookshelf ----
   function drawShelf(view) {
     view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy over-shelf')}
+      <div class="toybox-btn" role="button" aria-label="Toy box">${TOYBOX}</div>
       <div class="shelf"><div class="books"></div><div class="plank"></div></div>`;
+    view.querySelector('.toybox-btn').addEventListener('click', () => {
+      if (busy) return;
+      popSound();
+      go(navigate(state, { type: 'openToys' }));
+    });
     const row = view.querySelector('.books');
     for (const book of BOOKS) {
       const el = document.createElement('div');
@@ -205,6 +222,67 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     view.innerHTML = JUGNU_IMG.replace('buddy', 'buddy in-middle');
   }
 
+  // ---- the find or count scene, after the last round ----
+  // newStar: the star she just earned; it appears on the board after the scene.
+  function drawFind(view, newStar) {
+    const mine = state;
+    const scene = startScene(view, {
+      char: state.char,
+      color: tileColorOf(state.char),
+      lastKind: lastGroupKind(readFinds()),
+      onDone: () => {
+        if (state === mine) go(navigate(state, { type: 'letterDone' }), { newStar });
+      },
+    });
+    if (!scene) return go(navigate(state, { type: 'letterDone' }), { newStar });
+    game = scene; // go() stops it, and the turn picture pauses it
+    if (upright) game.pause();
+  }
+
+  // ---- her shelf of finds: three planks of 8 places, newest first; a tap wiggles one ----
+  // An object takes one place; a counted group of 3 or more takes two.
+  function drawToys(view) {
+    view.innerHTML = '<div class="finds"></div>';
+    const shelf = view.querySelector('.finds');
+    const rows = [[], [], []];
+    let row = 0;
+    let used = 0;
+    for (const f of readFinds().slice(-SHELF_SHOWS).reverse()) {
+      const art = f.g ? makeGroup(f.g, f.n, f.gold ? 0 : -1).svg : OBJECTS.find((o) => o.id === f.o)?.art;
+      if (!art) continue;
+      const places = f.g && f.n >= 3 ? 2 : 1;
+      if (used + places > 8) { row += 1; used = 0; }
+      if (row > 2) break;
+      rows[row].push({ art, places });
+      used += places;
+    }
+    for (const items of rows) {
+      const plank = document.createElement('div');
+      plank.className = 'finds-row';
+      for (const { art, places } of items) {
+        const el = document.createElement('div');
+        el.className = `find${places === 2 ? ' wide' : ''}`;
+        el.setAttribute('role', 'button');
+        el.innerHTML = art;
+        el.addEventListener('click', () => {
+          popSound();
+          wiggle(el, 'wig');
+        });
+        plank.appendChild(el);
+      }
+      shelf.appendChild(plank);
+    }
+    sizeFinds();
+  }
+
+  // Three planks share the height; each find is as tall as its plank allows.
+  function sizeFinds() {
+    const shelf = els.shell.querySelector('.finds');
+    if (!shelf) return;
+    shelf.style.setProperty('--row', `${Math.max(96, Math.floor((shelf.clientHeight - 3 * 40) / 3))}px`);
+  }
+  window.addEventListener('resize', sizeFinds);
+
   // ---- writing ----
   async function startWriting() {
     const mine = state;
@@ -216,7 +294,9 @@ export function startShell(els, { manifest, params, now = new Date() }) {
         if (state !== mine) return;
         // A practice Jugnu helped with still glows and chimes, but earns no gold star.
         if (star) saveStar(id);
-        go(navigate(state, { type: 'letterDone' }), { newStar: star ? id : null });
+        // Then the find or count scene, when her character has one.
+        const scene = hasLetterScene(id) || hasNumberScene(id);
+        go(navigate(state, { type: scene ? 'openScene' : 'letterDone' }), { newStar: star ? id : null });
       },
     });
     // She may have pressed home while the character was loading.

@@ -15,3 +15,30 @@ Claude Code adds ideas here instead of building them mid-slice.
 - Round 3's track (5% opacity) is very faint on the white board. Check on the tablet whether she can still see it, before changing anything.
 - mockup4 also lets a parent set the rounds from the address (`?rounds=5`). Slice 5B keeps the number in one setting (`ROUNDS` in `src/progress.js`); a parent-zone control could set it later.
 - The headless ink-offset check (Playwright, both orientations, devicePixelRatio 1.5) could live in the repo as a script, so every slice can re-run it the same way.
+
+## Slice 5C: objects each room still needs
+
+So every room has 3 of its own objects for each recorded letter (E F H I L T),
+these are the words still missing. Each is one plain word (or two), always
+said the same way, and starts with its letter. A word in more than one room
+needs only one picture: give it each room. "teddy" is already drawn in
+docs/mockups/mockup4.html (`ART.teddy`); "elephant" is already in
+data/finds.js and only needs the living room added.
+
+| Room | E | F | H | I | L | T |
+|---|---|---|---|---|---|---|
+| Kitchen (has egg; fan, fork; honey; ice cream; lemon, lunchbox; tomato) | eggplant, eclair | fish | hot dog, hamburger | ice cube, ice lolly | lollipop | teapot, toaster |
+| Study room (has eraser; flag; heart; ink; lamp, lunchbox; tiger) | envelope, easel | folder, feather | headphones, hourglass | ink pad, igloo | laptop | tape, telescope |
+| Living room (has fan; hat, heart; insect; lamp; toys) | elephant, envelope, easel | football, frame | headphones | igloo, iron | lion, lollipop | teddy, train |
+| Bedroom (has elephant; frock; hat; insect; lamp; toys, tiger) | earmuffs, envelope | feather, flip flops | hairbrush, hanger | igloo, ice skates | lion, locket | teddy |
+
+Words to keep away from, because they would clash with an object already in
+the library: ladybird or ladybug (the insect is drawn as one), flowers (a
+counting thing), fairy (Jugnu is the only character).
+
+## Slice 5C: other follow-ups
+
+- The number scene has no 10-second hint. If she waits a long time, the group of n could wiggle once, as the letter objects do.
+- Letter scenes for letters with fewer than 3 objects in the library (every letter except E F H I L T) are skipped: she goes straight back to the board. They need objects first.
+- The shelf of finds shows up to the newest 24. Older finds are kept (up to 500) but not shown; a second shelf could show them.
+- `index.html?scene=E` opens a scene straight away. It was added for the headless checks; it could also serve a parent zone later.

@@ -7,6 +7,7 @@ import {
   readLastVisit, saveLastVisit, readStars, saveStar, addStar, readMusic, saveMusic,
   ROUNDS_KEY, readRounds, saveRounds, clearRounds,
 } from '../src/storage.js';
+import { FINDS_KEY, readFinds, saveFind } from '../src/storage.js';
 
 function memoryStore() {
   const data = new Map();
@@ -124,4 +125,35 @@ test('broken round saves never throw', () => {
   assert.equal(clearRounds('F', broken), false);
   const junk = { getItem: () => '[1,2]', setItem: () => {} };
   assert.equal(readRounds('F', junk), null);
+});
+
+test('Slice 5C: every find is saved in td.finds and read back, newest last', () => {
+  const store = memoryStore();
+  assert.deepEqual(readFinds(store), []);
+  assert.equal(saveFind({ o: 'egg' }, store), true);
+  assert.equal(saveFind({ g: 'cup', n: 4, gold: true }, store), true);
+  assert.deepEqual(readFinds(store), [{ o: 'egg' }, { g: 'cup', n: 4, gold: true }]);
+  assert.equal(JSON.parse(store.getItem(FINDS_KEY)).length, 2);
+});
+
+test('Slice 5C: a broken or blocked store never stops the collection', () => {
+  const bad = memoryStore();
+  bad.setItem(FINDS_KEY, '{not json');
+  assert.deepEqual(readFinds(bad), []);
+  bad.setItem(FINDS_KEY, JSON.stringify([{ o: 'egg' }, { o: 'unknown' }, 7]));
+  assert.deepEqual(readFinds(bad), [{ o: 'egg' }]);
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('full'); } };
+  assert.deepEqual(readFinds(blocked), []);
+  assert.equal(saveFind({ o: 'egg' }, blocked), false);
+});
+
+test('Slice 5C: find entries go into the same attempt log; stroke entries are unchanged', () => {
+  const store = memoryStore();
+  const stroke = { time: 't', char: 'E', stage: 1, stroke: 0, variant: 'a', ok: true, reason: null };
+  logAttempt(stroke, store);
+  logAttempt({ type: 'find', char: 'E', scene: 'letter', step: 'find', word: 'egg', ok: true, ms: 900 }, store);
+  const log = readAttempts(store);
+  assert.deepEqual(log[0], stroke);
+  assert.equal('type' in log[0], false);
+  assert.equal(log[1].type, 'find');
 });

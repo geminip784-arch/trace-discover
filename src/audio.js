@@ -187,3 +187,11 @@ function tone(freq, dur, type, vol, slide = 1) {
 export const doorSound = () => tone(196, 0.6, 'triangle', 0.14, 1.6);
 // A book opens or a character is picked: a soft pop.
 export const popSound = () => tone(620, 0.1, 'triangle', 0.16, 0.6);
+
+// Counting (Slice 5C): each tap a little higher than the last (from mockup 4).
+export const countTone = (k) => tone(392 * 1.12 ** k, 0.18, 'sine', 0.18);
+// The golden item: two bright, soft notes on top of the counting note.
+export function goldTone() {
+  setTimeout(() => tone(1568, 0.3, 'sine', 0.15), 100);
+  setTimeout(() => tone(2093, 0.3, 'sine', 0.12), 200);
+}
