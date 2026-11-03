@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DEFAULTS } from '../src/geometry.js';
-import { TRACK_LOOKS, DONE_LOOK, INK, trackLook, trackWidths } from '../src/render.js';
+import { TRACK_LOOKS, DONE_LOOK, INK, trackLook, trackWidths, startMarkers, outerRadius, MARKERS, START_DOT_RADIUS } from '../src/render.js';
 
 const MOCKUP_U = 340; // mockup4's letter height in px
 const CHARS = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url)));
@@ -76,4 +76,65 @@ test('no track runs past the sky or grass line by more than half its band', () =
       }
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// Start markers
+
+// Every set of finished strokes (more than she can ever reach, so stricter).
+function* doneStates(n) {
+  for (let mask = 0; mask < (1 << n) - 1; mask++) yield Array.from({ length: n }, (_, i) => (mask & (1 << i)) !== 0);
+}
+
+test('start markers never overlap on the real E, F, H, T and 4', () => {
+  for (const id of ['E', 'F', 'H', 'T', '4']) {
+    const char = load(id);
+    for (const stage of [1, 2, 3]) {
+      for (const done of doneStates(char.strokes.length)) {
+        const ms = startMarkers(char, done, stage);
+        for (let a = 0; a < ms.length; a++) {
+          for (let b = a + 1; b < ms.length; b++) {
+            const d = Math.hypot(ms[a].at[0] - ms[b].at[0], ms[a].at[1] - ms[b].at[1]);
+            const need = outerRadius(ms[a]) + outerRadius(ms[b]);
+            assert.ok(d >= need, `${id} stage ${stage} done ${done}: ${ms[a].kind} ${ms[a].stroke + 1} and ${ms[b].kind} ${ms[b].stroke + 1} overlap (${d.toFixed(3)} < ${need.toFixed(3)})`);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('only the next stroke gets the big numbered dot; the others a small number along their path', () => {
+  for (const id of ['E', 'F', 'H', 'T', '4']) {
+    const char = load(id);
+    for (const done of doneStates(char.strokes.length)) {
+      const next = done.indexOf(false);
+      const ms = startMarkers(char, done, 1);
+      const big = ms.filter((m) => m.kind === 'big');
+      assert.equal(big.length, 1);
+      assert.equal(big[0].stroke, next);
+      assert.equal(big[0].label, next + 1);
+      assert.equal(big[0].r, START_DOT_RADIUS);
+      const small = ms.filter((m) => m.kind === 'small');
+      assert.deepEqual(small.map((m) => m.stroke), done.map((d, i) => i).filter((i) => !done[i] && i !== next));
+      for (const m of small) {
+        assert.ok(m.f >= MARKERS.small.at - 1e-9 && m.f <= 0.5, `${id}: small ${m.stroke + 1} sits ${m.f} along`);
+        const start = char.strokes[m.stroke].points[0];
+        assert.ok(Math.hypot(m.at[0] - start[0], m.at[1] - start[1]) > 0.05, 'never at its own start');
+      }
+    }
+  }
+});
+
+test('round 2: only the next start dot, no number; round 3: one small dot before the first stroke only', () => {
+  const F = load('F');
+  const r2 = startMarkers(F, [true, false, false], 2);
+  assert.equal(r2.length, 1);
+  assert.equal(r2[0].stroke, 1);
+  assert.equal(r2[0].label, undefined);
+  const r3 = startMarkers(F, [false, false, false], 3);
+  assert.equal(r3.length, 1);
+  assert.ok(r3[0].r < r2[0].r);
+  assert.equal(r3[0].label, undefined);
+  assert.deepEqual(startMarkers(F, [true, false, false], 3), []);
 });

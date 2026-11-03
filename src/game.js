@@ -135,7 +135,6 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     drawStageTrack(els.lines, layout, char, offset, {
       stage: progress.stage,
       done: progress.done,
-      active: nextStrokes(char, progress.done),
     });
   }
 

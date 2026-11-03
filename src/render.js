@@ -1,4 +1,4 @@
-import { resample } from './geometry.js';
+import { resample, pathLength } from './geometry.js';
 
 // Guide lines (SVG) and her ink (canvas). Everything is sized in line units:
 // 1 unit = sky line to grass line, worked out from the viewport height.
@@ -114,8 +114,7 @@ export function drawTrack(svg, layout, char, offset) {
 // tolerance: that stays invisible (tests/track.test.js checks this).
 // Stage 1: a soft band with a dotted centre line. Stage 2: a thinner band.
 // Stage 3: a faint band. A finished stroke: a gold core with a soft halo.
-// `done[i]`: stroke i is finished and stays lit. `active`: the strokes she may draw
-// next (more than one when the character has an anyOrder group).
+// `done[i]`: stroke i is finished and stays lit.
 export const TRACK_COLOR = '#4D6BFF';
 export const TRACK_LOOKS = {
   1: { band: 0.18, opacity: 0.16, dots: { color: '#2F4BD6', opacity: 0.85, width: 0.018, gap: 0.047 } },
@@ -133,17 +132,83 @@ export function trackWidths(stage) {
   return widths;
 }
 
-export const START_DOT_RADIUS = 0.075; // line units
-const GAME_TRACK = {
-  dot: { radius: START_DOT_RADIUS, color: 'rgba(53, 208, 127, 0.45)', current: '#35D07F', ring: '#fff' },
-  number: { color: '#fff', size: 0.1 },
-  arrow: { color: '#2F4BD6', size: 0.07, at: 0.5 },
+export const START_DOT_RADIUS = 0.075; // line units, the big numbered dot (26 px in mockup4)
+
+// The start markers, in line units, worked out without the DOM (the tests use this).
+// Only the next stroke (`current`, the first unfinished in the recorded order)
+// gets a big dot. Stage 1: the big dot is numbered with an arrow beside it, and
+// every other unfinished stroke gets a small number about 18% along its own path
+// (never at its start, where it would hide under another dot). A small number
+// that would touch another marker slides further along until it is clear.
+// Stage 2: only the next stroke's start dot, no number. Stage 3: one small start
+// dot before the first stroke only.
+export const MARKERS = {
+  ring: 0.012,                    // white ring round every dot
+  big: START_DOT_RADIUS,
+  small: { radius: 0.042, at: 0.18, step: 0.02, upTo: 0.9 },
+  arrow: { radius: 0.042, along: 0.135 },
+  stage2: 0.059,                  // 20 px in mockup4
+  stage3: 0.038,                  // 13 px in mockup4
+  gap: 0.01,                      // markers keep at least this apart
 };
 
-export function drawStageTrack(svg, layout, char, offset, { stage, done, active }) {
+// Point and direction (radians) at distance d along a stroke.
+function pointAlong(points, d) {
+  for (let i = 1; i < points.length; i++) {
+    const [ax, ay] = points[i - 1];
+    const [bx, by] = points[i];
+    const seg = Math.hypot(bx - ax, by - ay);
+    if (seg > 0 && (d <= seg || i === points.length - 1)) {
+      const t = Math.min(1, d / seg);
+      return { at: [ax + t * (bx - ax), ay + t * (by - ay)], angle: Math.atan2(by - ay, bx - ax) };
+    }
+    d -= seg;
+  }
+  return { at: points[0], angle: 0 };
+}
+
+export const outerRadius = (m) => m.r + (m.kind === 'arrow' ? 0 : MARKERS.ring);
+
+export function startMarkers(char, done, stage) {
+  const current = done.indexOf(false);
+  if (current === -1) return [];
+  const first = char.strokes[current].points;
+  if (stage === 2) return [{ kind: 'dot', stroke: current, at: first[0], r: MARKERS.stage2 }];
+  if (stage !== 1) {
+    return done.every((d) => !d) ? [{ kind: 'dot', stroke: current, at: first[0], r: MARKERS.stage3 }] : [];
+  }
+  const out = [{ kind: 'big', stroke: current, at: first[0], r: MARKERS.big, label: current + 1 }];
+  if (char.strokes[current].kind === 'line' && pathLength(first) > MARKERS.arrow.along) {
+    const { at, angle } = pointAlong(first, MARKERS.arrow.along);
+    out.push({ kind: 'arrow', stroke: current, at, angle, r: MARKERS.arrow.radius });
+  }
+  const clearance = (m) => Math.min(...out.map((o) => Math.hypot(m.at[0] - o.at[0], m.at[1] - o.at[1]) - outerRadius(o) - outerRadius(m)));
+  char.strokes.forEach((stroke, i) => {
+    if (done[i] || i === current) return;
+    const { radius, at, step, upTo } = MARKERS.small;
+    const len = pathLength(stroke.points);
+    let best = null;
+    for (let f = at; f <= upTo + 1e-9; f += step) {
+      const m = { kind: 'small', stroke: i, at: pointAlong(stroke.points, f * len).at, r: radius, label: i + 1, f };
+      const c = clearance(m);
+      if (!best || c > best.c) best = { m, c };
+      if (c >= MARKERS.gap) break;
+    }
+    out.push(best.m);
+  });
+  return out;
+}
+
+const GAME_TRACK = {
+  dot: { color: '#35D07F', ring: '#fff' },
+  number: { color: '#fff', size: 0.1 },
+  small: { fill: '#fff', ring: '#35D07F', color: '#2F4BD6', size: 0.058 },
+  arrow: { color: '#2F4BD6', size: 0.042 },
+};
+
+export function drawStageTrack(svg, layout, char, offset, { stage, done }) {
   const { unit, originX, top } = layout;
   const look = trackLook(stage);
-  const numbers = stage === 1;
   const px = ([x, y]) => [originX + (offset + x) * unit, top + y * unit];
   const make = (tag, attrs) => {
     const el = document.createElementNS(SVG_NS, tag);
@@ -160,6 +225,19 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done, active 
     'stroke-linejoin': 'round',
     ...extra,
   });
+  const label = (cx, cy, text, color, size) => {
+    const el = make('text', {
+      x: cx,
+      y: cy,
+      fill: color,
+      'font-size': size * unit,
+      'font-family': 'Fredoka, sans-serif',
+      'font-weight': '600',
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+    });
+    el.textContent = String(text);
+  };
 
   char.strokes.forEach((stroke, i) => {
     if (stroke.kind !== 'line') return;
@@ -176,47 +254,26 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done, active 
     }
   });
 
-  if (numbers) {
-    const { size, at, color } = GAME_TRACK.arrow;
-    char.strokes.forEach((stroke, i) => {
-      if (stroke.kind !== 'line' || done[i]) return;
-      const r = resample(stroke.points, 41);
-      const m = Math.round(at * 40);
-      const [x, y] = px(r[m]);
-      const angle = Math.atan2(r[m + 1][1] - r[m - 1][1], r[m + 1][0] - r[m - 1][0]) * 180 / Math.PI;
-      const s = size * unit;
+  // Small numbers first, the next stroke's dot last, so nothing covers it.
+  const markers = startMarkers(char, done, stage);
+  markers.sort((a, b) => (a.kind === 'small' ? 0 : 1) - (b.kind === 'small' ? 0 : 1));
+  const ring = MARKERS.ring * unit;
+  for (const m of markers) {
+    const [cx, cy] = px(m.at);
+    if (m.kind === 'arrow') {
+      const s = GAME_TRACK.arrow.size * unit;
       make('polygon', {
         points: `${s},0 ${-s * 0.7},${-s * 0.8} ${-s * 0.7},${s * 0.8}`,
-        fill: color,
-        transform: `translate(${x} ${y}) rotate(${angle})`,
+        fill: GAME_TRACK.arrow.color,
+        transform: `translate(${cx} ${cy}) rotate(${m.angle * 180 / Math.PI})`,
       });
-    });
-  }
-
-  // Start dots on top, the active ones last so they are never covered.
-  const { dot, number } = GAME_TRACK;
-  const order = char.strokes.map((_, i) => i).filter((i) => !active.includes(i) && !done[i]);
-  order.push(...active);
-  for (const i of order) {
-    const isCurrent = active.includes(i);
-    if (!numbers && !isCurrent) continue;
-    const [cx, cy] = px(char.strokes[i].points[0]);
-    make('circle', {
-      cx, cy, r: dot.radius * unit, fill: isCurrent ? dot.current : dot.color,
-      stroke: dot.ring, 'stroke-width': 0.012 * unit,
-    });
-    if (numbers) {
-      const label = make('text', {
-        x: cx,
-        y: cy,
-        fill: number.color,
-        'font-size': number.size * unit,
-        'font-family': 'Fredoka, sans-serif',
-        'font-weight': '600',
-        'text-anchor': 'middle',
-        'dominant-baseline': 'central',
-      });
-      label.textContent = String(i + 1);
+    } else if (m.kind === 'small') {
+      const { fill, ring: ringColor, color, size } = GAME_TRACK.small;
+      make('circle', { cx, cy, r: m.r * unit, fill, stroke: ringColor, 'stroke-width': ring });
+      label(cx, cy, m.label, color, size);
+    } else {
+      make('circle', { cx, cy, r: m.r * unit, fill: GAME_TRACK.dot.color, stroke: GAME_TRACK.dot.ring, 'stroke-width': ring });
+      if (m.label) label(cx, cy, m.label, GAME_TRACK.number.color, GAME_TRACK.number.size);
     }
   }
 }
