@@ -20,6 +20,7 @@ export const CONFIG = {
   pulseMs: 900,           // the start dot pulses (twice) over this long
   trackGlowMs: 700,       // the track of a stroke glows once over this long
   goodEvery: 2,           // speak a "good" line at most once per this many good strokes
+  dropStage: true,        // 3 fails in a row drop the letter one stage (the practice rounds turn this off)
 };
 
 const noneDone = (n) => new Array(n).fill(false);
@@ -76,7 +77,7 @@ export function applyLift(state, { ok, from = state.current, to = from, counted 
   }
   // 3 or 4 fails in a row: Jugnu demonstrates. On the 3rd, from above Stage 1, the
   // letter carries on one stage lower (finished strokes kept, that stage's count restarts).
-  const droppedStage = streak === cfg.failsForDemo && state.stage > cfg.firstStage;
+  const droppedStage = cfg.dropStage !== false && streak === cfg.failsForDemo && state.stage > cfg.firstStage;
   const next = droppedStage
     ? { ...state, streak, stage: state.stage - 1, completed: 0 }
     : { ...state, streak };
@@ -107,3 +108,59 @@ export function completeLetter(state, cfg = CONFIG) {
   }
   return { state: { ...counted, completed, finished: true }, stageUp: false, finished: true, counted: true };
 }
+
+// ---------------------------------------------------------------------------
+// Practice rounds
+//
+// Each character takes ROUNDS rounds. The round sets the stage: the last round
+// is Stage 3, the first half of the others Stage 1, the rest Stage 2
+// (3 rounds: 1, 2, 3). The stage never drops inside a round.
+// A round counts only when she drew every stroke herself: if Jugnu drew one,
+// the round starts again. Jugnu's help is that assist, or a demonstration after
+// her misses in a Stage 2 or 3 round (Stage 1 demonstrations are the lesson).
+// A gold star needs a whole practice with no help at all.
+
+export const ROUNDS = 3;            // practice rounds per character: 3 to 5
+export const MIN_ROUNDS = 3;
+export const MAX_ROUNDS = 5;
+
+export const roundCount = (n = ROUNDS) =>
+  Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, Math.round(Number(n)) || MIN_ROUNDS));
+
+// The stage of round r (0-based) out of `rounds`.
+export function stageForRound(r, rounds = ROUNDS) {
+  const n = roundCount(rounds);
+  if (r >= n - 1) return 3;
+  return r < Math.ceil((n - 1) / 2) ? 1 : 2;
+}
+
+// The settings applied inside a round: the stage stays where the round put it.
+export const ROUND_CONFIG = { ...CONFIG, dropStage: false };
+
+// Where a character's practice stands: { round (0-based, the one to play), helped }.
+// `saved` is what storage gave back (or null); anything odd starts fresh.
+export function startRounds(saved, rounds = ROUNDS) {
+  const n = roundCount(rounds);
+  const ok = Number.isInteger(saved?.round) && saved.round >= 0 && saved.round < n;
+  return ok ? { round: saved.round, helped: saved.helped === true } : { round: 0, helped: false };
+}
+
+// Jugnu helped: no gold star for this practice.
+export const markHelp = (rp) => ({ ...rp, helped: true });
+
+// A help in this lift? `stage` is the round's stage, `lift` what applyLift returned.
+export const isHelp = (stage, lift) => lift.assist || (lift.demo && stage > 1);
+
+// Every stroke of the round is done. assisted: Jugnu drew one of them.
+// Returns { state, repeat, allDone }.
+export function finishRound(rp, { assisted }, rounds = ROUNDS) {
+  if (assisted) return { state: { ...rp, helped: true }, repeat: true, allDone: false };
+  const round = rp.round + 1;
+  return { state: { ...rp, round }, repeat: false, allDone: round >= roundCount(rounds) };
+}
+
+export const starEarned = (rp) => !rp.helped;
+
+// What each round light shows: 'done', 'now' or 'next'.
+export const roundLights = (rp, rounds = ROUNDS) =>
+  Array.from({ length: roundCount(rounds) }, (_, i) => (i < rp.round ? 'done' : i === rp.round ? 'now' : 'next'));
