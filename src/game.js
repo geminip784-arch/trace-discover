@@ -9,7 +9,7 @@
 // glows, a chime plays, then onDone({ id, assisted }) hands back to the shell.
 
 import {
-  computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, toUnits, START_DOT_RADIUS,
+  computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, toUnits, START_DOT_RADIUS, trackLook,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
@@ -25,6 +25,9 @@ import { canLoad } from './session.js';
 const HOME = { x: 0.35, y: 0.65 };
 // Width of Jugnu's glowing trail when he draws a stroke himself, in line units.
 const TRAIL_WIDTH = 0.16;
+// Width of the whole-letter glow at the end, in line units (its halo is 1.6 times this).
+// Like every drawn width, it never comes from the scoring tolerance.
+const LETTER_GLOW_WIDTH = 0.12;
 
 // Only ids in the manifest are ever requested.
 async function loadChar(id, manifest) {
@@ -90,7 +93,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   const ref = () => strokes[progress.current].points;
   const startDot = () => ref()[0];
   const home = () => [HOME.x - offset, HOME.y];
-  const pathWidth = () => 2 * stageCfg().tolerance * layout.unit;
+  const bandWidth = () => trackLook(progress.stage).band * layout.unit;
 
   // Delayed steps. While she traces, a touch-down cancels them all; while a
   // 'held' phase plays, a touch-down pauses them and her lift resumes them.
@@ -133,7 +136,6 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
       stage: progress.stage,
       done: progress.done,
       active: nextStrokes(char, progress.done),
-      tolerance: stageCfg().tolerance,
     });
   }
 
@@ -177,7 +179,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     } else {
       // off-path or too-short: Jugnu rests on the start dot and the track glows once.
       jugnu.hopTo(tried[0], CONFIG.hopMs);
-      fx.glowPath(tried.map(toPx), pathWidth(), CONFIG.trackGlowMs);
+      fx.glowPath(tried.map(toPx), bandWidth(), CONFIG.trackGlowMs);
     }
   }
 
@@ -208,7 +210,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     speak('letterDone');
     letterChime();
     const lines = strokes.filter((s) => s.kind === 'line').map((s) => s.points.map(toPx));
-    fx.letterGlow(lines, pathWidth(), CONFIG.letterGlowMs);
+    fx.letterGlow(lines, LETTER_GLOW_WIDTH * layout.unit, CONFIG.letterGlowMs);
     await wait(CONFIG.letterGlowMs);
     if (!alive) return;
     phase = 'done';
