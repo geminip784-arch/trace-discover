@@ -76,7 +76,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     document.body.dataset.screen = screen;
     els.home.hidden = screen === 'door' || screen === 'shelf';
     els.back.hidden = screen !== 'games';
-    els.music.hidden = screen === 'door' || screen === 'write';
+    els.music.hidden = screen === 'door';
     setTune(tuneFor(screen));
 
     const writing = screen === 'write';

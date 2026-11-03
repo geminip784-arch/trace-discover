@@ -1,7 +1,7 @@
 // music.js — gentle background music, generated with Web Audio (no files, works
-// offline). Adapted from docs/mockups/mockup4.html: one tune for the bookshelf
-// and one for the boards. The shell picks the tune (session.tuneFor) and turns
-// it off while she writes.
+// offline). Adapted from docs/mockups/mockup4.html: one tune for the bookshelf,
+// one for the boards, and a slower, softer one (a third of the volume) that
+// keeps playing while she writes. The shell picks the tune (session.tuneFor).
 
 import { audioContext } from './audio.js';
 
@@ -10,6 +10,8 @@ import { audioContext } from './audio.js';
 export const TUNES = {
   shelf: { bpm: 96, wave: 'triangle', mel: [7, null, 4, 7, 9, 7, 4, null, 2, 4, 7, 4, 2, 0, null, null], bass: [0, null, null, null, 5, null, 7, null] },
   board: { bpm: 92, wave: 'triangle', mel: [0, 2, 4, null, 4, 2, 0, null, 7, 4, 2, 4, 0, null, null, null], bass: [0, null, 5, null, 7, null, 5, null] },
+  // While she writes: slow, soft sine notes with long rests, at a third of the volume.
+  write: { bpm: 66, wave: 'sine', volume: 1 / 3, mel: [4, null, null, 7, null, null, 9, null, 7, null, null, 4, null, null, 2, null, null, null, null, null, 0, null, null, null], bass: [0, null, null, null, null, null, 5, null, null, null, null, null] },
 };
 
 const VOLUME = 0.5;      // overall music level (the chimes play on top)
@@ -80,7 +82,7 @@ function sync() {
   if (!target || !ctx) return;
   try {
     bus = ctx.createGain();
-    bus.gain.value = VOLUME;
+    bus.gain.value = VOLUME * (TUNES[target].volume ?? 1);
     bus.connect(ctx.destination);
   } catch {
     bus = null;
@@ -98,7 +100,7 @@ export function setMusicOn(on) {
   sync();
 }
 
-// The tune for the screen she is on: 'shelf', 'board' or null (silence).
+// The tune for the screen she is on: 'shelf', 'board', 'write' or null (silence).
 export function setTune(name) {
   wanted = TUNES[name] ? name : null;
   sync();

@@ -165,9 +165,10 @@ export function navigate(state, event) {
   }
 }
 
-// Which background tune plays on a screen: none at the door or while she writes.
+// Which background tune plays on a screen: none at the door; a calm, quiet one while she writes.
 export function tuneFor(screen) {
   if (screen === 'shelf' || screen === 'games') return 'shelf';
   if (screen === 'board') return 'board';
+  if (screen === 'write') return 'write';
   return null;
 }

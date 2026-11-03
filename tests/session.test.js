@@ -187,10 +187,19 @@ test('home returns to the shelf from any screen; back leaves the games book', ()
   assert.equal(navigate(ABC, { type: 'nothing' }), ABC);
 });
 
-test('music: the shelf tune, the board tune, silence at the door and while she writes', () => {
+test('music: the shelf tune, the board tune, silence at the door, a calm tune while she writes', () => {
   assert.equal(tuneFor('shelf'), 'shelf');
   assert.equal(tuneFor('games'), 'shelf');
   assert.equal(tuneFor('board'), 'board');
-  assert.equal(tuneFor('write'), null);
+  assert.equal(tuneFor('write'), 'write');
   assert.equal(tuneFor('door'), null);
+});
+
+test('the writing tune is calmer and plays at a third of the volume', async () => {
+  const { TUNES } = await import('../src/music.js');
+  assert.equal(TUNES.write.volume, 1 / 3);
+  assert.equal(TUNES.write.wave, 'sine');
+  assert.ok(TUNES.write.bpm < TUNES.shelf.bpm && TUNES.write.bpm < TUNES.board.bpm);
+  const rests = (t) => t.mel.filter((n) => n === null).length / t.mel.length;
+  assert.ok(rests(TUNES.write) > rests(TUNES.board));
 });
