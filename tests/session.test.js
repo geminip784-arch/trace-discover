@@ -190,7 +190,7 @@ test('home returns to the shelf from any screen; back leaves the games book', ()
 
 test('music: the shelf tune, the board tune, silence at the door, a calm tune while she writes', () => {
   assert.equal(tuneFor('shelf'), 'shelf');
-  assert.equal(tuneFor('games'), 'shelf');
+  assert.equal(tuneFor('games'), 'board'); // Slice 5D: the games play the board tune
   assert.equal(tuneFor('board'), 'board');
   assert.equal(tuneFor('write'), 'write');
   assert.equal(tuneFor('door'), null);
@@ -227,4 +227,20 @@ test('a character\'s tile color, for her letter in a find scene', () => {
   assert.equal(tileColorOf('E'), TILE_COLORS[4]);
   assert.equal(tileColorOf('4'), TILE_COLORS[4]);
   assert.equal(tileColorOf('zz'), null);
+});
+
+test('Slice 5D: games -> a game -> back to the games; home goes to the shelf', () => {
+  const games = navigate(SHELF, { type: 'openBook', book: 'games' });
+  assert.deepEqual(games, { screen: 'games' });
+  for (const game of ['numbers', 'colors', 'path']) {
+    const play = navigate(games, { type: 'openGame', game });
+    assert.deepEqual(play, { screen: 'play', game });
+    assert.deepEqual(navigate(play, { type: 'gameDone' }), games);
+    assert.deepEqual(navigate(play, { type: 'back' }), games);
+    assert.deepEqual(navigate(play, { type: 'home' }), SHELF);
+  }
+  assert.equal(navigate(games, { type: 'openGame', game: 'chess' }), games);
+  assert.equal(navigate(SHELF, { type: 'openGame', game: 'path' }), SHELF);
+  assert.equal(navigate(ABC, { type: 'gameDone' }), ABC);
+  assert.equal(tuneFor('play'), 'board');
 });

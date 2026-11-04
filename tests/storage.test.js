@@ -8,6 +8,7 @@ import {
   ROUNDS_KEY, readRounds, saveRounds, clearRounds,
 } from '../src/storage.js';
 import { FINDS_KEY, readFinds, saveFind } from '../src/storage.js';
+import { GAME_STARS_KEY, readGameStars, saveGameStar } from '../src/storage.js';
 
 function memoryStore() {
   const data = new Map();
@@ -156,4 +157,25 @@ test('Slice 5C: find entries go into the same attempt log; stroke entries are un
   assert.deepEqual(log[0], stroke);
   assert.equal('type' in log[0], false);
   assert.equal(log[1].type, 'find');
+});
+
+test('Slice 5D: a game earns its star once, saved in td.games', () => {
+  const store = memoryStore();
+  assert.deepEqual(readGameStars(store), []);
+  assert.equal(saveGameStar('colors', store), true);
+  assert.equal(saveGameStar('colors', store), true);
+  assert.equal(saveGameStar('path', store), true);
+  assert.deepEqual(readGameStars(store), ['colors', 'path']);
+  assert.deepEqual(JSON.parse(store.getItem(GAME_STARS_KEY)), ['colors', 'path']);
+});
+
+test('Slice 5D: broken or blocked storage never stops the games', () => {
+  const bad = memoryStore();
+  bad.setItem(GAME_STARS_KEY, '{oops');
+  assert.deepEqual(readGameStars(bad), []);
+  bad.setItem(GAME_STARS_KEY, JSON.stringify(['path', 3, null]));
+  assert.deepEqual(readGameStars(bad), ['path']);
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('full'); } };
+  assert.deepEqual(readGameStars(blocked), []);
+  assert.equal(saveGameStar('path', blocked), false);
 });

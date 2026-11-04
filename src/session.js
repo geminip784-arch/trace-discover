@@ -126,7 +126,8 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   door   the house front (first visit of the day, or ?door=1)
 //   shelf  the bookshelf (home)
 //   board  a letter board: book is 'abc', 'num' or 'urdu'
-//   games  the games book (a placeholder for now)
+//   games  the games book: its menu of three games
+//   play   one game from the games book: game is 'numbers', 'colors' or 'path'
 //   write  the tracing game for char; book is the board she returns to (or null)
 //   find   the find or count scene after the last round of char (same book)
 //   toys   her shelf of finds, from the toy box on the bookshelf
@@ -139,6 +140,7 @@ export function startScreen({ lastVisit = null, today, forceDoor = false, char =
 }
 
 const SHELF = { screen: 'shelf' };
+const GAME_IDS = ['numbers', 'colors', 'path'];
 
 // The next screen after an event. An event that does not apply changes nothing
 // (the same state comes back). Events:
@@ -148,7 +150,9 @@ const SHELF = { screen: 'shelf' };
 //   { type: 'openScene' }                write -> find (the same char and book)
 //   { type: 'letterDone' }               write or find -> its board (or the shelf)
 //   { type: 'openToys' }                 shelf -> toys
-//   { type: 'back' }                     games or toys -> shelf
+//   { type: 'openGame', game }           games -> play (only the three games)
+//   { type: 'gameDone' }                 play -> games
+//   { type: 'back' }                     play -> games; games or toys -> shelf
 //   { type: 'home' }                     any screen -> shelf
 export function navigate(state, event) {
   const { screen } = state;
@@ -175,7 +179,12 @@ export function navigate(state, event) {
       return state.book ? { screen: 'board', book: state.book } : SHELF;
     case 'openToys':
       return screen === 'shelf' ? { screen: 'toys' } : state;
+    case 'openGame':
+      return screen === 'games' && GAME_IDS.includes(event.game) ? { screen: 'play', game: event.game } : state;
+    case 'gameDone':
+      return screen === 'play' ? { screen: 'games' } : state;
     case 'back':
+      if (screen === 'play') return { screen: 'games' };
       return screen === 'games' || screen === 'toys' ? SHELF : state;
     default:
       return state;
@@ -184,8 +193,8 @@ export function navigate(state, event) {
 
 // Which background tune plays on a screen: none at the door; a calm, quiet one while she writes.
 export function tuneFor(screen) {
-  if (screen === 'shelf' || screen === 'games' || screen === 'toys') return 'shelf';
-  if (screen === 'board' || screen === 'find') return 'board';
+  if (screen === 'shelf' || screen === 'toys') return 'shelf';
+  if (screen === 'board' || screen === 'find' || screen === 'games' || screen === 'play') return 'board';
   if (screen === 'write') return 'write';
   return null;
 }

@@ -42,3 +42,15 @@ counting thing), fairy (Jugnu is the only character).
 - Letter scenes for letters with fewer than 3 objects in the library (every letter except E F H I L T) are skipped: she goes straight back to the board. They need objects first.
 - The shelf of finds shows up to the newest 24. Older finds are kept (up to 500) but not shown; a second shelf could show them.
 - `index.html?scene=E` opens a scene straight away. It was added for the headless checks; it could also serve a parent zone later.
+
+## Parked: how find scenes choose objects (after Slice 5C)
+
+Not yet as polished as the rest of the app. Come back to how a letter scene
+picks its room, its 3 right objects and its 4 others, and where they stand.
+
+## Slice 5D: follow-ups
+
+- Follow the path, set 2: furniture to rooms (a bed to the bedroom, a pot to the kitchen, a desk to the study room, a sofa to the living room). Same engine as the animals; needs the furniture drawn and four homes, or three of the four rooms as homes.
+- Numbers to things uses counts from 1 to 5 for now. Raise it to 1 to 9 once she counts groups that big easily (makeGroup puts 5 in a row, so 6 to 9 need taller cards).
+- In headless Chrome, a fast drag that ends while the finger is still moving starts a "fling"; a tap on the home or back button during that fling (about the next second) only stops the fling and does not press the button. It may not happen on the tablet (the writing area and games board are `touch-action: none`). If it does, the buttons could act on `pointerup` instead of `click`.
+- A tap on a card without dragging counts as a drop that missed: the card wiggles. If that confuses her, a tap could do nothing instead.

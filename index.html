@@ -230,9 +230,8 @@
     .star.new { animation: star-in 0.8s cubic-bezier(0.3, 1.6, 0.5, 1) 0.3s both; }
     @keyframes star-in { from { transform: scale(0) rotate(-90deg); } to { transform: scale(1) rotate(0); } }
 
-    /* The games book: only Jugnu for now. */
+    /* The games book: a warm glow behind its three tiles. */
     .view-games { background: radial-gradient(circle at 50% 45%, #FFE0B2, #FFB74D); }
-    .in-middle { left: calc(50% - 100px); top: calc(50% - 100px); width: 200px; }
 
     /* ---- Slice 5C: the find and count scenes. The room covers the screen,
        Jugnu stays on the left, and only objects, groups and items take taps. ---- */
@@ -345,6 +344,63 @@
     .find { display: flex; align-items: flex-end; justify-content: center; height: var(--row, 130px); touch-action: none; cursor: pointer; transform-origin: 50% 100%; }
     .find svg { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
     .find.wide { grid-column: span 2; }
+
+    /* ---- Slice 5D: the games book. The menu: three big picture tiles. ---- */
+    .view-games, .view-play { touch-action: none; }
+    .gm-menu { position: absolute; left: 136px; right: 24px; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 40px; }
+    .gm-tile {
+      --t: min(300px, calc((100vw - 240px) / 3), 62vh);
+      position: relative; box-sizing: border-box; width: var(--t); height: var(--t); padding: 16px;
+      display: flex; align-items: center; justify-content: center;
+      background: #fff; border: 10px solid var(--c); border-radius: 40px;
+      box-shadow: 0 8px 0 rgba(0, 0, 0, 0.12); touch-action: none; cursor: pointer;
+    }
+    .gm-tile > svg { width: 100%; height: auto; display: block; overflow: visible; pointer-events: none; }
+    .gm-tile.picked { animation: pick 0.22s ease-out; }
+
+    /* A game's board: 1280 x 640 units, scaled to fit right of the buttons (src/games.js boardFit). */
+    .view-play { background: #CFE9FB; }
+    .gm-board { position: absolute; left: 0; top: 0; width: 1280px; height: 640px; transform-origin: 0 0; touch-action: none; overscroll-behavior: none; border-radius: 40px; background: #FFF8E7; box-shadow: inset 0 0 0 12px #FFC9A3; }
+    .gm-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; }
+    .gm-cards { position: absolute; inset: 0; pointer-events: none; }
+    .gm-card {
+      position: absolute; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center;
+      background: #fff; border: 6px solid #D6E6F5; border-radius: 28px; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.08);
+      transition: border-color 0.2s, box-shadow 0.3s, transform 0.15s;
+    }
+    .gm-card > svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .gm-card.gm-right.gm-numbers { padding: 6px 10px; }
+    .gm-digit { font-size: 104px; line-height: 1; }
+    .gm-card.gm-lift { transform: scale(1.05); border-color: #4D6BFF; }
+    .gm-card.gm-matched { border-color: #FFD43B; box-shadow: 0 0 22px rgba(255, 212, 59, 0.8), 0 6px 0 rgba(0, 0, 0, 0.08); }
+    .gm-live { fill: none; stroke: #4D6BFF; stroke-width: 16; stroke-linecap: round; opacity: 0.85; }
+    .gm-halo { fill: none; stroke: #FFD43B; stroke-width: 36; stroke-linecap: round; opacity: 0.45; }
+    .gm-core { fill: none; stroke: #FFC21A; stroke-width: 12; stroke-linecap: round; }
+    .gm-fading { animation: gm-fade 0.45s ease forwards; }
+    @keyframes gm-fade { to { opacity: 0; } }
+    .gm-sparkle { position: absolute; z-index: 3; width: 90px; height: 90px; pointer-events: none; animation: gm-sparkle 0.9s ease-out forwards; }
+    .gm-sparkle svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 0 8px rgba(255, 194, 26, 0.9)); }
+    @keyframes gm-sparkle { 0% { transform: scale(0.2) rotate(-40deg); opacity: 0; } 40% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1) rotate(10deg); opacity: 0; } }
+    .gm-glow .gm-card, .gm-glow .gm-home, .gm-glow .gm-animal { animation: gm-glow 1.2s ease; }
+    .gm-glow .gm-halo { opacity: 0.8; transition: opacity 0.4s; }
+    @keyframes gm-glow { 50% { filter: drop-shadow(0 0 22px #FFD43B) brightness(1.08); transform: scale(1.05); } }
+
+    /* Follow the path: a meadow, roads with an outline (the later road crosses over, like a bridge). */
+    .view-play-path .gm-board { background: #C9EBB2; box-shadow: inset 0 0 0 12px #9ED58A; }
+    .gm-road-edge, .gm-road-top, .gm-road-mid, .gm-trace, .gm-trail { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .gm-road-edge { stroke: #B7814A; }
+    .gm-road-top { stroke: #F2D9A8; transition: stroke 0.5s; }
+    .gm-road-mid { stroke: #fff; stroke-width: 4; stroke-dasharray: 14 16; opacity: 0.8; }
+    .gm-road.gm-done .gm-road-top { stroke: #FFE9A0; }
+    .gm-trace { stroke: #FFD43B; stroke-width: 30; opacity: 0.9; filter: drop-shadow(0 0 8px #FFE066); }
+    .gm-trail { stroke: #FFE066; stroke-width: 16; opacity: 0.8; }
+    .gm-animal, .gm-home { position: absolute; transform-origin: 50% 100%; }
+    .gm-animal { z-index: 4; touch-action: none; }
+    .gm-home { z-index: 3; transition: filter 0.4s; }
+    .gm-animal > svg, .gm-home > svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+    .gm-home.gm-lit { filter: drop-shadow(0 0 16px #FFD43B); }
+    .gm-jugnu { position: absolute; z-index: 5; pointer-events: none; filter: drop-shadow(0 0 14px rgba(255, 224, 102, 0.9)); }
+    .view-play .buddy.away { opacity: 0; transition: opacity 0.3s; }
 
     /* ---- landscape only: upright, this covers everything and takes every tap ---- */
     #turn {
