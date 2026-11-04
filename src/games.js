@@ -40,8 +40,8 @@ export function boardFit(w, h, b = BOARD) {
 export const CARDS = {
   left: { x: 300, w: 230 },
   right: { x: 960, w: 330 },
-  h: 128,
-  rows: [94, 244, 394, 544],
+  h: 136,
+  rows: [88, 236, 384, 532],
 };
 
 // A shuffled order of 0..n-1 that is not straight across from `other`
