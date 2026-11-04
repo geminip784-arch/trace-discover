@@ -1,6 +1,6 @@
 // screens.js — the app shell: front door, bookshelf, letter boards, the games
-// book, the writing screen around game.js, the find and count scene after it
-// (scene.js) and her shelf of finds. session.js decides where each
+// book and its games (match.js, path.js), the writing screen around game.js,
+// the find and count scene after it (scene.js) and her shelf of finds. session.js decides where each
 // tap leads; this file draws the screens and plays the little animations.
 // Child-screen rules: no text but the characters themselves, nothing red as
 // feedback, every child target at least 88 CSS px, only Jugnu and the buttons
@@ -12,6 +12,7 @@ import {
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
+  readGameStars, saveGameStar,
 } from './storage.js';
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
@@ -21,6 +22,13 @@ import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { hasLetterScene, hasNumberScene, lastGroupKind, makeGroup, SHELF_SHOWS } from './finds.js';
 import { OBJECTS, TOYBOX } from '../data/finds.js';
+import { GAMES } from './games.js';
+import { MENU } from '../data/games.js';
+import { playMatch } from './match.js';
+import { playPath } from './path.js';
+
+// The games menu's tiles: each game's frame color.
+const GAME_COLORS = { numbers: '#1E88E5', colors: '#FB8C00', path: '#43A047' };
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
 const BOOK_OPEN_MS = 650;  // a book's cover opens, then its screen
@@ -86,7 +94,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const { screen } = state;
     document.body.dataset.screen = screen;
     els.home.hidden = screen === 'door' || screen === 'shelf';
-    els.back.hidden = screen !== 'games';
+    els.back.hidden = screen !== 'games' && screen !== 'play';
     els.music.hidden = screen === 'door';
     setTune(tuneFor(screen));
 
@@ -97,12 +105,13 @@ export function startShell(els, { manifest, params, now = new Date() }) {
 
     els.shell.replaceChildren();
     const view = document.createElement('div');
-    view.className = `view view-${screen}`;
+    view.className = `view view-${screen}${screen === 'play' ? ` view-play-${state.game}` : ''}`;
     els.shell.appendChild(view);
     if (screen === 'door') drawDoor(view);
     else if (screen === 'shelf') drawShelf(view);
     else if (screen === 'board') drawBoard(view, extra.newStar);
-    else if (screen === 'games') drawGames(view);
+    else if (screen === 'games') drawGames(view, extra.newGameStar);
+    else if (screen === 'play') drawPlay(view);
     else if (screen === 'find') drawFind(view, extra.newStar);
     else if (screen === 'toys') drawToys(view);
   }
@@ -218,8 +227,50 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   window.addEventListener('resize', sizeBoard);
 
   // ---- the games book (the games come in Slice 5D) ----
-  function drawGames(view) {
-    view.innerHTML = JUGNU_IMG.replace('buddy', 'buddy in-middle');
+  // Three big picture tiles, one per game; a gold star on each she has finished.
+  function drawGames(view, newGameStar) {
+    view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}<div class="gm-menu"></div>`;
+    const menu = view.querySelector('.gm-menu');
+    const stars = readGameStars();
+    for (const id of GAMES) {
+      const el = document.createElement('div');
+      el.className = 'gm-tile';
+      el.style.setProperty('--c', GAME_COLORS[id]);
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', id);
+      el.innerHTML = MENU[id];
+      if (stars.includes(id)) {
+        const star = document.createElement('span');
+        star.className = `star${id === newGameStar ? ' new' : ''}`;
+        star.innerHTML = STAR;
+        el.appendChild(star);
+      }
+      el.addEventListener('click', () => {
+        if (busy) return;
+        busy = true;
+        popSound();
+        el.classList.add('picked');
+        setTimeout(() => {
+          busy = false;
+          go(navigate(state, { type: 'openGame', game: id }));
+        }, TILE_PICK_MS);
+      });
+      menu.appendChild(el);
+    }
+  }
+
+  // One game. Finishing it once earns its tile's star; back to the menu.
+  function drawPlay(view) {
+    const mine = state;
+    const id = state.game;
+    const onDone = () => {
+      if (state !== mine) return;
+      const fresh = !readGameStars().includes(id);
+      saveGameStar(id);
+      go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
+    };
+    game = id === 'path' ? playPath(view, { onDone }) : playMatch(view, { game: id, onDone });
+    if (upright) game.pause();
   }
 
   // ---- the find or count scene, after the last round ----
