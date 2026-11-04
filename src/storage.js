@@ -182,3 +182,27 @@ export function saveFind(entry, store = globalThis.localStorage) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// The games book (Slice 5D): the games she has finished at least once (a gold
+// star on their tile).
+
+export const GAME_STARS_KEY = 'td.games';
+
+export function readGameStars(store = globalThis.localStorage) {
+  try {
+    const list = JSON.parse(store.getItem(GAME_STARS_KEY) ?? '[]');
+    return Array.isArray(list) ? list.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveGameStar(id, store = globalThis.localStorage) {
+  try {
+    store.setItem(GAME_STARS_KEY, JSON.stringify(addStar(readGameStars(store), id)));
+    return true;
+  } catch {
+    return false;
+  }
+}
