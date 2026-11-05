@@ -29,10 +29,10 @@ export function shuffle(list, rand = Math.random) {
 // ---------------------------------------------------------------------------
 // Letters: find 3
 
-export const objectsFor = (letter) => OBJECTS.filter((o) => o.letter === letter);
+export const objectsFor = (letter, objects = OBJECTS) => objects.filter((o) => o.letter === letter);
 
 // A letter has a scene when the library holds at least 3 of its objects.
-export const hasLetterScene = (letter) => objectsFor(letter).length >= FINDS;
+export const hasLetterScene = (letter, objects = OBJECTS) => objectsFor(letter, objects).length >= FINDS;
 
 // How many of her letter's objects each room holds.
 export function roomCounts(letter) {
@@ -73,6 +73,13 @@ export function letterScene(letter, rand = Math.random) {
 // Numbers: pick the group, then count
 
 export const hasNumberScene = (id) => /^[1-9]$/.test(id);
+
+// What comes after she finishes writing a character: its find or count scene
+// ('openScene'), or, when it has none (a letter with fewer than 3 find
+// pictures, or 0), straight back to its board and its star ('letterDone').
+// The values are session.js navigate() event types.
+export const afterWriting = (id, objects = OBJECTS) =>
+  (hasLetterScene(id, objects) || hasNumberScene(id) ? 'openScene' : 'letterDone');
 
 // { room, n, groups, right }: 3 placemats, one with n things (groups[right]) and
 // two with other counts from 1 to 9. The three counts differ, the three kinds

@@ -3,10 +3,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { OBJECTS, ROOMS, THINGS } from '../data/finds.js';
 import {
-  FINDS, OTHERS, letterScene, hasLetterScene, roomFor, roomCounts, objectsFor,
+  FINDS, OTHERS, letterScene, hasLetterScene, afterWriting, roomFor, roomCounts, objectsFor,
   numberScene, hasNumberScene, groupWord, makeGroup, CELL, startCount, tapCount,
   sceneFit, groupScale, countScale, addFind, cleanFinds, lastGroupKind, findLogEntry,
 } from '../src/finds.js';
+import { navigate } from '../src/session.js';
 
 // A repeatable random source (mulberry32).
 function seeded(seed) {
@@ -104,6 +105,24 @@ test('every recorded letter has a scene; letters without 3 objects have none', (
   for (const L of LETTERS) assert.ok(hasLetterScene(L), L);
   assert.equal(hasLetterScene('A'), false);
   assert.equal(letterScene('A'), null);
+});
+
+test('a letter with fewer than 3 find pictures skips the find step and goes straight to its star', () => {
+  const pic = (id, letter) => ({ id, word: id, letter, rooms: ['kitchen'], reward: id, art: '' });
+  const two = [pic('quilt', 'Q'), pic('queen', 'Q'), pic('egg', 'E')];
+  const three = [...two, pic('quail', 'Q')];
+  assert.equal(afterWriting('Q', two), 'letterDone');
+  assert.equal(afterWriting('Q', three), 'openScene');
+  assert.equal(afterWriting('Q', []), 'letterDone');
+  // The real library: recorded letters have scenes, a newly recorded letter without pictures does not.
+  for (const L of LETTERS) assert.equal(afterWriting(L), 'openScene', L);
+  for (const c of ['A', 'B', 'Z']) assert.equal(afterWriting(c), 'letterDone', c);
+  // Digits 1 to 9 count; 0 has no scene.
+  assert.equal(afterWriting('4'), 'openScene');
+  assert.equal(afterWriting('0'), 'letterDone');
+  // letterDone from the writing screen goes back to her board, where the new star shows.
+  const write = { screen: 'write', char: 'A', book: 'abc' };
+  assert.deepEqual(navigate(write, { type: afterWriting('A') }), { screen: 'board', book: 'abc' });
 });
 
 test('the room is one that holds the most of her letter', () => {

@@ -21,7 +21,7 @@ import { startGame } from './game.js';
 import { HOUSE, DOOR, ICONS, STAR, TURN, bookCover } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
-import { hasLetterScene, hasNumberScene, lastGroupKind, makeGroup, SHELF_SHOWS } from './finds.js';
+import { afterWriting, lastGroupKind, makeGroup, SHELF_SHOWS } from './finds.js';
 import { OBJECTS, TOYBOX } from '../data/finds.js';
 import { GAME_ROWS, kindOf } from './games.js';
 import { MENU } from '../data/games.js';
@@ -443,8 +443,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
         // A practice Jugnu helped with still glows and chimes, but earns no gold star.
         if (star) saveStar(id);
         // Then the find or count scene, when her character has one.
-        const scene = hasLetterScene(id) || hasNumberScene(id);
-        go(navigate(state, { type: scene ? 'openScene' : 'letterDone' }), { newStar: star ? id : null });
+        go(navigate(state, { type: afterWriting(id) }), { newStar: star ? id : null });
       },
     });
     // She may have pressed home while the character was loading.
