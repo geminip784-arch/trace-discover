@@ -10,7 +10,7 @@
 
 import { ROOMS, THINGS } from '../data/finds.js';
 import {
-  COLORS, ROAD_LAYOUTS, LANES, LETTER_PICTURES, SHADOW_THINGS, SHAPES, FURNITURE,
+  COLORS, ROAD_LAYOUTS, LANES, LETTER_PICTURES, SHADOW_THINGS, SHAPES, FURNITURE, SORT_SETS,
 } from '../data/games.js';
 import { shuffle, groupWord } from './finds.js';
 
@@ -19,6 +19,7 @@ import { shuffle, groupWord } from './finds.js';
 export const GAME_ROWS = [
   { kind: 'match', games: ['numbers', 'colors', 'letters', 'shadows', 'shapes'] },
   { kind: 'path', games: ['path', 'path-rooms'] },
+  { kind: 'sort', games: ['sort-colors', 'sort-kinds'] },
 ];
 export const GAMES = GAME_ROWS.flatMap((r) => r.games);
 export const MATCH_GAMES = GAME_ROWS.find((r) => r.kind === 'match').games;
@@ -312,9 +313,79 @@ export const boardDone = (home, things = PATH.animals) => things.every((a) => ho
 export const firstMoveRoad = (roads) => roads[0];
 
 // ---------------------------------------------------------------------------
+// Sort it: drag 6 things into the right one of two baskets. Two boards make a play.
+
+export const SORT = {
+  boards: 2,
+  perBasket: 3,
+  hintAfter: 3,                       // wrong baskets in a row, then the right basket wiggles
+  size: 130,                          // a thing, in units
+  row: { y: 140, xs: [240, 424, 608, 792, 976, 1160] }, // the things' places, left to right
+  baskets: [{ x: 440, y: 470 }, { x: 900, y: 470 }],    // basket centres (set order: left, right)
+  basket: 280,                        // a basket's width and height
+  inSize: 84,                         // a thing once it is in a basket
+};
+
+// A board: 3 things for each basket from its pool, in a shuffled order along
+// the row. thing: { id, basket (0 left, 1 right), spot (0..5 along the row) }.
+// The samples on the baskets are never among them.
+export function sortBoard(game, rand = Math.random) {
+  const baskets = SORT_SETS[game];
+  const picked = baskets.flatMap((b, i) => shuffle(b.things, rand).slice(0, SORT.perBasket).map((id) => ({ id, basket: i })));
+  const order = shuffle(picked, rand);
+  return { game, baskets: baskets.map((b) => ({ id: b.id, sample: b.sample })), things: order.map((t, spot) => ({ ...t, spot })) };
+}
+
+// Where a thing waits (its centre), and each basket's box, in units.
+export const thingHome = (t) => [SORT.row.xs[t.spot], SORT.row.y];
+export const basketBoxes = () => SORT.baskets.map(({ x, y }, i) => ({
+  basket: i, x0: x - SORT.basket / 2, y0: y - SORT.basket / 2, x1: x + SORT.basket / 2, y1: y + SORT.basket / 2,
+}));
+
+// The basket a release lands on (within `margin` units), or null.
+export const hitBasket = (point, margin = 0) => hitCard(point, basketBoxes(), margin)?.basket ?? null;
+
+// The thing under her finger: the nearest waiting thing within `margin` units of its box.
+export function hitThing(point, things, placed, margin = 0) {
+  const boxes = things.filter((t) => !placed.includes(t.spot)).map((t) => {
+    const [x, y] = thingHome(t);
+    const h = SORT.size / 2;
+    return { t, x0: x - h, y0: y - h, x1: x + h, y1: y + h };
+  });
+  return hitCard(point, boxes, margin)?.t ?? null;
+}
+
+// Where the k-th thing in a basket sits: along its rim.
+export const basketSlot = (basket, k) => [SORT.baskets[basket].x + (k - 1) * 70, SORT.baskets[basket].y - 50];
+
+// One board being played. dropThing: she let go of `thing` over basket `to`
+// (0 or 1), or away from both (null). Returns { state, ok, counted, hint, done }:
+//   ok       the right basket: the thing stays in it
+//   counted  a wrong basket (letting go away from both is not a try)
+//   hint     after SORT.hintAfter wrong baskets in a row: the basket that
+//            should wiggle once (the right one for this thing); otherwise null
+//   done     all 6 are in their baskets
+export const startSort = () => ({ placed: [], wrongInRow: 0 });
+export function dropThing(state, thing, to) {
+  if (state.placed.includes(thing.spot) || to === null) return { state, ok: false, counted: false, hint: null, done: false };
+  if (to === thing.basket) {
+    const placed = [...state.placed, thing.spot];
+    return { state: { placed, wrongInRow: 0 }, ok: true, counted: false, hint: null, done: placed.length === 2 * SORT.perBasket };
+  }
+  const wrongInRow = state.wrongInRow + 1;
+  const hint = wrongInRow >= SORT.hintAfter ? thing.basket : null;
+  return { state: { ...state, wrongInRow: hint === null ? wrongInRow : 0 }, ok: false, counted: true, hint, done: false };
+}
+
+// The thing Jugnu carries when he shows the first move: the leftmost one.
+export const firstMoveThing = (board) => board.things.find((t) => t.spot === 0);
+
+// ---------------------------------------------------------------------------
 // The attempt log: one "game" entry per release. Stroke and find entries keep their format.
 //   match games: game, set (1..3), from, to (the cards' labels; to is null when
 //                she let go away from every card), ok, ms
+//   sort it:     game 'sort-colors' or 'sort-kinds', set (board 1..2), from (the
+//                thing), to (the basket's id, or null away from both), ok, ms
 //   follow the path: game 'path' or 'path-rooms', road (the animal or the
 //                furniture), ok (home reached) or not (left the road), ms.
 //   ms: since the game opened. Jugnu's first move is not logged: it is not hers.

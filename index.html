@@ -410,6 +410,18 @@
     .gm-jugnu { position: absolute; z-index: 5; pointer-events: none; filter: drop-shadow(0 0 14px rgba(255, 224, 102, 0.9)); }
     .view-play .buddy.away { opacity: 0; transition: opacity 0.3s; }
 
+    /* Sort it: six things along the top, two baskets below, each with its sample on the front. */
+    .gm-board.st-board { background: #EAF7E4; box-shadow: inset 0 0 0 12px #BFE3B0; }
+    .st-basket, .st-thing { position: absolute; }
+    .st-basket { z-index: 3; transform-origin: 50% 90%; }
+    .st-thing { z-index: 4; touch-action: none; transition: filter 0.2s; }
+    .st-basket > svg, .st-thing > svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+    .st-thing.st-lift { z-index: 6; filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.18)); }
+    .st-thing.st-in { pointer-events: none; z-index: 2; } /* in the basket: behind its front */
+    .st-basket.st-take { animation: st-take 0.35s ease-out; }
+    @keyframes st-take { 50% { transform: scale(1.04, 0.96); } }
+    .gm-glow .st-basket, .gm-glow .st-thing { animation: gm-glow 1.2s ease; }
+
     /* ---- Slice 5E: the Drawing book. The menu: free drawing, then a row per level. ---- */
     .view-drawing { background: radial-gradient(circle at 50% 40%, #E0F7F3, #A7DCD3); touch-action: none; }
     .view-dots, .view-paper { background: #CFE9FB; touch-action: none; }
