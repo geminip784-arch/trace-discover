@@ -23,7 +23,7 @@ import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { hasLetterScene, hasNumberScene, lastGroupKind, makeGroup, SHELF_SHOWS } from './finds.js';
 import { OBJECTS, TOYBOX } from '../data/finds.js';
-import { GAMES } from './games.js';
+import { GAME_ROWS, kindOf } from './games.js';
 import { MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
@@ -33,7 +33,10 @@ import { LEVELS, levelPictures, levelOpen, pictureId } from './drawing.js';
 import { pictureSVG, previewSVG, LEVEL_MARK, PAPER_TILE } from '../data/drawings.js';
 
 // The games menu's tiles: each game's frame color.
-const GAME_COLORS = { numbers: '#1E88E5', colors: '#FB8C00', path: '#43A047' };
+const GAME_COLORS = {
+  numbers: '#1E88E5', colors: '#FB8C00', letters: '#3949AB', shadows: '#546E7A', shapes: '#8E24AA',
+  path: '#43A047', 'path-rooms': '#00897B',
+};
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
 const BOOK_OPEN_MS = 650;  // a book's cover opens, then its screen
@@ -234,13 +237,21 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   }
   window.addEventListener('resize', sizeBoard);
 
-  // ---- the games book (the games come in Slice 5D) ----
-  // Three big picture tiles, one per game; a gold star on each she has finished.
+  // ---- the games book (Slices 5D and 5F) ----
+  // A row of picture tiles per kind of game (src/games.js GAME_ROWS), one tile
+  // per set; a gold star on each she has finished.
   function drawGames(view, newGameStar) {
     view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}<div class="gm-menu"></div>`;
     const menu = view.querySelector('.gm-menu');
+    menu.style.setProperty('--rows', GAME_ROWS.length);
     const stars = readGameStars();
-    for (const id of GAMES) {
+    for (const { kind, games } of GAME_ROWS) {
+      const row = document.createElement('div');
+      row.className = `gm-row gm-row-${kind}`;
+      menu.appendChild(row);
+      for (const id of games) addTile(row, id);
+    }
+    function addTile(row, id) {
       const el = document.createElement('div');
       el.className = 'gm-tile';
       el.style.setProperty('--c', GAME_COLORS[id]);
@@ -263,7 +274,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
           go(navigate(state, { type: 'openGame', game: id }));
         }, TILE_PICK_MS);
       });
-      menu.appendChild(el);
+      row.appendChild(el);
     }
   }
 
@@ -351,7 +362,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       saveGameStar(id);
       go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
     };
-    game = id === 'path' ? playPath(view, { onDone }) : playMatch(view, { game: id, onDone });
+    game = kindOf(id) === 'path' ? playPath(view, { game: id, onDone }) : playMatch(view, { game: id, onDone });
     if (upright) game.pause();
   }
 

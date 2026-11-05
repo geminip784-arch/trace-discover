@@ -25,8 +25,8 @@ const SCREENS = [[1280, 626], [1280, 800], [640, 626]];
 
 // ---- the art ----
 
-test('three games; every picture is inline SVG with nothing from the network', () => {
-  assert.deepEqual(GAMES, ['numbers', 'colors', 'path']);
+test('the Slice 5D games are still on the menu; every picture is inline SVG with nothing from the network', () => {
+  for (const id of ['numbers', 'colors', 'path']) assert.ok(GAMES.includes(id), id);
   const all = [...Object.values(MENU), ...Object.keys(COLORS).flatMap((c) => [blob(c), colorThing(c)]),
     ...Object.values(ANIMALS).map((a) => a.art), ...Object.values(HOMES)];
   for (const s of all) {

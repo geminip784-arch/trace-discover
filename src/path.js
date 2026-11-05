@@ -1,6 +1,9 @@
-// path.js — follow the path, on screen (Slice 5D). games.js holds the roads and
-// decides whether her finger is on one; this file draws the board and plays it.
-// Three animals on the left, their homes on the right; three wide roads that
+// path.js — follow the path, on screen (Slices 5D and 5F). games.js holds the
+// roads and decides whether her finger is on one; this file draws the board and
+// plays it. Set 1 ('path'): three animals on the left, their homes on the right.
+// Set 2 ('path-rooms'): three pieces of furniture and their rooms. First,
+// Jugnu flies the top road himself and its traveller hops home; then she
+// carries on. three wide roads that
 // cross, the later road drawn over the earlier with its outline, like a bridge.
 // Her trace glows while she stays on the road. Leaving it fades the trace and
 // the animal wiggles (no sound); after 3 times off the same road, Jugnu flies
@@ -9,9 +12,10 @@
 // the attempt log as a "game" entry.
 
 import {
-  PATH, pathBoard, startsAtAnimal, startTrace, stepTrace, startMisses, missRoad, boardDone, gameLogEntry,
+  PATH, pathBoard, pathThings, startsAtAnimal, startTrace, stepTrace, startMisses, missRoad, boardDone, gameLogEntry,
+  firstMoveRoad, FIRST_MOVE_DELAY_MS,
 } from './games.js';
-import { ANIMALS, HOMES } from '../data/games.js';
+import { ANIMALS, HOMES, FURNITURE, ROOM_HOME, roomArt } from '../data/games.js';
 import { mountBoard, svgEl, replay, JUGNU_IMG } from './match.js';
 import { trackSinglePointer } from './input.js';
 import { logAttempt } from './storage.js';
@@ -27,18 +31,23 @@ const DONE_MS = 1800;     // every animal home: a glow, then back to the menu
 
 const d = (pts) => `M${pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L')}`;
 
-// onDone(): every animal is home. Returns { stop, pause, resume }.
-export function playPath(view, { onDone = () => {}, rand = Math.random }) {
+// game: 'path' (animals) or 'path-rooms' (furniture). onDone(): every one is
+// home. Returns { stop, pause, resume }.
+export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.random }) {
   view.innerHTML = JUGNU_IMG;
   const buddy = view.querySelector('.buddy');
   const board = mountBoard(view);
-  const { roads } = pathBoard(rand);
+  const things = pathThings(game, rand);
+  const { roads } = pathBoard(rand, undefined, things);
+  const rooms = game === 'path-rooms';
+  const artOf = (t) => (rooms ? FURNITURE[t].art : ANIMALS[t].art);
+  const homeOf = (t) => (rooms ? roomArt(FURNITURE[t].home) : HOMES[ANIMALS[t].home]);
 
   const opened = performance.now();
   let alive = true;
   let paused = false;
   let trace = null;     // { road, state, pts }
-  let demoing = false;  // Jugnu is flying a road: touches wait
+  let demoing = true;   // Jugnu is flying a road: touches wait (he shows the first move)
   let misses = startMisses();
   const home = [];      // animals that are home
   const timers = new Set();
@@ -46,7 +55,7 @@ export function playPath(view, { onDone = () => {}, rand = Math.random }) {
     const t = setTimeout(() => { timers.delete(t); if (alive) fn(); }, ms);
     timers.add(t);
   };
-  const log = (road, ok) => logAttempt(gameLogEntry({ game: 'path', road, ok, ms: performance.now() - opened }));
+  const log = (road, ok) => logAttempt(gameLogEntry({ game, road, ok, ms: performance.now() - opened }));
 
   // An animation that holds still while the game is paused. f goes 0..1.
   function tween(ms, onFrame) {
@@ -80,20 +89,22 @@ export function playPath(view, { onDone = () => {}, rand = Math.random }) {
   const traceEl = svgEl('path', { class: 'gm-trace', d: '' }, board.svg);
 
   // ---- the animals and their homes ----
-  const place = (el, [x, y], size) => Object.assign(el.style, {
-    left: `${x - size / 2}px`, top: `${y - size / 2}px`, width: `${size}px`, height: `${size}px`,
+  const place = (el, [x, y], w, h = w) => Object.assign(el.style, {
+    left: `${x - w / 2}px`, top: `${y - h / 2}px`, width: `${w}px`, height: `${h}px`,
   });
   for (const r of roads) {
     const h = document.createElement('div');
-    h.className = 'gm-home';
-    h.innerHTML = HOMES[ANIMALS[r.animal].home];
-    place(h, r.points[r.points.length - 1], HOME_SIZE);
+    h.className = rooms ? 'gm-home gm-room' : 'gm-home';
+    h.innerHTML = homeOf(r.animal);
+    const end = r.points[r.points.length - 1];
+    if (rooms) place(h, [end[0] + 10, end[1]], ROOM_HOME.w, ROOM_HOME.h);
+    else place(h, end, HOME_SIZE);
     board.el.appendChild(h);
     r.homeEl = h;
     const a = document.createElement('div');
     a.className = 'gm-animal';
     a.setAttribute('role', 'button');
-    a.innerHTML = ANIMALS[r.animal].art;
+    a.innerHTML = artOf(r.animal);
     place(a, r.points[0], ANIMAL_SIZE);
     board.el.appendChild(a);
     r.el = a;
@@ -131,7 +142,7 @@ export function playPath(view, { onDone = () => {}, rand = Math.random }) {
     if (m.demo) later(() => demo(r), 600);
   }
 
-  // Jugnu flies the road once, from the animal to its home.
+  // Jugnu flies the road once, from the animal to its home. Resolves when he arrives.
   async function demo(r) {
     demoing = true;
     const j = document.createElement('img');
@@ -150,14 +161,17 @@ export function playPath(view, { onDone = () => {}, rand = Math.random }) {
       place(j, at(e), JUGNU_SIZE);
       trail.setAttribute('stroke-dasharray', `${e} 2`);
     });
-    if (!alive) return;
+    if (!alive) return false;
     j.classList.add('gm-fading');
     trail.classList.add('gm-fading');
     later(() => { j.remove(); trail.remove(); buddy.classList.remove('away'); demoing = false; }, FADE_MS);
+    return true;
   }
 
-  async function arrive(r) {
-    log(r.animal, true);
+  // Home: the traveller hops in with a chime. mine: she traced it (logged);
+  // otherwise it was Jugnu's first move.
+  async function arrive(r, mine = true) {
+    if (mine) log(r.animal, true);
     home.push(r.animal);
     trace = null;
     drawTrace();
@@ -173,7 +187,7 @@ export function playPath(view, { onDone = () => {}, rand = Math.random }) {
     if (!alive) return;
     r.el.classList.add('gm-home-in');
     r.homeEl.classList.add('gm-lit');
-    if (boardDone(home)) {
+    if (boardDone(home, things)) {
       board.el.classList.add('gm-glow');
       letterChime();
       later(onDone, DONE_MS);
@@ -211,6 +225,12 @@ export function playPath(view, { onDone = () => {}, rand = Math.random }) {
     drawTrace();
   };
   board.onResize = dropTrace;
+
+  // Jugnu's first move: he flies the top road and its traveller follows him home.
+  later(async () => {
+    const r = firstMoveRoad(roads);
+    if (await demo(r)) arrive(r, false);
+  }, FIRST_MOVE_DELAY_MS);
 
   return {
     pause() { paused = true; dropTrace(); },

@@ -1,5 +1,5 @@
 // games.js — pure functions only. No DOM, no storage, no audio.
-// The rules of the games book (Slice 5D): the match sets, where cards sit, the
+// The rules of the games book (Slices 5D and 5F): the menu's rows, the match sets, where cards sit, the
 // release hit-test, the hints, the roads of follow the path, the on-road check,
 // completion and the attempt-log entry. match.js and path.js put them on screen.
 // Every random choice takes `rand` (Math.random by default) so tests can repeat it.
@@ -9,10 +9,24 @@
 // lines and traces are all kept in units and stay put when the screen changes.
 
 import { ROOMS, THINGS } from '../data/finds.js';
-import { COLORS, ROAD_LAYOUTS, LANES } from '../data/games.js';
+import {
+  COLORS, ROAD_LAYOUTS, LANES, LETTER_PICTURES, SHADOW_THINGS, SHAPES, FURNITURE,
+} from '../data/games.js';
 import { shuffle, groupWord } from './finds.js';
 
-export const GAMES = ['numbers', 'colors', 'path'];
+// The menu: one row of picture tiles per kind of game, one tile per set. Each
+// tile is its own game: it earns its own star and its id goes in the log.
+export const GAME_ROWS = [
+  { kind: 'match', games: ['numbers', 'colors', 'letters', 'shadows', 'shapes'] },
+  { kind: 'path', games: ['path', 'path-rooms'] },
+];
+export const GAMES = GAME_ROWS.flatMap((r) => r.games);
+export const MATCH_GAMES = GAME_ROWS.find((r) => r.kind === 'match').games;
+export const kindOf = (game) => GAME_ROWS.find((r) => r.games.includes(game))?.kind ?? null;
+
+// Jugnu shows the first move on the first set of every game, then she carries on.
+export const FIRST_MOVE_DELAY_MS = 700;
+export const showsFirstMove = (setNo) => setNo === 1;
 export const SETS_PER_PLAY = 3;   // match games: three sets of 4 make one play
 export const PAIRS = 4;
 export const RELEASE_MARGIN_PX = 40; // a release this close to a card counts as on it
@@ -85,7 +99,42 @@ function withOrder(pairs, rand) {
   return { pairs, rows: { left, right: shuffledApart(pairs.length, left, rand) } };
 }
 
-export const makeSet = (game, rand = Math.random) => (game === 'numbers' ? numbersSet(rand) : colorsSet(rand));
+// Letter to picture: 4 of the recorded letters, each with its one object.
+export function lettersSet(rand = Math.random) {
+  const letters = shuffle(Object.keys(LETTER_PICTURES), rand).slice(0, PAIRS);
+  const pairs = letters.map((l) => ({
+    key: l,
+    left: { letter: l, label: l },
+    right: { object: LETTER_PICTURES[l], label: LETTER_PICTURES[l] },
+  }));
+  return withOrder(pairs, rand);
+}
+
+// Thing to its shadow: 4 different things; the right column shows their shadows.
+export function shadowsSet(rand = Math.random) {
+  const things = shuffle(SHADOW_THINGS, rand).slice(0, PAIRS);
+  const pairs = things.map((t) => ({
+    key: t,
+    left: { object: t, label: t },
+    right: { shadow: t, label: `${t}-shadow` },
+  }));
+  return withOrder(pairs, rand);
+}
+
+// Shape to thing: all 4 shapes, each with one of its two things.
+export function shapesSet(rand = Math.random) {
+  const pairs = Object.keys(SHAPES).map((shape) => {
+    const thing = pick(SHAPES[shape].things, rand);
+    return { key: shape, left: { shape, label: shape }, right: { thing, label: thing } };
+  });
+  return withOrder(pairs, rand);
+}
+
+const SET_MAKERS = { numbers: numbersSet, colors: colorsSet, letters: lettersSet, shadows: shadowsSet, shapes: shapesSet };
+export const makeSet = (game, rand = Math.random) => SET_MAKERS[game](rand);
+
+// The pair Jugnu matches when he shows the first move: the one on the top left card.
+export const firstMovePair = (set) => set.rows.left[0];
 
 // Every card of a set with its box in units: { side, row, pair, x0, y0, x1, y1, anchor }.
 // anchor: where its line starts or ends (the inner edge, half way down).
@@ -155,6 +204,7 @@ export const partnerCard = (cards, from) => cards.find((c) => c.pair === from.pa
 
 export const PATH = {
   animals: ['bee', 'duck', 'dog'],
+  furniture: Object.keys(FURNITURE), // set 2: three of these on each board
   rows: [LANES[0], LANES[2], LANES[4]], // the animals' and homes' rows
   animalX: 150,
   homeX: 1130,
@@ -197,11 +247,15 @@ export function roadLine(knots, p = PATH) {
   return smooth(knots.map(([t, lane]) => [p.animalX + t * (p.homeX - p.animalX), LANES[lane]]));
 }
 
+// What travels the roads: the three animals ('path'), or three of the four
+// pieces of furniture in a shuffled order ('path-rooms').
+export const pathThings = (game, rand = Math.random) => (game === 'path-rooms' ? shuffle(PATH.furniture, rand).slice(0, 3) : PATH.animals);
+
 // A board: one of the hand-designed layouts, with the homes in a shuffled order.
-// road: { animal, from, to (rows), points, length }.
-export function pathBoard(rand = Math.random, layout = Math.floor(rand() * ROAD_LAYOUTS.length)) {
+// road: { animal, from, to (rows), points, length }; animal is whatever travels it.
+export function pathBoard(rand = Math.random, layout = Math.floor(rand() * ROAD_LAYOUTS.length), things = PATH.animals) {
   const homes = pick(HOME_ORDERS, rand);
-  const roads = PATH.animals.map((animal, from) => {
+  const roads = things.map((animal, from) => {
     const points = roadLine(ROAD_LAYOUTS[layout][homes.join('')][from]);
     return { animal, from, to: homes[from], points, length: polylineLength(points) };
   });
@@ -252,14 +306,18 @@ export function missRoad(misses, animal) {
 }
 
 // The board is done when every animal is home.
-export const boardDone = (home) => PATH.animals.every((a) => home.includes(a));
+export const boardDone = (home, things = PATH.animals) => things.every((a) => home.includes(a));
+
+// The road Jugnu travels when he shows the first move: the top one.
+export const firstMoveRoad = (roads) => roads[0];
 
 // ---------------------------------------------------------------------------
 // The attempt log: one "game" entry per release. Stroke and find entries keep their format.
 //   match games: game, set (1..3), from, to (the cards' labels; to is null when
 //                she let go away from every card), ok, ms
-//   follow the path: game 'path', road (the animal), ok (home reached) or not
-//                (left the road), ms. ms: since the game opened.
+//   follow the path: game 'path' or 'path-rooms', road (the animal or the
+//                furniture), ok (home reached) or not (left the road), ms.
+//   ms: since the game opened. Jugnu's first move is not logged: it is not hers.
 export function gameLogEntry({ game, set, from, to, road, ok, ms, now = new Date() }) {
   const entry = { type: 'game', time: now.toISOString(), game };
   if (set !== undefined) entry.set = set;
