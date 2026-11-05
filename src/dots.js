@@ -7,8 +7,8 @@
 // silently, and she carries on from the last dot. After 8 s without a new dot
 // Jugnu flies to it (then every 15 s, at most 3 times per dot). Closing the
 // shape fills it with its colors and a chime; level 3 then shows the second
-// thing's dots beside it. At the end, a crayon row to color over it and a big
-// tick that finishes. Everything is in board units. Each dot she reaches is a
+// thing's dots beside it. At the end, a crayon row to color over it (with the
+// eraser, which rubs out only her coloring) and a big tick that finishes. Everything is in board units. Each dot she reaches is a
 // "draw" attempt-log entry.
 
 import {
@@ -17,7 +17,7 @@ import {
 } from './drawing.js';
 import { PICTURES, TICK } from '../data/drawings.js';
 import { mountBoard, svgEl, JUGNU_IMG } from './match.js';
-import { createInk, createCrayonRow, onCrayonRow } from './paper.js';
+import { createInk, createCanvasInk, createCrayonRow, onCrayonRow } from './paper.js';
 import { trackSinglePointer } from './input.js';
 import { logAttempt } from './storage.js';
 import { chime, letterChime } from './audio.js';
@@ -40,17 +40,19 @@ export function playDots(view, { level, picture, onDone = () => {} }) {
   board.el.classList.add('dw-board');
   const boxes = boxesFor(pic.things);
 
-  // Layers, bottom to top: the scene (level 3, at the end), the colors, her
-  // coloring, the dashed outline (level 1), her lines, the dots.
+  // Layers, bottom to top: the scene (level 3, at the end), the colors (in the
+  // board's SVG); her coloring (a canvas, the only layer the eraser touches);
+  // then a second SVG on top: the dashed outline (level 1), her lines, the dots.
   const scene = svgEl('g', { class: 'dw-scene' }, board.svg);
   svgEl('rect', { x: 12, y: 12, width: 1256, height: 616, rx: 30, fill: '#DDF1FF' }, scene);
   svgEl('rect', { x: 12, y: 448, width: 1256, height: 180, rx: 30, fill: '#9ED58A' }, scene);
   svgEl('rect', { x: 12, y: 448, width: 1256, height: 14, fill: '#7FC46B' }, scene);
   const artG = svgEl('g', {}, board.svg);
-  const colorInk = createInk(board.svg, { width: 24 });
-  const outlineG = svgEl('g', { class: 'dw-outline' }, board.svg);
-  const lineInk = createInk(board.svg, { width: LINE_WIDTH });
-  const dotsG = svgEl('g', { class: 'dw-dots' }, board.svg);
+  const colorInk = createCanvasInk(board);
+  const top = svgEl('svg', { viewBox: board.svg.getAttribute('viewBox'), class: 'gm-svg dw-top' }, board.el);
+  const outlineG = svgEl('g', { class: 'dw-outline' }, top);
+  const lineInk = createInk(top, { width: LINE_WIDTH });
+  const dotsG = svgEl('g', { class: 'dw-dots' }, top);
 
   const opened = performance.now();
   let alive = true;
@@ -194,7 +196,9 @@ export function playDots(view, { level, picture, onDone = () => {} }) {
       if (paused) return;
       const u = board.toUnits(p);
       if (phase === 'coloring') {
-        if (!onCrayonRow(u)) colorInk.begin(u, crayons.color());
+        if (onCrayonRow(u)) return;
+        if (crayons.eraser()) colorInk.erase(u);
+        else colorInk.begin(u, crayons.color(), 24);
         return;
       }
       if (phase !== 'dots' || !startsAtDot(u, dots, state, reachUnits(board.s))) return;
@@ -232,7 +236,8 @@ export function playDots(view, { level, picture, onDone = () => {} }) {
     lineInk.drop();
     colorInk.drop();
   };
-  board.onResize = dropLine;
+  // After a resize her coloring is redrawn to fit, erased parts and all.
+  board.onResize = () => { dropLine(); colorInk.resize(); };
 
   showPart(0);
 
@@ -246,6 +251,7 @@ export function playDots(view, { level, picture, onDone = () => {} }) {
       for (const t of timers) clearTimeout(t);
       timers.clear();
       stopTracking();
+      colorInk.stop();
       board.stop();
     },
   };

@@ -438,6 +438,8 @@
     .gm-board.dw-board { background: #FFFFFF; box-shadow: inset 0 0 0 12px #D6E6F5; }
     .dw-paper { fill: #fff; stroke: #E3EEF8; stroke-width: 4; }
     .dw-ink path, .dw-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .dw-canvas { position: absolute; left: 0; top: 0; width: 1280px; height: 640px; pointer-events: none; z-index: 3; }
+    .gm-svg.dw-top { z-index: 3; }
     .dw-rainbow path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
     .dw-fading { animation: gm-fade 0.45s ease forwards; }
     .dw-dashed { fill: none; stroke: #B8C2CF; stroke-width: 4; stroke-dasharray: 14 12; stroke-linejoin: round; }
@@ -460,6 +462,9 @@
     .dw-crayon > svg, .dw-button > svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
     .dw-crayon.on { transform: translateY(-14px) scale(1.06); filter: drop-shadow(0 0 10px rgba(255, 212, 59, 0.9)); }
     .dw-button:active { transform: scale(0.94); }
+    .dw-button.holding { transform: scale(0.94); }
+    .dw-button > svg.dw-ring { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); transform: rotate(-90deg); }
+    .dw-ring circle { fill: none; stroke: #FFD43B; stroke-width: 8; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transform-box: view-box; transform-origin: center; transform: scale(0.92); }
     .dw-tick { animation: dw-tick 1.4s ease-in-out infinite; }
     @keyframes dw-tick { 50% { transform: scale(1.07); filter: drop-shadow(0 0 12px rgba(53, 208, 127, 0.7)); } }
 
