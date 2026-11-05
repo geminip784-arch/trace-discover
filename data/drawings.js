@@ -164,12 +164,22 @@ export function crayonSVG(c) {
     + '<rect x="18" y="34" width="5" height="76" rx="2.5" fill="#fff" opacity=".3"/></svg>';
 }
 
-// The big tick that finishes a picture, and the button that clears the paper.
+// The pink eraser, standing in a crayon's place in the row (60 x 120).
+export const ERASER = `<svg ${NS} viewBox="0 0 60 120" class="art" style="overflow:visible">`
+  + '<ellipse cx="30" cy="116" rx="22" ry="4" fill="#000" opacity=".12"/>'
+  + '<rect x="9" y="40" width="42" height="74" rx="10" fill="#FF9EC4"/>'
+  + '<rect x="9" y="96" width="42" height="18" rx="9" fill="#F27AAE"/>'
+  + '<rect x="9" y="52" width="42" height="26" fill="#4D96FF"/><rect x="9" y="56" width="42" height="5" fill="#fff" opacity=".45"/>'
+  + '<rect x="14" y="44" width="6" height="64" rx="3" fill="#fff" opacity=".35"/></svg>';
+
+// The big tick that finishes a picture, and the button that clears the paper
+// (held down: a fresh white page with sparkles).
 export const TICK = `<svg ${NS} viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="46" fill="#35D07F" stroke="#23A862" stroke-width="4"/>`
   + '<path d="M28 52 L44 68 L74 34" stroke="#fff" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-export const CLEAR = `<svg ${NS} viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="46" fill="#fff" stroke="#D6E6F5" stroke-width="4"/>`
-  + '<g transform="rotate(-30 50 50)"><rect x="24" y="36" width="52" height="28" rx="7" fill="#FF9EC4"/><rect x="24" y="36" width="20" height="28" rx="7" fill="#4D96FF"/><rect x="36" y="36" width="8" height="28" fill="#4D96FF"/></g>'
-  + '<g fill="#B8C2CF"><circle cx="26" cy="76" r="3"/><circle cx="36" cy="82" r="2.2"/><circle cx="18" cy="66" r="2"/></g></svg>';
+const SPARKLE = (x, y, r) => `<path d="M${x} ${y - r} Q${x} ${y} ${x + r} ${y} Q${x} ${y} ${x} ${y + r} Q${x} ${y} ${x - r} ${y} Q${x} ${y} ${x} ${y - r} Z"/>`;
+export const CLEAR = `<svg ${NS} viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="46" fill="#EAF4FF" stroke="#D6E6F5" stroke-width="4"/>`
+  + '<rect x="30" y="24" width="38" height="50" rx="5" fill="#fff" stroke="#B8C2CF" stroke-width="3" transform="rotate(-6 49 49)"/>'
+  + `<g fill="#FFD43B">${SPARKLE(72, 28, 9)}${SPARKLE(26, 70, 7)}${SPARKLE(74, 70, 5)}</g></svg>`;
 
 // The menu's mark for each level: one, two or three dots (no numbers, no text).
 export const LEVEL_MARK = (level) => `<svg ${NS} viewBox="0 0 24 ${level * 22}" class="art">`

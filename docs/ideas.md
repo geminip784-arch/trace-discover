@@ -59,3 +59,8 @@ picks its room, its 3 right objects and its 4 others, and where they stand.
 
 - Let her keep a free drawing or a colored picture on her shelf of finds (the toy box). The strokes are already in board units, so a drawing could be saved as its list of strokes and shown small on a plank.
 - Car and building is drawn building first, so the car is drawn beside the finished building.
+
+## Eraser (after Slice 5E): follow-ups
+
+- The coloring step after a dot picture has the eraser but no clear-all: the crayon row has room for only one button, and there it is the tick. If she wants to start her coloring over, a clear-all could go at the top right of the board, with the same press-and-hold ring.
+- Her strokes now include eraser strokes, so a saved drawing (the shelf idea above) would replay correctly as long as it keeps the whole list in order.
