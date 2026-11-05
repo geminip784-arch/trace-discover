@@ -23,7 +23,7 @@ export const HINT_MAX = 3;
 
 // The menu's pictures for a level: { id, things } (level 3: two things).
 export function levelPictures(level) {
-  if (level === 3) return PAIRS.map(([a, b]) => ({ id: `${a}-${b}`, things: [a, b] }));
+  if (level === 3) return PAIRS.map((p) => ({ id: p.id, things: [...p.things] }));
   return LEVEL_PICTURES.map((id) => ({ id, things: [id] }));
 }
 
@@ -37,7 +37,7 @@ export const dotsFor = (thing, level) => PICTURES[thing].dots[level === 1 ? 1 : 
 // 100 x 100 box scaled to size). One thing sits in the middle; two sit side by side.
 export const BOXES = {
   one: [{ x: 400, y: 24, size: 480 }],
-  two: [{ x: 150, y: 70, size: 420 }, { x: 710, y: 70, size: 420 }],
+  two: [{ x: 150, y: 88, size: 420 }, { x: 710, y: 88, size: 420 }],
 };
 export const boxesFor = (things) => (things.length === 1 ? BOXES.one : BOXES.two);
 
