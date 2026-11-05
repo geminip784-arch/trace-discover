@@ -64,3 +64,11 @@ picks its room, its 3 right objects and its 4 others, and where they stand.
 
 - The coloring step after a dot picture has the eraser but no clear-all: the crayon row has room for only one button, and there it is the tick. If she wants to start her coloring over, a clear-all could go at the top right of the board, with the same press-and-hold ring.
 - Her strokes now include eraser strokes, so a saved drawing (the shelf idea above) would replay correctly as long as it keeps the whole list in order.
+
+## Generated characters: what else can be generated the same way
+
+`data/glyphs.js` and `npm run glyphs` (exact lines and arcs on the guide grid) can grow to:
+
+- **Lowercase letters.** Use the fence line (0.5) as the x-height: a, c, e, m, n, o, r, s, u, v, w, x, z sit between the fence and the grass line; b, d, f, h, k, l and t reach up to the sky line. Add a descender line below the grass line (the ground line at 1.3 is close; the descender may need its own line) for g, j, p, q and y. i and j get a `dot` stroke. Each needs a stroke list in `data/stroke-order.js` first, and its own board.
+- **Numbers 10 to 20.** Two digits side by side: the first digit's strokes, then the second digit's strokes moved right by the first digit's width. Stroke order stays left digit first. The board and the file ids (`10` ... `20`) are new.
+- `recorder.html` stays for hand-recorded overrides: put an id in `OVERRIDES` in `data/glyphs.js` and the generator keeps that file.
