@@ -4,11 +4,13 @@
 import { computeLayout, drawLines, letterOffset, toUnits } from './render.js';
 import { trackSinglePointer } from './input.js';
 import {
-  CHAR_IDS, isTooShort, processStroke, tapToDot, straighten, buildCharacter, exportBundle,
+  CHAR_IDS, CHAR_GROUPS, isTooShort, processStroke, tapToDot, straighten, smooth, joinGap,
+  strokeOrderOf, strokeCountWarnings, buildCharacter, exportBundle,
 } from './recording.js';
+import { JOIN_GAP } from './variants.js';
 
 const STORAGE_KEY = 'trace-discover.recorder.chars';
-const BOX_WIDTH = 0.75; // same box as the faint L in index.html (L.example.json width)
+const BOX_WIDTH = 0.75; // default box: the faint L in index.html (L.example.json width)
 const GUIDE_FONT = 'sans-serif';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -29,6 +31,8 @@ let dirty = false;          // strokes changed since the last save or load
 let guideOn = false;
 let layout;
 let offset;                 // x of the character box, in units from the left end of the lines
+let boxWidth = BOX_WIDTH;   // the current character's rough width from the stroke-order guide
+let inApp = new Set();      // ids listed in data/chars/index.json
 let scale = 1;
 let drawing = null;         // the stroke in progress: { px: [[x, y]], units: [[x, y]] }
 let playing = null;         // requestAnimationFrame id while Play runs
@@ -84,7 +88,7 @@ function drawMarks() {
 
   const [bx, by] = toPx([0, 0]);
   svgEl('rect', {
-    x: bx, y: by, width: BOX_WIDTH * unit, height: unit,
+    x: bx, y: by, width: boxWidth * unit, height: unit,
     fill: 'rgba(255, 255, 255, 0.04)', stroke: 'rgba(255, 255, 255, 0.25)',
     'stroke-width': 1, 'stroke-dasharray': '6 6',
   });
@@ -131,6 +135,94 @@ function drawMarks() {
     });
     label.textContent = String(i + 1);
   });
+
+  // Join check: a thin line from each stroke's end to the next stroke's start, with the gap.
+  // Green when the one-stroke rule (JOIN_GAP) would let her draw both in one go.
+  strokes.forEach((s, i) => {
+    const j = joinGap(strokes, i);
+    if (!j) return;
+    const [ex, ey] = toPx(s.points[s.points.length - 1]);
+    const [nx, ny] = toPx(strokes[i + 1].points[0]);
+    const color = j.joins ? '#1f9d3a' : '#5a6190';
+    svgEl('line', { x1: ex, y1: ey, x2: nx, y2: ny, stroke: color, 'stroke-width': 2, 'stroke-dasharray': '4 4' });
+    const t = svgEl('text', {
+      x: (ex + nx) / 2 + 0.04 * unit, y: (ey + ny) / 2 + 0.1 * unit, 'font-size': 0.065 * unit,
+      'font-family': 'system-ui, sans-serif', 'font-weight': 700, fill: color,
+    });
+    t.textContent = `${i + 1}→${i + 2}: ${j.gap}${j.joins ? ' joins' : ''}`;
+  });
+}
+
+// ---- Stroke-order guide (top right): numbered strokes, the words, the count and the last join ----
+function drawGuide() {
+  const ref = $('ref');
+  ref.replaceChildren();
+  const order = strokeOrderOf(current);
+  if (!order) {
+    ref.hidden = true;
+    return;
+  }
+  ref.hidden = false;
+  const pad = 0.2;
+  const svg = svgEl('svg', {
+    viewBox: `${-pad} ${-pad} ${order.width + 2 * pad} ${1 + 2 * pad}`, preserveAspectRatio: 'xMidYMid meet',
+  }, ref);
+  for (const y of [0, 0.5, 1]) {
+    svgEl('line', {
+      x1: -pad, x2: order.width + pad, y1: y, y2: y, stroke: 'rgba(255, 255, 255, 0.25)',
+      'stroke-width': 0.012, 'stroke-dasharray': y === 0.5 ? '0.04 0.04' : 'none',
+    }, svg);
+  }
+  order.strokes.forEach((st, i) => {
+    const pts = st.path;
+    const next = i === strokes.length;
+    svgEl('polyline', {
+      points: pts.map((p) => p.join(',')).join(' '), fill: 'none',
+      stroke: next ? '#ffe85c' : 'rgba(255, 232, 92, 0.6)', 'stroke-width': next ? 0.05 : 0.035,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }, svg);
+    const end = pts[pts.length - 1];
+    const from = pts[Math.max(0, pts.length - 3)];
+    const ang = Math.atan2(end[1] - from[1], end[0] - from[0]);
+    const wing = (a) => [end[0] - 0.09 * Math.cos(ang + a), end[1] - 0.09 * Math.sin(ang + a)];
+    svgEl('polygon', { points: [end, wing(0.5), wing(-0.5)].map((p) => p.join(',')).join(' '), fill: '#ffe85c' }, svg);
+    const [sx, sy] = pts[0];
+    svgEl('circle', { cx: sx, cy: sy, r: 0.045, fill: '#4cc25a' }, svg);
+    const sameStart = order.strokes.slice(i + 1)
+      .filter((o) => Math.hypot(o.path[0][0] - sx, o.path[0][1] - sy) < 0.06).length;
+    const n = svgEl('text', {
+      x: sx - 0.1 - 0.1 * sameStart, y: sy - 0.04, 'font-size': 0.14, 'font-weight': 700,
+      'font-family': 'system-ui, sans-serif', fill: '#ffffff', 'text-anchor': 'middle',
+    }, svg);
+    n.textContent = String(i + 1);
+  });
+
+  const list = document.createElement('ol');
+  order.strokes.forEach((st, i) => {
+    const li = document.createElement('li');
+    li.textContent = st.say;
+    if (i < strokes.length) li.className = 'done';
+    else if (i === strokes.length) li.className = 'next';
+    list.appendChild(li);
+  });
+  ref.appendChild(list);
+
+  const count = document.createElement('div');
+  const want = order.strokes.length;
+  count.className = `count ${strokes.length > want ? 'warn' : strokes.length === want ? 'good' : ''}`;
+  count.textContent = `Strokes: ${strokes.length} of ${want}`
+    + (strokes.length > want ? ' (more than the guide)' : '') + ` · family: ${order.family}`;
+  ref.appendChild(count);
+
+  // The newest join: the end of the stroke before the last to the start of the last.
+  const j = joinGap(strokes, strokes.length - 2);
+  if (j) {
+    const join = document.createElement('div');
+    join.className = `join ${j.joins ? 'good' : ''}`;
+    join.textContent = `Gap ${strokes.length - 1}→${strokes.length}: ${j.gap} `
+      + (j.joins ? `(≤ ${JOIN_GAP}: she may draw them as one stroke)` : `(more than ${JOIN_GAP}: no join)`);
+    ref.appendChild(join);
+  }
 }
 
 // ---- Live ink and Play, on the canvas ----
@@ -205,26 +297,59 @@ function play() {
   playing = requestAnimationFrame(frame);
 }
 
-// ---- Buttons ----
+// ---- Character picker: a grid with one row per group, coloured by status ----
 const charButtons = {};
-for (const id of CHAR_IDS) {
-  const b = document.createElement('button');
-  b.className = 'char';
-  b.addEventListener('click', () => pickChar(id));
-  $('top').appendChild(b);
-  charButtons[id] = b;
+for (const group of CHAR_GROUPS) {
+  const row = document.createElement('div');
+  row.className = 'group';
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = group.name;
+  row.appendChild(name);
+  for (const id of group.ids) {
+    const b = document.createElement('button');
+    b.className = 'tile';
+    b.textContent = id;
+    b.addEventListener('click', () => {
+      $('picker').hidden = true;
+      pickChar(id);
+    });
+    row.appendChild(b);
+    charButtons[id] = b;
+  }
+  $('picker-groups').appendChild(row);
+}
+$('pick').addEventListener('click', () => {
+  updateButtons();
+  $('picker').hidden = false;
+});
+$('picker-close').addEventListener('click', () => {
+  $('picker').hidden = true;
+});
+
+function statusText(id) {
+  const parts = [];
+  if (inApp.has(id)) parts.push('in the app');
+  if (saved[id]) parts.push('saved here');
+  return parts.length ? parts.join(', ') : 'not recorded yet';
 }
 
+// ---- Buttons ----
 function updateButtons() {
   for (const id of CHAR_IDS) {
     const b = charButtons[id];
-    b.textContent = saved[id] ? `${id} ✓` : id;
+    b.classList.toggle('app', inApp.has(id));
+    b.classList.toggle('saved', Boolean(saved[id]));
     b.classList.toggle('current', id === current);
+    b.title = statusText(id);
   }
+  $('pick').textContent = `Character: ${current}`;
+  $('char-status').textContent = statusText(current);
   const last = strokes[strokes.length - 1];
   $('undo').disabled = strokes.length === 0;
   $('clear').disabled = strokes.length === 0;
   $('straighten').disabled = !last || last.kind !== 'line';
+  $('smooth').disabled = !last || last.kind !== 'line';
   $('play').disabled = strokes.length === 0;
   $('save').disabled = strokes.length === 0 || !dirty;
   $('save').classList.toggle('unsaved', strokes.length > 0 && dirty);
@@ -236,6 +361,7 @@ function updateButtons() {
 
 function refresh() {
   drawMarks();
+  drawGuide();
   updateButtons();
 }
 
@@ -247,6 +373,8 @@ function changed() {
 function loadChar(id) {
   stopPlay();
   current = id;
+  boxWidth = strokeOrderOf(id)?.width ?? BOX_WIDTH;
+  offset = letterOffset(layout, boxWidth);
   const c = saved[id];
   strokes = c ? c.strokes.map((s) => ({ kind: s.kind, points: s.points.map((p) => [...p]) })) : [];
   direction = c ? c.direction : 'ltr';
@@ -297,6 +425,13 @@ $('straighten').addEventListener('click', () => {
   last.points = straighten(last.points);
   changed();
 });
+$('smooth').addEventListener('click', () => {
+  const last = strokes[strokes.length - 1];
+  if (!last || last.kind !== 'line') return;
+  stopPlay();
+  last.points = smooth(last.points);
+  changed();
+});
 $('dot').addEventListener('click', () => {
   dotNext = !dotNext;
   updateButtons();
@@ -317,7 +452,32 @@ $('save').addEventListener('click', () => {
   refresh();
 });
 
-$('export').addEventListener('click', async () => {
+// Export: first a warning if any saved character's stroke count differs from the guide
+// (warn, don't block), then the bundle.
+$('export').addEventListener('click', () => {
+  const warnings = strokeCountWarnings(saved);
+  if (warnings.length === 0) {
+    showExport();
+    return;
+  }
+  const list = $('warn-list');
+  list.replaceChildren();
+  for (const w of warnings) {
+    const li = document.createElement('li');
+    li.textContent = `${w.id}: ${w.recorded} recorded, the guide has ${w.expected}`;
+    list.appendChild(li);
+  }
+  $('warn').hidden = false;
+});
+$('warn-back').addEventListener('click', () => {
+  $('warn').hidden = true;
+});
+$('warn-export').addEventListener('click', () => {
+  $('warn').hidden = true;
+  showExport();
+});
+
+async function showExport() {
   const text = exportBundle(saved);
   const box = $('export-text');
   box.value = text;
@@ -332,7 +492,7 @@ $('export').addEventListener('click', async () => {
   $('export-status').textContent = copied
     ? `Copied ${count} character(s) to the clipboard. The same text is below.`
     : `Could not copy automatically. Tap Select all, then copy the text below (${count} character(s)).`;
-});
+}
 $('export-select').addEventListener('click', () => {
   const box = $('export-text');
   box.focus();
@@ -376,7 +536,7 @@ trackSinglePointer(area, {
 // ---- Layout ----
 function applyLayout() {
   layout = computeLayout(window.innerWidth, window.innerHeight);
-  offset = letterOffset(layout, BOX_WIDTH);
+  offset = letterOffset(layout, boxWidth);
   scale = window.devicePixelRatio || 1;
   live.width = Math.round(layout.areaWidth * scale);
   live.height = Math.round(layout.areaHeight * scale);
@@ -398,6 +558,15 @@ for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
     if (e.target.id !== 'export-text') e.preventDefault();
   });
 }
+
+// Which characters the app already has. A local file next to this page, so no network.
+fetch('data/chars/index.json')
+  .then((r) => (r.ok ? r.json() : []))
+  .then((ids) => {
+    inApp = new Set(Array.isArray(ids) ? ids : []);
+    updateButtons();
+  })
+  .catch(() => { /* opened without a server: statuses show "saved here" only */ });
 
 applyLayout();
 loadChar(current);
