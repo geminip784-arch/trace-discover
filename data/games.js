@@ -467,3 +467,71 @@ Object.assign(MENU, {
     `${tileBasket('apple', -4)}`
     + `${tileBasket('teddy', 100)}`),
 });
+
+// ---------------------------------------------------------------------------
+// Odd one out: a row of four, three alike and one different
+
+// The colors a thing can be painted in (color rows), and the recolorable things.
+export const PAINTS = {
+  red: { paint: '#FF4D4D', edge: '#D93636', light: '#FF9A9A' },
+  blue: { paint: '#4D96FF', edge: '#2F74D9', light: '#BDE6FF' },
+  yellow: { paint: '#FFD43B', edge: '#E7B500', light: '#FFF0A0' },
+  green: { paint: '#35C46A', edge: '#23994F', light: '#A8E6BF' },
+};
+const recolor = (art, map) => Object.entries(map).reduce((a, [from, to]) => a.replaceAll(from, to), art);
+const PAINTED = {
+  ball: (p) => svg('0 0 60 60', `<circle cx="30" cy="30" r="21" fill="${p.paint}" stroke="${p.edge}" stroke-width="2"/>`
+    + '<path d="M11 24 C20 32 40 32 49 24" stroke="#fff" stroke-width="5" fill="none"/>'
+    + `<path d="M11 38 C20 46 40 46 49 38" stroke="${p.light}" stroke-width="5" fill="none"/>`),
+  car: (p) => svg('0 4 100 100', recolor(inner(PICTURES.car.art), { '#4D96FF': p.paint, '#2F74D9': p.edge, '#7FB8FF': p.light, '#FF8FB8': p.light })),
+  balloon: (p) => svg('0 0 60 60', recolor(SORT_NEW.balloon, { '#4D96FF': p.paint, '#2F74D9': p.edge })),
+  cup: (p) => svg('0 0 60 60', recolor(THINGS.cup.art, { '#4D96FF': p.paint })),
+  sock: (p) => svg('0 0 60 60', recolor(THINGS.sock.art, { '#FF8FD6': p.paint })),
+  book: (p) => svg('0 0 60 60', recolor(THINGS.book.art, { '#4D96FF': p.paint })),
+  crayon: (p) => svg('0 0 60 60', recolor(THINGS.crayon.art, { '#FF6B6B': p.paint })),
+  tshirt: (p) => svg('0 0 60 60', `<path d="M20 8 L8 16 L4 28 L14 31 L16 24 L16 54 L44 54 L44 24 L46 31 L56 28 L52 16 L40 8 Q30 16 20 8 Z" fill="${p.paint}" stroke="${p.edge}" stroke-width="2.5" stroke-linejoin="round"/>`
+    + '<path d="M22 9 Q30 15 38 9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>'
+    + `<rect x="16" y="38" width="28" height="5" fill="${p.light}"/>`),
+  cap: (p) => svg('0 0 60 60', `<path d="M8 38 Q8 12 32 12 Q52 12 52 34 L52 38 Z" fill="${p.paint}" stroke="${p.edge}" stroke-width="2.5" stroke-linejoin="round"/>`
+    + `<path d="M30 38 L58 38 Q58 46 46 46 L30 46 Z" fill="${p.edge}"/>`
+    + `<circle cx="31" cy="12" r="4" fill="${p.light}"/>`
+    + `<path d="M18 36 Q20 22 30 18" stroke="${p.light}" stroke-width="3" fill="none" stroke-linecap="round"/>`),
+};
+
+// Every thing Odd one out shows: its kind and its color. A painted thing's id
+// is '<object>-<color>' (ball-red, cup-blue); the same object in two colors are twins.
+const FIXED = {
+  apple: { kind: 'fruit', color: 'red', art: () => svg('0 0 60 60', THINGS.apple.art) },
+  strawberry: { kind: 'fruit', color: 'red', art: () => sortThingArt('strawberry') },
+  banana: { kind: 'fruit', color: 'yellow', art: () => sortThingArt('banana') },
+  lemon: { kind: 'fruit', color: 'yellow', art: () => svg('0 0 60 60', THINGS.lemon.art) },
+  grapes: { kind: 'fruit', color: 'purple', art: () => colorThing('purple') },
+  orange: { kind: 'fruit', color: 'orange', art: () => colorThing('orange') },
+  block: { kind: 'toy', color: 'yellow', art: () => svg('0 0 60 60', THINGS.block.art) },
+  teddy: { kind: 'toy', color: 'brown', art: () => sortThingArt('teddy') },
+  top: { kind: 'toy', color: 'purple', art: () => sortThingArt('top') },
+  bee: { kind: 'animal', color: 'yellow', art: () => ANIMALS.bee.art },
+  duck: { kind: 'animal', color: 'yellow', art: () => ANIMALS.duck.art },
+  dog: { kind: 'animal', color: 'brown', art: () => ANIMALS.dog.art },
+  elephant: { kind: 'animal', color: 'grey', art: () => objectArt('elephant') },
+};
+const PAINTED_KIND = { ball: 'toy', car: 'toy', balloon: 'toy', sock: 'clothes', tshirt: 'clothes', cap: 'clothes', cup: 'kitchen', book: 'school', crayon: 'school' };
+
+// id -> { id, object, kind, color, painted }
+export const ODD_THINGS = Object.fromEntries([
+  ...Object.entries(FIXED).map(([id, t]) => [id, { id, object: id, kind: t.kind, color: t.color, painted: false }]),
+  ...Object.entries(PAINTED_KIND).flatMap(([object, kind]) => Object.keys(PAINTS).map((color) => {
+    const id = `${object}-${color}`;
+    return [id, { id, object, kind, color, painted: true }];
+  })),
+]);
+export const oddThingArt = (id) => {
+  const t = ODD_THINGS[id];
+  return t.painted ? PAINTED[t.object](PAINTS[t.color]) : FIXED[id].art();
+};
+
+const tileGrid = (ids) => svg('0 0 200 160', ids.map((id, i) => oddThingArt(id).replace('<svg ', `<svg x="${[22, 108][i % 2]}" y="${[6, 84][Math.floor(i / 2)]}" width="70" height="70" `)).join(''));
+Object.assign(MENU, {
+  'odd-kinds': tileGrid(['apple', 'banana', 'grapes', 'ball-blue']),
+  'odd-colors': tileGrid(['apple', 'car-red', 'cup-red', 'cup-blue']),
+});

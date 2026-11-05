@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SORT_SETS, sortThingArt, basketArt, MENU } from '../data/games.js';
 import { PICTURES } from '../data/drawings.js';
+import { hsl, chromatic, HUES, colorsOf } from './art-colors.js';
 import {
   GAME_ROWS, SORT, sortBoard, thingHome, basketBoxes, hitBasket, hitThing, basketSlot, startSort, dropThing,
   firstMoveThing, showsFirstMove, marginUnits, RELEASE_MARGIN_PX, boardFit, BOARD, gameLogEntry,
@@ -24,76 +25,6 @@ function seeded(seed) {
 const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1);
 const GAMES = Object.keys(SORT_SETS);
 const isInlineSvg = (s) => s.startsWith('<svg') && s.endsWith('</svg>') && !/https?:\/\/(?!www\.w3\.org)/.test(s);
-
-// ---- reading the colors drawn in a picture ----
-
-function hsl(hex) {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  const d = max - min;
-  if (d === 0) return { h: 0, s: 0, l };
-  const s = d / (1 - Math.abs(2 * l - 1));
-  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  h = (h * 60 + 360) % 360;
-  return { h, s, l };
-}
-// A real color (not white, grey, near-black ink or a pale tint).
-const chromatic = (hex) => { const c = hsl(hex); return c.s >= 0.4 && c.l >= 0.2 && c.l <= 0.85; };
-const HUES = { red: (h) => h <= 15 || h >= 345, blue: (h) => h >= 195 && h <= 250 };
-
-// The bounding box of a path, walking its commands (absolute and relative).
-function pathBox(d) {
-  const toks = d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e-?\d+)?/g);
-  const ARGS = { m: 2, l: 2, h: 1, v: 1, q: 4, c: 6, s: 4, t: 2, a: 7, z: 0 };
-  let x = 0; let y = 0; let sx = 0; let sy = 0;
-  const xs = []; const ys = [];
-  let cmd = null;
-  let i = 0;
-  while (i < toks.length) {
-    if (/[a-zA-Z]/.test(toks[i])) { cmd = toks[i++]; if (cmd.toLowerCase() === 'z') { x = sx; y = sy; continue; } }
-    const lc = cmd.toLowerCase();
-    const rel = cmd === lc;
-    const n = toks.slice(i, i + ARGS[lc]).map(Number);
-    i += ARGS[lc];
-    const pts = [];
-    if (lc === 'h') pts.push([rel ? x + n[0] : n[0], y]);
-    else if (lc === 'v') pts.push([x, rel ? y + n[0] : n[0]]);
-    else if (lc === 'a') pts.push([rel ? x + n[5] : n[5], rel ? y + n[6] : n[6]]);
-    else for (let k = 0; k < n.length; k += 2) pts.push([rel ? x + n[k] : n[k], rel ? y + n[k + 1] : n[k + 1]]);
-    for (const p of pts) { xs.push(p[0]); ys.push(p[1]); }
-    [x, y] = pts[pts.length - 1];
-    if (lc === 'm') { sx = x; sy = y; cmd = rel ? 'l' : 'L'; }
-  }
-  return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
-}
-
-// Every element's colors, with a rough area for each filled shape.
-function colorsOf(art) {
-  const out = [];
-  for (const [tag, name] of art.matchAll(/<(rect|circle|ellipse|polygon|path|line)\b[^>]*>/g)) {
-    const attr = (a) => tag.match(new RegExp(`\\s${a}="([^"]+)"`))?.[1];
-    const num = (a) => Number(attr(a));
-    let area = 0;
-    if (name === 'rect') area = num('width') * num('height');
-    if (name === 'circle') area = Math.PI * num('r') ** 2;
-    if (name === 'ellipse') area = Math.PI * num('rx') * num('ry');
-    if (name === 'polygon') {
-      const p = attr('points').trim().split(/[\s,]+/).map(Number);
-      for (let k = 0; k < p.length; k += 2) area += (p[k] * p[(k + 3) % p.length] - p[(k + 2) % p.length] * p[k + 1]) / 2;
-      area = Math.abs(area);
-    }
-    if (name === 'path') area = pathBox(attr('d'));
-    for (const key of ['fill', 'stroke']) {
-      const c = attr(key);
-      if (c && /^#[0-9a-fA-F]{6}$/.test(c)) out.push({ color: c, area: key === 'fill' ? area : 0 });
-    }
-    // A <g fill="..."> around it is counted on the group itself.
-  }
-  for (const m of art.matchAll(/<g\b[^>]*\sfill="(#[0-9a-fA-F]{6})"/g)) out.push({ color: m[1], area: 0 });
-  return out;
-}
 
 // A color-set thing is really its basket's color: its biggest colored shape is
 // that color, and nothing drawn in it is the other basket's color.

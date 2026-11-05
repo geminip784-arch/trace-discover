@@ -422,6 +422,22 @@
     @keyframes st-take { 50% { transform: scale(1.04, 0.96); } }
     .gm-glow .st-basket, .gm-glow .st-thing { animation: gm-glow 1.2s ease; }
 
+    /* Odd one out: four cards in a row; five dots along the top fill as the rows are done. */
+    .gm-board.od-board { background: #FFF4F8; box-shadow: inset 0 0 0 12px #F8C9DA; }
+    .od-card {
+      position: absolute; box-sizing: border-box; padding: 16px; display: flex; align-items: center; justify-content: center;
+      background: #fff; border: 6px solid #D6E6F5; border-radius: 32px; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.08);
+      touch-action: none; z-index: 3; transition: border-color 0.2s, box-shadow 0.3s, opacity 0.4s;
+    }
+    .od-card > svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+    .od-card.od-right { border-color: #FFD43B; box-shadow: 0 0 30px rgba(255, 212, 59, 0.9), 0 6px 0 rgba(0, 0, 0, 0.08); animation: od-pop 0.5s ease; }
+    .od-card.od-rest { opacity: 0.55; }
+    .od-card.od-tap { animation: od-pop 0.4s ease; }
+    @keyframes od-pop { 50% { transform: scale(1.08); } }
+    .od-dot { fill: #fff; stroke: #F8C9DA; stroke-width: 5; transition: fill 0.4s; }
+    .od-dot.on { fill: #FFD43B; stroke: #FFC21A; }
+    .gm-glow .od-card.od-right { animation: gm-glow 1.2s ease; }
+
     /* ---- Slice 5E: the Drawing book. The menu: free drawing, then a row per level. ---- */
     .view-drawing { background: radial-gradient(circle at 50% 40%, #E0F7F3, #A7DCD3); touch-action: none; }
     .view-dots, .view-paper { background: #CFE9FB; touch-action: none; }
