@@ -1,5 +1,6 @@
 // screens.js — the app shell: front door, bookshelf, letter boards, the games
-// book and its games (match.js, path.js), the writing screen around game.js,
+// book and its games (match.js, path.js), the Drawing book (dots.js, paper.js),
+// the writing screen around game.js,
 // the find and count scene after it (scene.js) and her shelf of finds. session.js decides where each
 // tap leads; this file draws the screens and plays the little animations.
 // Child-screen rules: no text but the characters themselves, nothing red as
@@ -12,7 +13,7 @@ import {
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
-  readGameStars, saveGameStar,
+  readGameStars, saveGameStar, readDrawStars, saveDrawStar,
 } from './storage.js';
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
@@ -26,6 +27,10 @@ import { GAMES } from './games.js';
 import { MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
+import { playDots } from './dots.js';
+import { playPaper } from './paper.js';
+import { LEVELS, levelPictures, levelOpen, pictureId } from './drawing.js';
+import { pictureSVG, previewSVG, LEVEL_MARK, PAPER_TILE } from '../data/drawings.js';
 
 // The games menu's tiles: each game's frame color.
 const GAME_COLORS = { numbers: '#1E88E5', colors: '#FB8C00', path: '#43A047' };
@@ -94,7 +99,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const { screen } = state;
     document.body.dataset.screen = screen;
     els.home.hidden = screen === 'door' || screen === 'shelf';
-    els.back.hidden = screen !== 'games' && screen !== 'play';
+    els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper'].includes(screen);
     els.music.hidden = screen === 'door';
     setTune(tuneFor(screen));
 
@@ -112,6 +117,9 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     else if (screen === 'board') drawBoard(view, extra.newStar);
     else if (screen === 'games') drawGames(view, extra.newGameStar);
     else if (screen === 'play') drawPlay(view);
+    else if (screen === 'drawing') drawDrawingMenu(view, extra.newDrawStar);
+    else if (screen === 'dots') drawDots(view);
+    else if (screen === 'paper') drawPaper(view);
     else if (screen === 'find') drawFind(view, extra.newStar);
     else if (screen === 'toys') drawToys(view);
   }
@@ -257,6 +265,80 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       });
       menu.appendChild(el);
     }
+  }
+
+  // ---- the Drawing book ----
+  // The menu: free drawing (always open), then a row per level, marked with
+  // 1, 2 or 3 dots. A level opens after 3 pictures of the one before it;
+  // locked tiles are faint and wiggle. A finished picture shows in color with a star.
+  function drawDrawingMenu(view, newDrawStar) {
+    view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}
+      <div class="dw-menu"><div class="dw-free" role="button" aria-label="paper">${PAPER_TILE}</div><div class="dw-levels"></div></div>`;
+    const stars = readDrawStars();
+    const pick = (el, event) => {
+      if (busy) return;
+      busy = true;
+      popSound();
+      el.classList.add('picked');
+      setTimeout(() => {
+        busy = false;
+        go(navigate(state, event));
+      }, TILE_PICK_MS);
+    };
+    const free = view.querySelector('.dw-free');
+    free.addEventListener('click', () => pick(free, { type: 'openPaper' }));
+    const levels = view.querySelector('.dw-levels');
+    for (const level of LEVELS) {
+      const open = levelOpen(level, stars);
+      const row = document.createElement('div');
+      row.className = `dw-level${open ? '' : ' locked'}`;
+      row.innerHTML = `<span class="dw-mark">${LEVEL_MARK(level)}</span><div class="dw-row"></div>`;
+      for (const p of levelPictures(level)) {
+        const id = pictureId(level, p.id);
+        const done = stars.includes(id);
+        const el = document.createElement('div');
+        el.className = `dw-tile${p.things.length > 1 ? ' wide' : ''}`;
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', id);
+        el.innerHTML = p.things.map((t) => `<span>${done ? pictureSVG(t) : previewSVG(t, level)}</span>`).join('');
+        if (done) {
+          const star = document.createElement('span');
+          star.className = `star${id === newDrawStar ? ' new' : ''}`;
+          star.innerHTML = STAR;
+          el.appendChild(star);
+        }
+        el.addEventListener('click', () => {
+          if (!open) return wiggle(el, 'wig');
+          pick(el, { type: 'openPicture', level, picture: p.id });
+        });
+        row.querySelector('.dw-row').appendChild(el);
+      }
+      levels.appendChild(row);
+    }
+  }
+
+  // A dot-to-dot picture. The tick earns its star; back to the menu.
+  function drawDots(view) {
+    const mine = state;
+    const { level, picture } = state;
+    game = playDots(view, {
+      level,
+      picture,
+      onDone: () => {
+        if (state !== mine) return;
+        const id = pictureId(level, picture);
+        const fresh = !readDrawStars().includes(id);
+        saveDrawStar(id);
+        go(navigate(state, { type: 'pictureDone' }), { newDrawStar: fresh ? id : null });
+      },
+    });
+    if (upright) game.pause();
+  }
+
+  // The free-drawing page.
+  function drawPaper(view) {
+    game = playPaper(view);
+    if (upright) game.pause();
   }
 
   // One game. Finishing it once earns its tile's star; back to the menu.

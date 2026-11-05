@@ -9,6 +9,7 @@ import {
 } from '../src/storage.js';
 import { FINDS_KEY, readFinds, saveFind } from '../src/storage.js';
 import { GAME_STARS_KEY, readGameStars, saveGameStar } from '../src/storage.js';
+import { DRAW_STARS_KEY, readDrawStars, saveDrawStar } from '../src/storage.js';
 
 function memoryStore() {
   const data = new Map();
@@ -178,4 +179,25 @@ test('Slice 5D: broken or blocked storage never stops the games', () => {
   const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('full'); } };
   assert.deepEqual(readGameStars(blocked), []);
   assert.equal(saveGameStar('path', blocked), false);
+});
+
+test('Slice 5E: a finished picture earns its star once, saved in td.drawings', () => {
+  const store = memoryStore();
+  assert.deepEqual(readDrawStars(store), []);
+  assert.equal(saveDrawStar('L1:house', store), true);
+  assert.equal(saveDrawStar('L1:house', store), true);
+  assert.equal(saveDrawStar('L3:car-building', store), true);
+  assert.deepEqual(readDrawStars(store), ['L1:house', 'L3:car-building']);
+  assert.deepEqual(JSON.parse(store.getItem(DRAW_STARS_KEY)), ['L1:house', 'L3:car-building']);
+});
+
+test('Slice 5E: broken or blocked storage never stops the Drawing book', () => {
+  const bad = memoryStore();
+  bad.setItem(DRAW_STARS_KEY, 'not json');
+  assert.deepEqual(readDrawStars(bad), []);
+  bad.setItem(DRAW_STARS_KEY, JSON.stringify(['L1:sun', {}, 4]));
+  assert.deepEqual(readDrawStars(bad), ['L1:sun']);
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('full'); } };
+  assert.deepEqual(readDrawStars(blocked), []);
+  assert.equal(saveDrawStar('L1:sun', blocked), false);
 });

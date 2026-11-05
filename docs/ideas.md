@@ -54,3 +54,8 @@ picks its room, its 3 right objects and its 4 others, and where they stand.
 - Numbers to things uses counts from 1 to 5 for now. Raise it to 1 to 9 once she counts groups that big easily (makeGroup puts 5 in a row, so 6 to 9 need taller cards).
 - In headless Chrome, a fast drag that ends while the finger is still moving starts a "fling"; a tap on the home or back button during that fling (about the next second) only stops the fling and does not press the button. It may not happen on the tablet (the writing area and games board are `touch-action: none`). If it does, the buttons could act on `pointerup` instead of `click`.
 - A tap on a card without dragging counts as a drop that missed: the card wiggles. If that confuses her, a tap could do nothing instead.
+
+## Slice 5E: follow-ups
+
+- Let her keep a free drawing or a colored picture on her shelf of finds (the toy box). The strokes are already in board units, so a drawing could be saved as its list of strokes and shown small on a plank.
+- Car and building is drawn building first, so the car is drawn beside the finished building.

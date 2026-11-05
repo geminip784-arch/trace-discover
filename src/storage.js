@@ -206,3 +206,27 @@ export function saveGameStar(id, store = globalThis.localStorage) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// The Drawing book (Slice 5E): the pictures she has finished ('L1:house',
+// 'L3:car-building', ...), each a gold star on its tile.
+
+export const DRAW_STARS_KEY = 'td.drawings';
+
+export function readDrawStars(store = globalThis.localStorage) {
+  try {
+    const list = JSON.parse(store.getItem(DRAW_STARS_KEY) ?? '[]');
+    return Array.isArray(list) ? list.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDrawStar(id, store = globalThis.localStorage) {
+  try {
+    store.setItem(DRAW_STARS_KEY, JSON.stringify(addStar(readDrawStars(store), id)));
+    return true;
+  } catch {
+    return false;
+  }
+}
