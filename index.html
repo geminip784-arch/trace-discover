@@ -402,6 +402,67 @@
     .gm-jugnu { position: absolute; z-index: 5; pointer-events: none; filter: drop-shadow(0 0 14px rgba(255, 224, 102, 0.9)); }
     .view-play .buddy.away { opacity: 0; transition: opacity 0.3s; }
 
+    /* ---- Slice 5E: the Drawing book. The menu: free drawing, then a row per level. ---- */
+    .view-drawing { background: radial-gradient(circle at 50% 40%, #E0F7F3, #A7DCD3); touch-action: none; }
+    .view-dots, .view-paper { background: #CFE9FB; touch-action: none; }
+    .dw-menu {
+      --t: min(calc((100vw - 136px - 24px - 240px - 60px - 5 * 14px) / 6), calc((100vh - 60px) / 3 - 18px), 150px);
+      position: absolute; left: 136px; right: 24px; top: 0; bottom: 0;
+      display: flex; align-items: center; justify-content: center; gap: 28px;
+    }
+    .dw-free {
+      box-sizing: border-box; width: 220px; height: 260px; padding: 18px; flex: none;
+      background: #fff; border: 10px solid #00897B; border-radius: 36px; box-shadow: 0 8px 0 rgba(0, 0, 0, 0.12);
+      display: flex; align-items: center; justify-content: center; touch-action: none; cursor: pointer;
+    }
+    .dw-free > svg { width: 100%; height: auto; pointer-events: none; }
+    .dw-levels { display: flex; flex-direction: column; gap: 18px; }
+    .dw-level { display: flex; align-items: center; gap: 16px; }
+    .dw-mark { width: 24px; flex: none; display: flex; justify-content: center; }
+    .dw-mark svg { width: 24px; height: auto; display: block; }
+    .dw-row { display: flex; gap: 14px; }
+    .dw-tile {
+      position: relative; box-sizing: border-box; width: var(--t); height: var(--t); padding: 10px;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      background: #fff; border: 6px solid #B9E4DC; border-radius: 26px; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.1);
+      touch-action: none; cursor: pointer; transform-origin: 50% 100%;
+    }
+    .dw-tile.wide { width: calc(var(--t) * 1.5 + 7px); }
+    .dw-tile > span:not(.star) { flex: 1; display: flex; pointer-events: none; }
+    .dw-tile > span:not(.star) svg { width: 100%; height: auto; display: block; overflow: visible; }
+    .dw-level.locked .dw-tile { opacity: 0.35; box-shadow: none; }
+    .dw-level.locked .dw-mark { opacity: 0.35; }
+    .dw-free.picked, .dw-tile.picked { animation: pick 0.22s ease-out; }
+
+    /* A picture or the paper: the games' board (src/games.js), white like paper. */
+    .gm-board.dw-board { background: #FFFFFF; box-shadow: inset 0 0 0 12px #D6E6F5; }
+    .dw-paper { fill: #fff; stroke: #E3EEF8; stroke-width: 4; }
+    .dw-ink path, .dw-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .dw-rainbow path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .dw-fading { animation: gm-fade 0.45s ease forwards; }
+    .dw-dashed { fill: none; stroke: #B8C2CF; stroke-width: 4; stroke-dasharray: 14 12; stroke-linejoin: round; }
+    .dw-dot-fill { fill: #2A2370; }
+    .dw-dot-num { fill: #fff; font-family: Fredoka, sans-serif; font-weight: 600; font-size: 20px; text-anchor: middle; dominant-baseline: central; }
+    .dw-dot-ring { fill: none; stroke: transparent; stroke-width: 6; }
+    .dw-dot.at .dw-dot-ring { stroke: #FFD43B; opacity: 0.8; }
+    .dw-dot.next .dw-dot-fill { fill: #35D07F; }
+    .dw-dot.next .dw-dot-ring { stroke: #35D07F; transform-box: fill-box; transform-origin: center; animation: dw-pulse 1.1s ease-out infinite; }
+    @keyframes dw-pulse { 0% { opacity: 0.9; transform: scale(0.7); } 100% { opacity: 0; transform: scale(1.5); } }
+    .dw-fill { animation: dw-fill 1.1s ease both; }
+    @keyframes dw-fill { from { opacity: 0; } to { opacity: 1; } }
+    .dw-scene { opacity: 0; transition: opacity 0.8s; }
+    .dw-scene.on { opacity: 1; }
+
+    /* The crayon row: eight crayons, then the clear button or the big tick. */
+    .dw-crayons { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+    .dw-crayon, .dw-button { position: absolute; touch-action: none; cursor: pointer; pointer-events: auto; }
+    .dw-crayon { transition: transform 0.15s; transform-origin: 50% 100%; }
+    .dw-crayon > svg, .dw-button > svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+    .dw-crayon.on { transform: translateY(-14px) scale(1.06); filter: drop-shadow(0 0 10px rgba(255, 212, 59, 0.9)); }
+    .dw-button:active { transform: scale(0.94); }
+    .dw-tick { animation: dw-tick 1.4s ease-in-out infinite; }
+    @keyframes dw-tick { 50% { transform: scale(1.07); filter: drop-shadow(0 0 12px rgba(53, 208, 127, 0.7)); } }
+
     /* ---- landscape only: upright, this covers everything and takes every tap ---- */
     #turn {
       position: fixed;
