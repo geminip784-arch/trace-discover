@@ -10,7 +10,7 @@
 
 import { ROOMS, THINGS } from '../data/finds.js';
 import {
-  COLORS, ROAD_LAYOUTS, LANES, LETTER_PICTURES, SHADOW_THINGS, SHAPES, FURNITURE, SORT_SETS,
+  COLORS, ROAD_LAYOUTS, LANES, LETTER_PICTURES, SHADOW_THINGS, SHAPES, FURNITURE, SORT_SETS, ODD_THINGS, PAINTS,
 } from '../data/games.js';
 import { shuffle, groupWord } from './finds.js';
 
@@ -20,6 +20,7 @@ export const GAME_ROWS = [
   { kind: 'match', games: ['numbers', 'colors', 'letters', 'shadows', 'shapes'] },
   { kind: 'path', games: ['path', 'path-rooms'] },
   { kind: 'sort', games: ['sort-colors', 'sort-kinds'] },
+  { kind: 'odd', games: ['odd-kinds', 'odd-colors'] },
 ];
 export const GAMES = GAME_ROWS.flatMap((r) => r.games);
 export const MATCH_GAMES = GAME_ROWS.find((r) => r.kind === 'match').games;
@@ -381,9 +382,138 @@ export function dropThing(state, thing, to) {
 export const firstMoveThing = (board) => board.things.find((t) => t.spot === 0);
 
 // ---------------------------------------------------------------------------
+// Odd one out: a row of four pictures, three alike and one different. She taps
+// the different one. Five rows make a play.
+//
+// Every thing has a kind and a color (data/games.js ODD_THINGS). A row is
+// fair when exactly one picture stands alone, and only for the row's reason:
+//   by kind   three things of one kind (all different objects); the odd one is
+//             of another kind, and color singles nothing out
+//   by color  three things of one color, each of a different kind; the odd one
+//             is the twin of one of them in another color, so it differs only
+//             in color and kind singles nothing out
+// singledOut() is the referee: rows are drawn at random until it agrees.
+
+export const ODD = {
+  rows: 5,
+  hintAfter: 3,                      // wrong taps in a row, then the odd one wiggles
+  card: 220,                         // a card's width and height, in units
+  xs: [250, 510, 770, 1030],         // the four places, left to right
+  y: 350,
+  dots: { y: 78, xs: [540, 590, 640, 690, 740] }, // the progress dots
+  kindRowKinds: ['fruit', 'toy', 'animal', 'clothes'],
+  colorRowKinds: ['fruit', 'toy', 'clothes', 'kitchen', 'school'],
+  // The first row of a play, which Jugnu taps: the easiest of its kind.
+  easy: { kinds: { alike: 'fruit', odd: 'toy' }, colors: { alike: 'red', odd: 'blue' } },
+};
+
+// Every picture that stands alone in a row: three share a value, one does not.
+// Returns [{ index, by }] with by 'kind' or 'color'.
+export function singledOut(items) {
+  const out = [];
+  for (const by of ['kind', 'color']) {
+    const counts = {};
+    for (const t of items) counts[t[by]] = (counts[t[by]] ?? 0) + 1;
+    const values = Object.keys(counts);
+    if (values.length === 2 && Object.values(counts).sort().join() === '1,3') {
+      out.push({ index: items.findIndex((t) => counts[t[by]] === 1), by });
+    }
+  }
+  return out;
+}
+
+// A row is fair: exactly one picture stands alone, the odd one, for the row's reason.
+export const fairRow = (row) => {
+  const s = singledOut(row.items);
+  return s.length === 1 && s[0].index === row.odd && s[0].by === row.by;
+};
+
+const ALL_ODD = Object.values(ODD_THINGS);
+
+// One painted variant per object at most, so no two pictures in a kind row are the same object.
+function distinctObjects(list, n, rand) {
+  const out = [];
+  for (const t of shuffle(list, rand)) {
+    if (out.some((o) => o.object === t.object)) continue;
+    out.push(t);
+    if (out.length === n) break;
+  }
+  return out.length === n ? out : null;
+}
+
+// Places the odd one among the alike in a random place of the four.
+function placed(by, alike, odd, rand) {
+  const at = Math.floor(rand() * 4);
+  const items = [...shuffle(alike, rand)];
+  items.splice(at, 0, odd);
+  return { by, items, odd: at };
+}
+
+// A kind row. easy: three fruit and a toy (very different).
+export function kindRow(rand = Math.random, easy = false) {
+  for (let tries = 0; tries < 200; tries++) {
+    const kind = easy ? ODD.easy.kinds.alike : pick(ODD.kindRowKinds, rand);
+    const alike = distinctObjects(ALL_ODD.filter((t) => t.kind === kind), 3, rand);
+    if (!alike) continue;
+    const oddKinds = easy ? [ODD.easy.kinds.odd] : ODD.kindRowKinds.filter((k) => k !== kind);
+    const colors = alike.map((t) => t.color);
+    const odds = ALL_ODD.filter((t) => oddKinds.includes(t.kind) && colors.includes(t.color));
+    if (!odds.length) continue;
+    const row = placed('kind', alike, pick(odds, rand), rand);
+    if (fairRow(row)) return row;
+  }
+  throw new Error('no fair kind row');
+}
+
+// A color row. easy: three red things and a blue twin.
+export function colorRow(rand = Math.random, easy = false) {
+  const colors = Object.keys(PAINTS);
+  for (let tries = 0; tries < 200; tries++) {
+    const color = easy ? ODD.easy.colors.alike : pick(colors, rand);
+    const kinds = shuffle(ODD.colorRowKinds, rand).slice(0, 3);
+    const alike = kinds.map((k) => {
+      const of = ALL_ODD.filter((t) => t.kind === k && t.color === color);
+      return of.length ? pick(of, rand) : null;
+    });
+    if (alike.includes(null)) continue;
+    const twins = alike.filter((t) => t.painted);
+    if (!twins.length) continue;
+    const twin = pick(twins, rand);
+    const oddColor = easy ? ODD.easy.colors.odd : pick(colors.filter((c) => c !== color), rand);
+    const row = placed('color', alike, ODD_THINGS[`${twin.object}-${oddColor}`], rand);
+    if (fairRow(row)) return row;
+  }
+  throw new Error('no fair color row');
+}
+
+// A play: five rows, the first the easiest (Jugnu taps it).
+export function oddPlay(game, rand = Math.random) {
+  const make = game === 'odd-colors' ? colorRow : kindRow;
+  return Array.from({ length: ODD.rows }, (_, i) => make(rand, i === 0));
+}
+
+// One row being played. tapOdd: she tapped place `index` (0..3). Returns
+// { state, ok, hint, done }: hint is the odd one's place after ODD.hintAfter
+// wrong taps in a row (it wiggles once), otherwise null; done once she found it.
+export const startOdd = () => ({ wrongInRow: 0, found: false });
+export function tapOdd(state, row, index) {
+  if (state.found) return { state, ok: false, hint: null, done: true };
+  if (index === row.odd) return { state: { wrongInRow: 0, found: true }, ok: true, hint: null, done: true };
+  const wrongInRow = state.wrongInRow + 1;
+  const hint = wrongInRow >= ODD.hintAfter ? row.odd : null;
+  return { state: { wrongInRow: hint === null ? wrongInRow : 0, found: false }, ok: false, hint, done: false };
+}
+
+// The place a tap lands on: inside a card, or within `margin` units of it.
+export const oddCards = () => ODD.xs.map((x, i) => ({ place: i, x0: x - ODD.card / 2, y0: ODD.y - ODD.card / 2, x1: x + ODD.card / 2, y1: ODD.y + ODD.card / 2 }));
+export const hitOdd = (point, margin = 0) => hitCard(point, oddCards(), margin)?.place ?? null;
+
+// ---------------------------------------------------------------------------
 // The attempt log: one "game" entry per release. Stroke and find entries keep their format.
 //   match games: game, set (1..3), from, to (the cards' labels; to is null when
 //                she let go away from every card), ok, ms
+//   odd one out: game 'odd-kinds' or 'odd-colors', set (row 1..5), from (the
+//                picture she tapped, e.g. 'cup-blue'), ok, ms
 //   sort it:     game 'sort-colors' or 'sort-kinds', set (board 1..2), from (the
 //                thing), to (the basket's id, or null away from both), ok, ms
 //   follow the path: game 'path' or 'path-rooms', road (the animal or the
