@@ -27,6 +27,7 @@ import { GAME_ROWS, kindOf } from './games.js';
 import { MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
+import { playSort } from './sort.js';
 import { playDots } from './dots.js';
 import { playPaper } from './paper.js';
 import { LEVELS, levelPictures, levelOpen, pictureId } from './drawing.js';
@@ -35,7 +36,7 @@ import { pictureSVG, previewSVG, LEVEL_MARK, PAPER_TILE } from '../data/drawings
 // The games menu's tiles: each game's frame color.
 const GAME_COLORS = {
   numbers: '#1E88E5', colors: '#FB8C00', letters: '#3949AB', shadows: '#546E7A', shapes: '#8E24AA',
-  path: '#43A047', 'path-rooms': '#00897B',
+  path: '#43A047', 'path-rooms': '#00897B', 'sort-colors': '#E8590C', 'sort-kinds': '#6D4C41',
 };
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
@@ -362,7 +363,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       saveGameStar(id);
       go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
     };
-    game = kindOf(id) === 'path' ? playPath(view, { game: id, onDone }) : playMatch(view, { game: id, onDone });
+    const play = { path: playPath, sort: playSort, match: playMatch }[kindOf(id)];
+    game = play(view, { game: id, onDone });
     if (upright) game.pause();
   }
 

@@ -1,10 +1,11 @@
-// data/games.js — what the games book shows (Slices 5D and 5F), in docs/mockups/mockup4.html's
+// data/games.js — what the games book shows (Slices 5D and 5F, and Sort it), in docs/mockups/mockup4.html's
 // style: flat shapes, soft outlines, a white shine. Every picture is inline SVG,
 // so the games work offline. The red apple, yellow lemon and blue cup come from
 // data/finds.js (the countable things); the letter pictures and the shadows use
 // the find library's objects (OBJECTS); the rest are drawn here.
 
-import { THINGS, OBJECTS, ROOMS } from './finds.js';
+import { THINGS, OBJECTS, ROOMS, BASKET } from './finds.js';
+import { PICTURES } from './drawings.js';
 
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 const svg = (vb, body) => `<svg ${NS} viewBox="${vb}" class="art" style="overflow:visible">${body}</svg>`;
@@ -393,4 +394,76 @@ Object.assign(MENU, {
     + `<g transform="translate(-8 74) scale(.6)">${inner(FURNITURE.bed.art)}</g>`
     + `<g transform="translate(118 2)"><rect x="0" y="0" width="82" height="58" rx="8" fill="#fff" stroke="#D6E6F5" stroke-width="4"/>`
     + `<svg x="5" y="5" width="72" height="48" viewBox="${ROOM_VIEWS.bedroom.view}" preserveAspectRatio="xMidYMid slice">${inner(ROOMS.bedroom.backdrop)}</svg></g>`),
+});
+
+// ---------------------------------------------------------------------------
+// Sort it: two baskets, each marked with a sample thing on its front
+
+// The new things for Sort it (60 x 60, like the countable things).
+const SORT_NEW = {
+  strawberry: '<path d="M30 56 C14 46 8 33 12 23 C15 15 25 14 30 19 C35 14 45 15 48 23 C52 33 46 46 30 56 Z" fill="#FF4D4D" stroke="#D93636" stroke-width="2.5"/>'
+    + '<g fill="#FFE066"><ellipse cx="22" cy="28" rx="1.6" ry="2.4"/><ellipse cx="38" cy="28" rx="1.6" ry="2.4"/><ellipse cx="30" cy="35" rx="1.6" ry="2.4"/>'
+    + '<ellipse cx="22" cy="40" rx="1.6" ry="2.4"/><ellipse cx="38" cy="40" rx="1.6" ry="2.4"/><ellipse cx="30" cy="47" rx="1.6" ry="2.4"/></g>'
+    + '<path d="M18 18 L26 16 L30 9 L34 16 L42 18 L35 22 L30 20 L25 22 Z" fill="#35C46A"/>',
+  banana: '<path d="M10 14 Q12 44 40 50 Q52 52 55 45 Q50 47 42 44 Q22 38 18 12 Z" fill="#FFE14D" stroke="#E7B500" stroke-width="2.5" stroke-linejoin="round"/>'
+    + '<path d="M16 22 Q22 38 38 44" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".5"/>'
+    + '<path d="M10 14 L14 8 L18 12" fill="#8A5A2B" stroke="#8A5A2B" stroke-width="2.5" stroke-linejoin="round"/>',
+  teddy: '<circle cx="17" cy="13" r="7" fill="#B07A45"/><circle cx="43" cy="13" r="7" fill="#B07A45"/>'
+    + '<circle cx="17" cy="13" r="3.5" fill="#E8B987"/><circle cx="43" cy="13" r="3.5" fill="#E8B987"/>'
+    + '<ellipse cx="30" cy="45" rx="16" ry="13" fill="#B07A45"/><ellipse cx="30" cy="47" rx="8" ry="7" fill="#E8B987"/>'
+    + '<circle cx="30" cy="24" r="15" fill="#C98E55"/><ellipse cx="30" cy="29" rx="7" ry="5" fill="#E8B987"/>'
+    + '<circle cx="24" cy="21" r="2.2" fill="#2A2370"/><circle cx="36" cy="21" r="2.2" fill="#2A2370"/><ellipse cx="30" cy="27" rx="2.6" ry="2" fill="#2A2370"/>'
+    + '<circle cx="15" cy="45" r="5" fill="#B07A45"/><circle cx="45" cy="45" r="5" fill="#B07A45"/>',
+  top: '<rect x="27" y="4" width="6" height="12" rx="3" fill="#7A5232"/>'
+    + '<path d="M8 26 Q30 8 52 26 L30 56 Z" fill="#9B5DE5" stroke="#7B3FC4" stroke-width="2.5" stroke-linejoin="round"/>'
+    + '<path d="M11 30 Q30 18 49 30 L45 36 Q30 26 15 36 Z" fill="#FFD43B"/>'
+    + '<path d="M19 42 Q30 36 41 42 L37 47 Q30 44 23 47 Z" fill="#35C46A"/>'
+    + '<ellipse cx="22" cy="22" rx="5" ry="2.5" fill="#fff" opacity=".45" transform="rotate(-20 22 22)"/>',
+  'blue-ball': '<circle cx="30" cy="30" r="21" fill="#4D96FF"/><path d="M11 24 C20 32 40 32 49 24" stroke="#fff" stroke-width="5" fill="none"/>'
+    + '<path d="M11 38 C20 46 40 46 49 38" stroke="#BDE6FF" stroke-width="5" fill="none"/>',
+  balloon: '<path d="M30 46 Q26 52 32 56 Q36 58 32 60" stroke="#9AA6B5" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    + '<ellipse cx="30" cy="24" rx="17" ry="21" fill="#4D96FF" stroke="#2F74D9" stroke-width="2.5"/>'
+    + '<path d="M27 44 L33 44 L30 49 Z" fill="#2F74D9"/>'
+    + '<ellipse cx="23" cy="15" rx="4" ry="7" fill="#fff" opacity=".45" transform="rotate(25 23 15)"/>',
+};
+
+// The blue car: the Drawing book's car with its tail light made blue too, so
+// nothing on it is red (tests/sort.test.js reads every color in the art).
+const BLUE_CAR = inner(PICTURES.car.art).replace(/#FF8FB8/g, '#7FB8FF');
+
+// Every thing Sort it shows, as an SVG.
+export function sortThingArt(id) {
+  if (id === 'car') return svg('0 4 100 100', BLUE_CAR);
+  return svg('0 0 60 60', SORT_NEW[id] ?? NEW_THINGS[id] ?? THINGS[id].art);
+}
+
+// The two sets. Each basket: its id (for the log), the sample on its front
+// (never on the board), and the things it takes; a board shows 3 of each.
+export const SORT_SETS = {
+  'sort-colors': [
+    { id: 'red', sample: 'apple', things: ['tomato', 'ball', 'crayon', 'strawberry'] },
+    { id: 'blue', sample: 'cup', things: ['book', 'car', 'blue-ball', 'balloon'] },
+  ],
+  'sort-kinds': [
+    { id: 'fruit', sample: 'apple', things: ['lemon', 'orange', 'grapes', 'banana', 'strawberry'] },
+    { id: 'toys', sample: 'teddy', things: ['ball', 'block', 'car', 'top'] },
+  ],
+};
+
+// A basket (150 x 150, from the find scenes) with a white badge on its front
+// showing the sample.
+const sampleIn = (id, x, y, size) => sortThingArt(id).replace('<svg ', `<svg x="${x}" y="${y}" width="${size}" height="${size}" `);
+export const basketArt = (sample) => svg('0 0 150 150',
+  `${inner(BASKET)}<circle cx="75" cy="106" r="31" fill="#fff" stroke="#B7814A" stroke-width="4"/>${sampleIn(sample, 51, 82, 48)}`);
+
+// A basket on a menu tile: cropped to the basket itself (no sky above its handle).
+const tileBasket = (sample, x) => basketArt(sample).replace(/^<svg [^>]*>/, `<svg ${NS} x="${x}" y="20" width="104" height="124" viewBox="0 22 150 130">`);
+
+Object.assign(MENU, {
+  'sort-colors': svg('0 0 200 160',
+    `${tileBasket('apple', -4)}`
+    + `${tileBasket('cup', 100)}`),
+  'sort-kinds': svg('0 0 200 160',
+    `${tileBasket('apple', -4)}`
+    + `${tileBasket('teddy', 100)}`),
 });
