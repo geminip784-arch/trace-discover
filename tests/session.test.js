@@ -7,6 +7,7 @@ import {
   localDay, isFirstVisitToday, startScreen, navigate, tuneFor, isBookOpen,
 } from '../src/session.js';
 import { tileColorOf } from '../src/session.js';
+import { GAMES } from '../src/games.js';
 
 const MANIFEST = ['E', 'F', 'H', 'I', 'L', 'T', '1', '4', '7'];
 
@@ -232,7 +233,7 @@ test('a character\'s tile color, for her letter in a find scene', () => {
 test('Slice 5D: games -> a game -> back to the games; home goes to the shelf', () => {
   const games = navigate(SHELF, { type: 'openBook', book: 'games' });
   assert.deepEqual(games, { screen: 'games' });
-  for (const game of ['numbers', 'colors', 'path']) {
+  for (const game of GAMES) {
     const play = navigate(games, { type: 'openGame', game });
     assert.deepEqual(play, { screen: 'play', game });
     assert.deepEqual(navigate(play, { type: 'gameDone' }), games);

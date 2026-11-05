@@ -1,5 +1,6 @@
-// match.js — draw a line to match, on screen (Slice 5D): numbers to things and
-// colors to things share this one engine. games.js decides what is in a set and
+// match.js — draw a line to match, on screen (Slices 5D and 5F): numbers,
+// colors, letters, shadows and shapes all share this one engine. On the first
+// set, Jugnu matches the top left card himself, then she carries on. games.js decides what is in a set and
 // whether a drop is right; this file draws it and plays it.
 // Child-screen rules: no text but the digits, no failure sound, nothing red as
 // feedback, every card at least 88 px, Jugnu the only character. Every line and
@@ -9,9 +10,11 @@
 import { makeGroup } from './finds.js';
 import {
   BOARD, boardFit, SETS_PER_PLAY, makeSet, cardsOf, hitCard, marginUnits, startMatch, dropCard,
-  partnerCard, gameLogEntry,
+  partnerCard, gameLogEntry, showsFirstMove, firstMovePair, FIRST_MOVE_DELAY_MS,
 } from './games.js';
-import { blob, colorThing } from '../data/games.js';
+import {
+  blob, colorThing, letterArt, objectPicture, shadowArt, shapeArt, shapeThingArt, LETTER_PICTURES,
+} from '../data/games.js';
 import { trackSinglePointer } from './input.js';
 import { tileColorOf } from './session.js';
 import { logAttempt } from './storage.js';
@@ -24,6 +27,8 @@ const SPARKLE_MS = 900;   // the star on a right partner
 const HINT_DELAY_MS = 650; // the hint wiggle waits for the first wiggle to end
 const SET_GLOW_MS = 1500; // all 4 matched: everything glows, then the next set
 const CURVE = 190;        // how far a matched curve bows out of each card, in units
+const FIRST_MOVE_MS = 1600; // Jugnu draws the first line
+const JUGNU_SIZE = 110;
 
 export const JUGNU_IMG = '<img class="buddy at-left" src="assets/jugnu.svg" alt="" draggable="false">';
 
@@ -67,10 +72,21 @@ export function replay(el, cls) {
 
 const curve = ([ax, ay], [bx, by]) => `M${ax} ${ay} C${ax + CURVE} ${ay} ${bx - CURVE} ${by} ${bx} ${by}`;
 
-// game: 'numbers' or 'colors'. onDone(): three sets are done.
-// Returns { stop, pause, resume }.
+// The letters she recorded, for the letter cards (data/chars/<id>.json).
+async function loadLetters() {
+  const out = {};
+  await Promise.all(Object.keys(LETTER_PICTURES).map(async (id) => {
+    const res = await fetch(`data/chars/${encodeURIComponent(id)}.json`);
+    out[id] = await res.json();
+  }));
+  return out;
+}
+
+// game: a match tile's id ('numbers', 'colors', 'letters', 'shadows', 'shapes').
+// onDone(): three sets are done. Returns { stop, pause, resume }.
 export function playMatch(view, { game, onDone = () => {}, rand = Math.random }) {
   view.innerHTML = JUGNU_IMG;
+  const buddy = view.querySelector('.buddy');
   const board = mountBoard(view);
   const lines = svgEl('g', { class: 'gm-lines' }, board.svg);
   const live = svgEl('path', { class: 'gm-live', d: '' }, board.svg);
@@ -85,8 +101,9 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
   let set = null;
   let cards = [];
   let state = null;
-  let drag = null;        // { card, end }
-  let busy = false;       // a set is glowing: no new lines
+  let drag = null;        // { card, end, mine } (mine: hers, not Jugnu's)
+  let busy = true;        // a set is glowing, or Jugnu is drawing: no new lines
+  let letters = null;     // the letter cards' characters (letters only)
   let framePending = false;
   const timers = new Set();
   const later = (fn, ms) => {
@@ -95,7 +112,28 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
   };
   const log = (fields) => logAttempt(gameLogEntry({ game, set: setNo, ...fields, ms: performance.now() - opened }));
 
+  // An animation that holds still while paused. f goes 0..1.
+  function tween(ms, onFrame) {
+    return new Promise((resolve) => {
+      let t = 0;
+      let last = null;
+      const step = (now) => {
+        if (!alive) return resolve(false);
+        if (last !== null && !paused) t += now - last;
+        last = now;
+        const f = Math.min(1, t / ms);
+        onFrame(f);
+        if (f < 1) requestAnimationFrame(step);
+        else resolve(true);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
   function cardHTML(side, pair) {
+    if (game === 'letters') return side === 'left' ? letterArt(letters[pair.left.letter]) : objectPicture(pair.right.object);
+    if (game === 'shadows') return side === 'left' ? objectPicture(pair.left.object) : shadowArt(pair.right.shadow);
+    if (game === 'shapes') return side === 'left' ? shapeArt(pair.left.shape) : shapeThingArt(pair.right.thing);
     if (game === 'numbers') {
       if (side === 'left') return `<span class="gm-digit" style="color:${tileColorOf(String(pair.left.digit))}">${pair.left.digit}</span>`;
       // Only the placemat: the strip above it (for counting numbers) is cropped off.
@@ -123,6 +161,39 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
       c.el = el;
     }
     busy = false;
+    if (showsFirstMove(setNo)) {
+      busy = true;
+      later(firstMove, FIRST_MOVE_DELAY_MS);
+    }
+  }
+
+  // Jugnu draws the line from the top left card to its partner, then that
+  // pair is matched like one of hers (not logged: it is not her move).
+  async function firstMove() {
+    const from = cards.find((c) => c.side === 'left' && c.pair === firstMovePair(set));
+    const to = partnerCard(cards, from);
+    const j = document.createElement('img');
+    j.className = 'gm-jugnu';
+    j.src = 'assets/jugnu.svg';
+    j.alt = '';
+    board.el.appendChild(j);
+    buddy.classList.add('away');
+    from.el.classList.add('gm-lift');
+    const place = ([x, y]) => Object.assign(j.style, { left: `${x - JUGNU_SIZE / 2}px`, top: `${y - JUGNU_SIZE * 0.75}px`, width: `${JUGNU_SIZE}px` });
+    await tween(FIRST_MOVE_MS, (f) => {
+      const e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
+      const p = [from.anchor[0] + (to.anchor[0] - from.anchor[0]) * e, from.anchor[1] + (to.anchor[1] - from.anchor[1]) * e];
+      place(p);
+      drag = { card: from, end: p };
+      drawLive();
+    });
+    if (!alive) return;
+    from.el.classList.remove('gm-lift');
+    const r = dropCard(state, from, to);
+    state = r.state;
+    matched(from, r);
+    j.classList.add('gm-fading');
+    later(() => { j.remove(); buddy.classList.remove('away'); if (!r.done) busy = false; }, FADE_MS);
   }
 
   const label = (c) => (c ? set.pairs[c.pair][c.side].label : null);
@@ -159,7 +230,7 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
 
   function release() {
     const d = drag;
-    if (!d) return;
+    if (!d?.mine) return; // Jugnu's line is his own
     const to = hitCard(d.end, cards, marginUnits(board.s));
     const r = dropCard(state, d.card, to);
     state = r.state;
@@ -174,13 +245,18 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
       }
       return;
     }
+    matched(d.card, r);
+  }
+
+  // A right line: it stays, glowing, and both cards light up.
+  function matched(card, r) {
     drag = null;
     drawLive();
-    const partner = partnerCard(cards, d.card);
-    const [a, b] = d.card.side === 'left' ? [d.card.anchor, partner.anchor] : [partner.anchor, d.card.anchor];
+    const partner = partnerCard(cards, card);
+    const [a, b] = card.side === 'left' ? [card.anchor, partner.anchor] : [partner.anchor, card.anchor];
     svgEl('path', { class: 'gm-halo', d: curve(a, b) }, lines);
     svgEl('path', { class: 'gm-core', d: curve(a, b) }, lines);
-    d.card.el.classList.add('gm-matched');
+    card.el.classList.add('gm-matched');
     partner.el.classList.add('gm-matched');
     sparkle(partner);
     chime();
@@ -197,12 +273,12 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
       const u = board.toUnits(p);
       const card = hitCard(u, cards, marginUnits(board.s));
       if (!card || state.matched.includes(card.pair)) return;
-      drag = { card, end: u };
+      drag = { card, end: u, mine: true };
       card.el.classList.add('gm-lift');
       requestDraw();
     },
     onMove: (points) => {
-      if (!drag) return;
+      if (!drag?.mine) return;
       drag.end = board.toUnits(points[points.length - 1]);
       requestDraw();
     },
@@ -211,14 +287,18 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
 
   // A line she was drawing is dropped, not scored (the tablet turned upright).
   function dropDrag() {
-    if (!drag) return;
+    if (!drag?.mine) return;
     drag.card.el.classList.remove('gm-lift');
     drag = null;
     drawLive();
   }
   board.onResize = dropDrag;
 
-  newSet();
+  if (game === 'letters') {
+    loadLetters().then((chars) => { if (!alive) return; letters = chars; newSet(); });
+  } else {
+    newSet();
+  }
 
   return {
     pause() { paused = true; dropDrag(); },
