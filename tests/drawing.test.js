@@ -15,7 +15,8 @@ const SCREENS = [[1280, 626], [1280, 800], [640, 626]];
 
 test('six pictures at levels 1 and 2; four pairs at level 3; the building only there', () => {
   assert.deepEqual(LEVEL_PICTURES, ['house', 'sun', 'fish', 'car', 'cat', 'tree']);
-  assert.deepEqual(PAIRS, [['car', 'building'], ['house', 'tree'], ['fish', 'sun'], ['cat', 'house']]);
+  assert.deepEqual(PAIRS.map((p) => p.things), [['building', 'car'], ['house', 'tree'], ['fish', 'sun'], ['cat', 'house']]);
+  assert.equal(findPicture(3, 'car-building').things[0], 'building', 'the building first, then the car beside it');
   assert.equal(levelPictures(1).length, 6);
   assert.equal(levelPictures(2).length, 6);
   assert.deepEqual(levelPictures(3).map((p) => p.id), ['car-building', 'house-tree', 'fish-sun', 'cat-house']);

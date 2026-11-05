@@ -113,9 +113,16 @@ function ring(n, r) {
   });
 }
 
-// The menu's pictures in order, and level 3's pairs (first thing, second thing).
+// The menu's pictures in order, and level 3's pairs: { id, things } with the
+// things in the order she draws them. The car and building starts with the
+// building, so the car is drawn beside the finished building.
 export const LEVEL_PICTURES = ['house', 'sun', 'fish', 'car', 'cat', 'tree'];
-export const PAIRS = [['car', 'building'], ['house', 'tree'], ['fish', 'sun'], ['cat', 'house']];
+export const PAIRS = [
+  { id: 'car-building', things: ['building', 'car'] },
+  { id: 'house-tree', things: ['house', 'tree'] },
+  { id: 'fish-sun', things: ['fish', 'sun'] },
+  { id: 'cat-house', things: ['cat', 'house'] },
+];
 
 // A finished picture's colors, as an SVG (viewBox 0 0 100 100).
 export const pictureSVG = (id) => `<svg ${NS} viewBox="0 0 100 100" class="art" style="overflow:visible">${PICTURES[id].art}</svg>`;
