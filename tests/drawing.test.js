@@ -214,3 +214,14 @@ test('a draw log entry: picture, level, the dot reached, ms, and whether Jugnu h
     { type: 'draw', time: '2026-11-05T10:00:00.000Z', picture: 'house', thing: 'house', level: 1, dot: 3, ms: 2450, helped: false });
   assert.equal(drawLogEntry({ picture: 'car-building', thing: 'building', level: 3, dot: 1, ms: 9, helped: true, now }).helped, true);
 });
+
+test('the navigation opens exactly the Drawing book\'s pictures', async () => {
+  const { navigate } = await import('../src/session.js');
+  const drawing = { screen: 'drawing' };
+  for (const level of LEVELS) {
+    for (const p of levelPictures(level)) {
+      assert.deepEqual(navigate(drawing, { type: 'openPicture', level, picture: p.id }), { screen: 'dots', level, picture: p.id });
+    }
+  }
+  assert.equal(navigate(drawing, { type: 'openPicture', level: 2, picture: 'cat-house' }), drawing);
+});

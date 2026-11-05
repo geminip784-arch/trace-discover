@@ -134,9 +134,9 @@ test('gridFor picks the column count with the biggest tiles', () => {
 // ---------------------------------------------------------------------------
 // The bookshelf
 
-test('seven books in order; ABC, 123, Urdu and Games open, the rest locked', () => {
+test('seven books in order; ABC, 123, Urdu, Games and Drawing open, the rest locked', () => {
   assert.deepEqual(BOOKS.map((b) => b.id), ['abc', 'num', 'urdu', 'shapes', 'games', 'drawing', 'stories']);
-  assert.deepEqual(BOOKS.filter((b) => b.open).map((b) => b.id), ['abc', 'num', 'urdu', 'games']);
+  assert.deepEqual(BOOKS.filter((b) => b.open).map((b) => b.id), ['abc', 'num', 'urdu', 'games', 'drawing']); // Slice 5E opens Drawing
   assert.equal(isBookOpen('shapes'), false);
   assert.equal(isBookOpen('nope'), false);
 });
@@ -158,7 +158,7 @@ test('shelf -> each open book; locked books do nothing', () => {
   assert.deepEqual(navigate(SHELF, { type: 'openBook', book: 'num' }), { screen: 'board', book: 'num' });
   assert.deepEqual(navigate(SHELF, { type: 'openBook', book: 'urdu' }), { screen: 'board', book: 'urdu' });
   assert.deepEqual(navigate(SHELF, { type: 'openBook', book: 'games' }), { screen: 'games' });
-  for (const book of ['shapes', 'drawing', 'stories', 'nope']) {
+  for (const book of ['shapes', 'stories', 'nope']) {
     assert.equal(navigate(SHELF, { type: 'openBook', book }), SHELF, book);
   }
   assert.equal(navigate(ABC, { type: 'openBook', book: 'num' }), ABC);
@@ -243,4 +243,25 @@ test('Slice 5D: games -> a game -> back to the games; home goes to the shelf', (
   assert.equal(navigate(SHELF, { type: 'openGame', game: 'path' }), SHELF);
   assert.equal(navigate(ABC, { type: 'gameDone' }), ABC);
   assert.equal(tuneFor('play'), 'board');
+});
+
+test('Slice 5E: shelf -> drawing -> a picture or the paper -> back to drawing; home to the shelf', () => {
+  const drawing = navigate(SHELF, { type: 'openBook', book: 'drawing' });
+  assert.deepEqual(drawing, { screen: 'drawing' });
+  const dots = navigate(drawing, { type: 'openPicture', level: 1, picture: 'house' });
+  assert.deepEqual(dots, { screen: 'dots', level: 1, picture: 'house' });
+  assert.deepEqual(navigate(dots, { type: 'pictureDone' }), drawing);
+  assert.deepEqual(navigate(dots, { type: 'back' }), drawing);
+  assert.deepEqual(navigate(dots, { type: 'home' }), SHELF);
+  assert.deepEqual(navigate(drawing, { type: 'openPicture', level: 3, picture: 'fish-sun' }), { screen: 'dots', level: 3, picture: 'fish-sun' });
+  assert.equal(navigate(drawing, { type: 'openPicture', level: 3, picture: 'house' }), drawing);
+  assert.equal(navigate(drawing, { type: 'openPicture', level: 1, picture: 'building' }), drawing);
+  assert.equal(navigate(drawing, { type: 'openPicture', level: 4, picture: 'house' }), drawing);
+  const paper = navigate(drawing, { type: 'openPaper' });
+  assert.deepEqual(paper, { screen: 'paper' });
+  assert.deepEqual(navigate(paper, { type: 'back' }), drawing);
+  assert.deepEqual(navigate(paper, { type: 'home' }), SHELF);
+  assert.deepEqual(navigate(drawing, { type: 'back' }), SHELF);
+  assert.equal(navigate(SHELF, { type: 'openPaper' }), SHELF);
+  for (const screen of ['drawing', 'dots', 'paper']) assert.equal(tuneFor(screen), 'board');
 });

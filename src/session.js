@@ -101,7 +101,7 @@ export const BOOKS = [
   { id: 'urdu', color: '#43A047', spine: '#2C7330', open: true },
   { id: 'shapes', color: '#8E24AA', spine: '#621878', open: false },
   { id: 'games', color: '#FB8C00', spine: '#B86400', open: true },
-  { id: 'drawing', color: '#00897B', spine: '#005B52', open: false },
+  { id: 'drawing', color: '#00897B', spine: '#005B52', open: true },
   { id: 'stories', color: '#EC407A', spine: '#B02A59', open: false },
 ];
 
@@ -128,6 +128,9 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   board  a letter board: book is 'abc', 'num' or 'urdu'
 //   games  the games book: its menu of three games
 //   play   one game from the games book: game is 'numbers', 'colors' or 'path'
+//   drawing the Drawing book: its menu of free drawing and dot-to-dot pictures
+//   dots   one dot-to-dot picture: level 1, 2 or 3 and picture ('house', 'car-building', ...)
+//   paper  the free-drawing page
 //   write  the tracing game for char; book is the board she returns to (or null)
 //   find   the find or count scene after the last round of char (same book)
 //   toys   her shelf of finds, from the toy box on the bookshelf
@@ -141,6 +144,9 @@ export function startScreen({ lastVisit = null, today, forceDoor = false, char =
 
 const SHELF = { screen: 'shelf' };
 const GAME_IDS = ['numbers', 'colors', 'path'];
+// The Drawing book's pictures, per level (data/drawings.js has their dots).
+const SIX = ['house', 'sun', 'fish', 'car', 'cat', 'tree'];
+const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-sun', 'cat-house'] };
 
 // The next screen after an event. An event that does not apply changes nothing
 // (the same state comes back). Events:
@@ -152,7 +158,11 @@ const GAME_IDS = ['numbers', 'colors', 'path'];
 //   { type: 'openToys' }                 shelf -> toys
 //   { type: 'openGame', game }           games -> play (only the three games)
 //   { type: 'gameDone' }                 play -> games
-//   { type: 'back' }                     play -> games; games or toys -> shelf
+//   { type: 'openPicture', level, picture } drawing -> dots (only the book's pictures)
+//   { type: 'openPaper' }                drawing -> paper
+//   { type: 'pictureDone' }              dots -> drawing
+//   { type: 'back' }                     play -> games; dots or paper -> drawing;
+//                                        games, drawing or toys -> shelf
 //   { type: 'home' }                     any screen -> shelf
 export function navigate(state, event) {
   const { screen } = state;
@@ -164,6 +174,7 @@ export function navigate(state, event) {
     case 'openBook': {
       if (screen !== 'shelf' || !isBookOpen(event.book)) return state;
       if (event.book === 'games') return { screen: 'games' };
+      if (event.book === 'drawing') return { screen: 'drawing' };
       return BOARDS[event.book] ? { screen: 'board', book: event.book } : state;
     }
     case 'openChar': {
@@ -183,9 +194,17 @@ export function navigate(state, event) {
       return screen === 'games' && GAME_IDS.includes(event.game) ? { screen: 'play', game: event.game } : state;
     case 'gameDone':
       return screen === 'play' ? { screen: 'games' } : state;
+    case 'openPicture':
+      return screen === 'drawing' && DRAW_PICTURES[event.level]?.includes(event.picture)
+        ? { screen: 'dots', level: event.level, picture: event.picture } : state;
+    case 'openPaper':
+      return screen === 'drawing' ? { screen: 'paper' } : state;
+    case 'pictureDone':
+      return screen === 'dots' ? { screen: 'drawing' } : state;
     case 'back':
       if (screen === 'play') return { screen: 'games' };
-      return screen === 'games' || screen === 'toys' ? SHELF : state;
+      if (screen === 'dots' || screen === 'paper') return { screen: 'drawing' };
+      return screen === 'games' || screen === 'drawing' || screen === 'toys' ? SHELF : state;
     default:
       return state;
   }
@@ -194,7 +213,7 @@ export function navigate(state, event) {
 // Which background tune plays on a screen: none at the door; a calm, quiet one while she writes.
 export function tuneFor(screen) {
   if (screen === 'shelf' || screen === 'toys') return 'shelf';
-  if (screen === 'board' || screen === 'find' || screen === 'games' || screen === 'play') return 'board';
+  if (['board', 'find', 'games', 'play', 'drawing', 'dots', 'paper'].includes(screen)) return 'board';
   if (screen === 'write') return 'write';
   return null;
 }
