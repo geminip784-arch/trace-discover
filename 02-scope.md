@@ -2,7 +2,7 @@
 
 Goal: a version she plays daily for two weeks, so we learn whether she enjoys it and whether her wrong starts drop.
 
-## Built (Slices 0 to 5F)
+## Built (Slices 0 to 5G)
 
 | Area | What she has |
 | --- | --- |
@@ -11,14 +11,14 @@ Goal: a version she plays daily for two weeks, so we learn whether she enjoys it
 | Numbers | 0 to 9 |
 | Urdu | The board, with the 39 letters in qaida order (faint until Slice 10) |
 | Tracing | Three practice rounds (dots, ghost, alone), the feedback rules in CLAUDE.md, never-stuck help, gold stars |
-| Find and count | A find scene after a letter, a count scene after 1 to 9, her shelf of finds |
+| Find and count | A find scene after every letter but U and X (sound-first pictures in 7 places), a count scene after 1 to 9, her shelf of finds |
 | Games book | Match (5 sets), Follow the path (2 sets), Sort it (2), Odd one out (2) |
 | Drawing book | Free paper with an eraser; dot to dot in three levels, with coloring |
-| Parent tools | Name setup, stroke recorder, glyph review page, attempt log |
+| Parent tools | Name setup, stroke recorder, glyph review page, find pictures review sheet, attempt log |
 
 ## Roadmap (in this order)
 
-1. **5G** Housekeeping and find pictures
+1. **5G** Housekeeping and find pictures ✅
 2. **5H** Game variety and the Missing piece game
 3. **5I** Practice and review: round 3 as a copy-it round judged on shape at 75 to 125% size, reviews after 1, 3 and 7 days, a practice-more list, an optional "again?"
 4. **6** Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word

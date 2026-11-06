@@ -21,17 +21,18 @@ What the app does today is in `docs/spec.md`.
 | 5D ✅ | The Games book: match (numbers, colors) and follow the path |
 | 5E ✅ | The Drawing book: free paper, dot to dot in three levels, the eraser |
 | 5F ✅ | More games: match sets (letters, shadows, shapes), furniture to rooms, Sort it, Odd one out. Every capital and digit generated |
+| 5G ✅ | Docs and housekeeping; sound-first find pictures for every letter but U and X, the farm-garden, zoo and sea, and `finds.html` |
 
 ---
 
 ## To build, in order
 
-### 5G — Housekeeping and find pictures
+### 5G — Housekeeping and find pictures ✅
 Docs brought up to date and dead code removed (done in its own pull request first). Then every letter gets find pictures whose words start with the letter's **sound**:
 
 A apple, ant, alligator · B ball, banana, bus · C cat, cup, cake · D dog, duck, drum · E egg, elephant, envelope · F fish, fan, fork, flag, frock · G goat, gift, grapes · H hat, horse, honey, heart · I insect, igloo, ink · J jug, jellyfish, juice · K kite, key, kettle · L lamp, lemon, lion, lunchbox · M moon, mango, milk · N nest, nose, net · O octopus, orange, olive · P pencil, pear, parrot · Q queen, quilt · R rabbit, ring, rainbow · S sun, sock, star · T tiger, tomato, toys · U umbrella · V van, vase, violin · W watch, whale, window · Y yo-yo, yak, yogurt · Z zebra, zip. X has none for now.
 
-Ice cream and eraser leave the find scenes and the Letter to picture game. Their pictures stay, for the Shadow game and her saved finds. New garden and sea backdrops. `finds.html` is the review sheet.
+Ice cream and eraser leave the find scenes and the Letter to picture game. Their pictures stay, for the Shadow game and her saved finds. New places: the farm-garden, the zoo and the sea. A scene borrowing from another place takes portable things before animals. `finds.html` is the review sheet.
 
 **Done when:**
 - [ ] Every letter except U and X opens a find scene with 3 targets (2 for Q and Z), from the place that holds most of its objects

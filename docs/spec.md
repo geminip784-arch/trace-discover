@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3 · Nov 6, 2026 · describes the app as built through Slice 5F, and where it goes next.
+Version 3 · Nov 6, 2026 · describes the app as built through Slice 5G, and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -76,13 +76,16 @@ Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to
 
 ### Find scenes (letters) and count scenes (numbers)
 
-After a letter's last round, a room appears (living room, kitchen, study or bedroom) with 7 objects standing in it. Three start with her letter, and four do not.
+After a letter's last round, a place appears with 7 objects standing in it. The places are the living room, kitchen, study, bedroom, farm-garden, zoo and sea. Three of the objects start with her letter (two for Q and Z, which have only two pictures), and the rest do not.
 
-- She taps the three that start with her letter. Each found object glows, plays a small animation and flies into a basket.
+- She taps the ones that start with her letter. Each found object glows, plays a small animation and flies into a basket.
 - A wrong tap shows that object's own word for 2 seconds, with no sound.
 - After 10 seconds with no find, the objects still to find wiggle once.
-- The scene uses the room that holds the most of that letter's objects.
-- Letters with fewer than 3 find pictures skip the scene and go straight back to the board. Today that is every letter except E F H I L T. Slice 5G adds pictures for every letter.
+- **Which place.** The scene uses the place that holds the most of that letter's pictures (a tie is picked at random). It takes as many objects as it can from that place. When it has to borrow from another place, it takes portable things (food, toys, small objects) before animals, so a horse never turns up in the kitchen.
+- **Sound-first words.** Every find word starts with the letter's sound, not its name (Slice 5G). The full list and the object-to-place table are on `finds.html`.
+- **No scene.** U and X have fewer than 2 pictures, so they skip the scene and go straight back to the board and the star.
+- **Kept pictures.** Ice cream and eraser are kept out of find scenes and the Letter to picture game, but their pictures stay: her saved finds of them still show on her shelf, and ice cream stays in the Shadow game.
+- Count scenes keep the four rooms.
 
 After a number from 1 to 9, three placemats appear, each holding a different count of small things (eggs, cups, flowers…). She taps the mat with her number of things. It moves to the middle, and she taps each item once to count it; the numbers appear in the order she taps. Sometimes one item is golden. 0 has no count scene.
 
@@ -98,7 +101,7 @@ A menu of tiles in four rows, one row per kind of game. Each game ends after a f
 
 | Row | Games | How it plays |
 | --- | --- | --- |
-| Match (draw a line) | Numbers to things, Colors to things, Letter to picture, Thing to its shadow, Shape to thing | Two columns of 4 cards. She draws a line from each card to its partner. 3 sets make a play |
+| Match (draw a line) | Numbers to things, Colors to things, Letter to picture (E egg, F fork, H hat, I insect, L lemon, T tiger), Thing to its shadow, Shape to thing | Two columns of 4 cards. She draws a line from each card to its partner. 3 sets make a play |
 | Follow the path | Animals to homes, Furniture to rooms | Three crossing roads. She traces each traveller's road to its home |
 | Sort it | By color, By kind | Six things along the top. She drags each into the right one of two baskets. 2 boards make a play |
 | Odd one out | By kind, By color | A row of four cards. She taps the one that is different. 5 rows make a play |
@@ -119,6 +122,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 - `index.html?setup=1`: her name and how to say it.
 - `recorder.html`: the stroke recorder, for hand-recorded characters.
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`).
+- `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
 - The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every find-scene tap and every game move.
 
@@ -154,7 +158,7 @@ Every character is an ordered list of strokes in line units: y = 0 is the sky li
 ### English letters
 
 - **Capitals:** all 26 are built. **Lowercase:** Slice 9A, using the fence line as the x-height, with i and j getting `dot` strokes.
-- **Find words** start with the letter's **sound**, not its name (Slice 5G). For example, I is insect, not ice cream, and E is egg, not eraser. X has no find pictures for now. The full list is in `09-build-sequence.md`, Slice 5G.
+- **Find words** start with the letter's **sound**, not its name. For example, I is insect, not ice cream, and E is egg, not eraser. X has no find pictures for now. See `finds.html` for every picture.
 - **Words level:** short words built from letters she knows (Slice 9C).
 
 ### Numbers
