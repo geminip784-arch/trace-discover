@@ -1,98 +1,144 @@
-# Build sequence — Phase 1
+# Build sequence
 
-Build in this order. One slice per Claude Code session. Do not start a slice until the previous one passes its checks on the tablet and is committed.
+Build in this order, one slice at a time. Each slice ends with `npm test`, a numbered list of checks on the tablet, and a pull request. Do not start a slice until the previous one is merged.
 
-Effort per slice is my estimate for a beginner working with Claude Code: roughly one to three evenings each.
-
-While you build Slices 0 to 2, let her use LetterSchool's free version for a week (Phase 0). Note anything she loves or hates; it may change Slice 4.
+What the app does today is in `docs/spec.md`.
 
 ---
 
-## Slice 0 — Skeleton on the tablet
-**Prompt:**
-> Read CLAUDE.md. Build Slice 0 only: an index.html that fills the screen in landscape and shows, in large text, the viewport width, height and devicePixelRatio. Then walk me through publishing this folder to GitHub Pages step by step, assuming I have never used git.
+## Done
+
+| Slice | What it built |
+| --- | --- |
+| 0 ✅ | Skeleton on the tablet. The viewport was measured and GitHub Pages set up |
+| 1 ✅ | Ink that follows her finger: the four colored lines, single-pointer tracking, no lag |
+| 2 ✅ | Scoring wired in, with the `?debug=1` panel |
+| 3 ✅ | The stroke recorder (`recorder.html`) |
+| 4 ✅ | The tracing game for one character: three stages, Jugnu, start dots, the feedback rules, never-stuck help (4A, 4B) |
+| 5A ✅ | The app shell: front door, bookshelf, ABC, 123 and Urdu boards, music |
+| 5B ✅ | Three practice rounds and gold stars |
+| 5C ✅ | Find and count scenes, and her shelf of finds |
+| 5D ✅ | The Games book: match (numbers, colors) and follow the path |
+| 5E ✅ | The Drawing book: free paper, dot to dot in three levels, the eraser |
+| 5F ✅ | More games: match sets (letters, shadows, shapes), furniture to rooms, Sort it, Odd one out. Every capital and digit generated |
+
+---
+
+## To build, in order
+
+### 5G — Housekeeping and find pictures
+Docs brought up to date and dead code removed (done in its own pull request first). Then every letter gets find pictures whose words start with the letter's **sound**:
+
+A apple, ant, alligator · B ball, banana, bus · C cat, cup, cake · D dog, duck, drum · E egg, elephant, envelope · F fish, fan, fork, flag, frock · G goat, gift, grapes · H hat, horse, honey, heart · I insect, igloo, ink · J jug, jellyfish, juice · K kite, key, kettle · L lamp, lemon, lion, lunchbox · M moon, mango, milk · N nest, nose, net · O octopus, orange, olive · P pencil, pear, parrot · Q queen, quilt · R rabbit, ring, rainbow · S sun, sock, star · T tiger, tomato, toys · U umbrella · V van, vase, violin · W watch, whale, window · Y yo-yo, yak, yogurt · Z zebra, zip. X has none for now.
+
+Ice cream and eraser leave the find scenes and the Letter to picture game. Their pictures stay, for the Shadow game and her saved finds. New garden and sea backdrops. `finds.html` is the review sheet.
 
 **Done when:**
-- [ ] The page opens on her tablet from a GitHub Pages https link
-- [ ] You have added the measured viewport size to the Device facts section of CLAUDE.md
-- [ ] First commit pushed
+- [ ] Every letter except U and X opens a find scene with 3 targets (2 for Q and Z), from the place that holds most of its objects
+- [ ] No distractor starts with the scene's letter
+- [ ] Her old finds of ice cream or eraser still show on her shelf
+- [ ] You have approved the art on `finds.html`
 
-## Slice 1 — Ink that follows her finger
-**Prompt:**
-> Build Slice 1 only: a writing area with the four colored lines (sky blue, dashed fence, grass green, ground brown) and a glowing yellow ink trail on a canvas. Follow every rule in CLAUDE.md's Child-screen rules, especially single-pointer tracking and no lag. No scoring yet.
-
-**Done when:**
-- [ ] The trail keeps up with fast finger movement, with no visible gap
-- [ ] Resting her palm or a second finger while drawing leaves no marks
-- [ ] The page never scrolls, zooms or pull-to-refreshes, and long-press shows no menu
-
-## Slice 2 — Scoring wired in (debug view)
-**Prompt:**
-> Run npm test. Then build Slice 2 only: draw the track for data/chars/L.example.json on the lines, score each stroke with src/geometry.js, and show the score result in a debug panel that appears only when the URL ends with ?debug=1.
+### 5H — Game variety and the Missing piece game
+More sets for the existing games, so a play does not repeat, and a new **Missing piece** game.
 
 **Done when:**
-- [ ] `npm test` passes
-- [ ] A neat L shows ok for both strokes in the debug panel
-- [ ] Drawing the stem bottom-up shows wrong-direction; starting halfway down shows wrong-start
-- [ ] Without ?debug=1 nothing extra is visible
+- [ ] Two plays of the same game in a row look different
+- [ ] She can finish a Missing piece play on her own
 
-## Slice 3 — Stroke recorder (your tool)
-Settle the letter style and Urdu model first (see 02-scope.md).
-
-**Prompt:**
-> Build Slice 3 only: recorder.html, a parent tool. It shows a character faintly in the bundled font on the four lines. I trace each stroke slowly in the correct order; it smooths the stroke, converts it to line units, and lets me undo the last stroke, mark a stroke as a dot, and set the writing direction. A Copy JSON button copies the finished character file so I can paste it back to you to save in data/chars/.
+### 5I — Practice and review
+- Round 3 becomes a copy-it round: she writes the letter beside a model, judged on shape at 75 to 125% of its size.
+- Reviews after 1, 3 and 7 days.
+- A practice-more list.
+- An optional "again?" after the star.
 
 **Done when:**
-- [ ] All 14 Phase 1 characters are recorded and saved in data/chars/
-- [ ] Each one replays correctly in the Slice 2 debug view when you trace it yourself
+- [ ] A letter written a little bigger or smaller than the model still passes round 3
+- [ ] A letter starred today comes back for review tomorrow, then 3 and 7 days later
+- [ ] Letters she often gets wrong appear on the practice-more list
 
-## Slice 4 — The tracing game for one character
-**Prompt:**
-> Build Slice 4 only: the three stages (dots, ghost, alone) for any character in data/chars/, with Jugnu from assets/jugnu.svg, start dots, arrows, and the feedback rules in CLAUDE.md. Use browser speech as a placeholder voice. Path width narrows by stage as set in DEFAULTS.stages.
+### 6 — Voice and phonics
+- A family voice recorder (clips stored in IndexedDB).
+- Jugnu greets her by name.
+- Spoken prompts, and the ear button to replay the last prompt.
+- Each letter's name, sound and picture word ("B, buh, ball!").
 
-**Done when:**
-- [ ] L, ب and 7 each play from Stage 1 to Stage 3
-- [ ] Wrong direction: glow stops and Jugnu shows the way; no red, no buzzer
-- [ ] She plays one character for 5 minutes and wants another go (watch her; don't help)
-
-## Slice 5 — Session, map, reward, sticker book
-**Prompt:**
-> Build Slice 5 only: the daily session flow from docs/spec.md (simplified per 02-scope.md), the map with three islands, the letter-comes-alive reward, the sticker book with sketch, color and gold-star stages, and progress saved in localStorage. The daily limit ends the session with Jugnu's goodnight.
-
-**Done when:**
-- [ ] A full session runs start to goodnight without you touching anything
-- [ ] Closing and reopening the app keeps her stickers and progress
-- [ ] When the daily limit is reached, the session ends kindly and the map stays dim
-
-## Slice 6 — Family voices
-**Prompt:**
-> Build Slice 6 only: a voice recorder in the parent zone for her name, three praise lines, and each Phase 1 character's name and sound. Store clips in IndexedDB. Play them in the game, falling back to browser speech when a clip is missing.
+Browser speech is only a fallback.
 
 **Done when:**
 - [ ] Jugnu greets her by name in your voice
+- [ ] Every prompt is spoken, and the ear button replays it
 - [ ] Clips still play with Wi-Fi off
 
-## Slice 7 — Install, offline, kid-lock
-**Prompt:**
-> Build Slice 7 only: a web app manifest (full screen, landscape, icons), a service worker that caches every file for offline use, and a safe update flow. Then give me plain steps to install it on the tablet from Chrome and to pin the app on Android so she cannot leave it.
+### 9A — Lowercase
+Lowercase letters, generated like the capitals, with the fence line as the x-height. i and j get `dot` strokes. A lowercase board.
+
+**Done when:**
+- [ ] Every lowercase letter plays all three rounds
+
+### 9B — Numbers 10 to 20
+Two digits side by side, left digit first.
+
+**Done when:**
+- [ ] 10 to 20 play all three rounds, and count scenes reach 20
+
+### 9C — Words level
+Short words made of letters she has starred.
+
+**Done when:**
+- [ ] She can trace a three-letter word letter by letter, then see its picture
+
+### 10 — Urdu
+- Dot strokes scored with `scoreDot`.
+- The Noto Naskh Arabic font served locally.
+- `recorder.html` support for Urdu (right to left, ASCII ids).
+- The Urdu letters recorded.
+- **Dot Detective**: add the right dots to a body.
+
+**Done when:**
+- [ ] The boat family (ب پ ت ٹ ث) plays all three rounds, dots included
+- [ ] Dot Detective plays on the boat family
+
+### 8 — Parent zone
+- A lock: press and hold for 3 seconds, then a simple sum.
+- Settings.
+- A progress grid.
+- A replay of her last attempt on any character.
+- Her wrong starts per week, from the attempt log.
+- A reset.
+
+**Done when:**
+- [ ] You can replay exactly how she wrote her last mistake on any character
+- [ ] You can see her wrong-start count per week
+
+### 7 — Install as an app
+A web app manifest (full screen, landscape, icons), a service worker for offline use, and a safe update flow. Plain steps to install from Chrome and pin the app.
 
 **Done when:**
 - [ ] It opens full screen from a home-screen icon
 - [ ] It works in airplane mode
 - [ ] With the app pinned, she cannot get out without you
 
-## Slice 8 — Parent zone v1
-**Prompt:**
-> Build Slice 8 only: the parent gate (press and hold 3 seconds, then a simple sum), daily limit setting, last-attempt replay for each character, the practice-more list, and a reset. Log every attempt (character, stage, start ok, direction ok, shape error, date) so we can compare weeks.
+### 11 — Shapes book
+The Shapes book on the shelf opens: tracing circles, squares, triangles and more.
 
 **Done when:**
-- [ ] You can replay exactly how she wrote her last mistake on any character
-- [ ] The log shows her wrong-start count per week
+- [ ] The Shapes book opens and each shape plays all three rounds
+
+### 12 — Stories and the daily rhythm
+- The Stories book.
+- A short warm-up before writing.
+- Jugnu's light that grows with her progress.
+- A daily time limit that ends with Jugnu's goodnight.
+
+**Done when:**
+- [ ] When the limit is reached, the session ends kindly and stays closed until tomorrow or a parent unlock
+- [ ] A full day runs from the door to goodnight without you touching anything
 
 ---
 
-## Then: the 2-week trial (Gate 2)
-Let her use it daily within the limit. Phase 2 is worth building only if all three hold:
+## Then: the two-week trial
+Let her use it daily within the limit. It is worth building further only if all three hold:
 1. She asks to play on most days without being prompted.
-2. Her wrong starts on the Phase 1 characters drop from week 1 to week 2 (from the attempt log).
+2. Her wrong starts drop from week 1 to week 2 (from the attempt log).
 3. The ink never lags or misses her finger.
