@@ -25,7 +25,7 @@ import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import { variantLabel, candidatesFor, nextStrokes, pickCandidate } from './variants.js';
 import {
-  CONFIG, ROUND_CONFIG, ROUNDS, initialState, applyLift, roundCount, stageForRound,
+  CONFIG, ROUNDS, initialState, applyLift, roundCount, stageForRound,
   startRounds, markHelp, isHelp, finishRound, starEarned, roundLights,
 } from './progress.js';
 import { logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds } from './storage.js';
@@ -338,7 +338,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     const counted = result.reason !== 'too-short';
     if (counted && !a.startOk) result = { ...result, ok: false, reason: 'wrong-start', startOk: false };
     const variant = result.ok ? variantLabel(pick.variant) : 'none';
-    const lift = applyLift(progress, { ok: result.ok, from: pick.variant.from, to: pick.variant.to, counted }, ROUND_CONFIG);
+    const lift = applyLift(progress, { ok: result.ok, from: pick.variant.from, to: pick.variant.to, counted });
 
     logAttempt({
       time: new Date().toISOString(),
@@ -378,7 +378,6 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     }
     ink.fade(id, CONFIG.fadeMs);
     if (lift.assist) return assist(current, lift.letterDone);
-    if (lift.droppedStage) redraw();
     react(result.reason, lift.demo, strokes[pick.variant.from].points);
   }
 

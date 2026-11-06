@@ -3,7 +3,7 @@
 ## What this is
 A handwriting-practice app for one 4-year-old girl, right-handed, on a Samsung Galaxy Tab A9+ or A11+ (11 inch, landscape, Android, Chrome).
 She traces English capital letters, numbers and Urdu letters with a firefly companion called Jugnu.
-Full product spec: `docs/spec.md`. Phase 1 scope: `02-scope.md`. Build order: `09-build-sequence.md`.
+Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order: `09-build-sequence.md`.
 
 ## Stack (fixed — do not change without asking)
 - Plain HTML, CSS and vanilla JavaScript ES modules. No frameworks, no bundler, no runtime npm packages.
@@ -51,7 +51,14 @@ Full product spec: `docs/spec.md`. Phase 1 scope: `02-scope.md`. Build order: `0
 ## How to work with me (slice discipline)
 - Build one slice at a time from `09-build-sequence.md`. Never start the next slice on your own.
 - Before writing code: restate the slice goal, list the files you will create or change, and wait for my OK.
-- Keep one module per concern: `input.js`, `render.js`, `game.js`, `session.js`, `storage.js`, `audio.js` in `src/`.
+- Keep one module per concern in `src/`. Pure-logic modules (no DOM, no storage, no audio) are marked *pure* and are tested in `tests/`.
+  - Shell: `screens.js` (every screen and its animations), `session.js` (*pure*: boards, books, navigation), `art.js` (the shell's SVG pictures), `music.js` (background tunes), `storage.js` (localStorage), `audio.js` (chimes and speech).
+  - Tracing: `input.js` (single-pointer tracking), `render.js` (lines, tracks, ink), `game.js` (one character's rounds on screen), `progress.js` (*pure*: strokes, help and rounds), `variants.js` (*pure*: accepted joined versions), `geometry.js` (*pure*: scoring), `jugnu.js` (Jugnu on screen), `debug.js` (the `?debug=1` panel).
+  - Find and count: `scene.js` (on screen), `finds.js` (*pure*: what a scene holds).
+  - Games book: `games.js` (*pure*: every game's rules), `match.js`, `path.js`, `sort.js`, `odd.js` (each game on screen).
+  - Drawing book: `drawing.js` (*pure*: levels and dots), `dots.js` (dot to dot on screen), `paper.js` (free drawing), `strokes.js` (crayon and eraser ink), `hold.js` (press-and-hold buttons).
+  - Parent tools: `setup.js` (`?setup=1`), `recorder.js` and `recording.js` (*pure*) for `recorder.html`, `glyphs-page.js` and `glyph-points.js` (*pure*) for `glyphs.html`.
+  - Data lives in `data/`: `chars/`, `glyphs.js`, `stroke-order.js`, `finds.js`, `games.js`, `drawings.js`.
 - When the slice is done: run `npm test`, then give me a numbered list of what to check on the tablet.
 - At the end of each slice, open a pull request. I merge it on GitHub.
 - If you think something outside the slice is needed, write it in `docs/ideas.md` instead of building it.

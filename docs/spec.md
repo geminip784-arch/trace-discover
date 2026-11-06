@@ -1,205 +1,197 @@
-# Trace & Discover — App Concept & Kid UX Spec v2
+# Trace & Discover — App Spec v3
 
-Version 2 · Oct 23, 2026
+Version 3 · Nov 6, 2026 · describes the app as built through Slice 5F, and where it goes next.
+
+The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
 ## Vision and design principles
 
-Trace & Discover turns writing practice into a 10-minute daily adventure. A firefly called Jugnu has lost its light, and every letter or number she traces correctly lights up a world again. Three worlds cover English letters, numbers, and Urdu letters.
+Trace & Discover is a short, daily writing-practice app for one 4-year-old girl. She traces English capitals, numbers and (later) Urdu letters with a firefly called Jugnu (جگنو, Urdu for firefly). It runs offline on her Samsung Galaxy Tab (11 inch, landscape, Chrome). There is no account and no server, and nothing ever leaves the tablet.
 
 **Who it is built for**
 
 | Her profile | What the app does about it |
 | --- | --- |
-| Strong vocabulary and counting | Uses talking and counting as the rewards, not the hurdles |
-| Writing lags behind | Starts with big arm-sized strokes, shrinks them over weeks, warms up fingers first |
-| Cannot read yet | Every instruction is spoken; the child screens have no text |
-| Short attention span | One new character per day; the app ends the session itself |
-| Learning English and Urdu | Narration in English, Urdu or both; Urdu is its own world, not an add-on |
-| Frequent moves | Works fully offline; letter style can be switched to match a new school |
+| Strong vocabulary and counting | Talking and counting are the rewards, not the hurdles |
+| Writing lags behind | Big strokes on wide paths first. Help fades over three rounds |
+| Cannot read yet | Child screens have no instructions in text. Prompts are pictures, sounds and Jugnu (spoken prompts come in Slice 6) |
+| Short attention span | One character takes three short rounds. Every game ends after a few sets |
+| Learning English and Urdu | Urdu has its own book on the shelf, not an add-on |
 
 **Six design principles**
 
-1. Play first, practice inside it. Tracing is the action that makes things happen in the world, not a test before the fun.
-2. Correct, never punish. A wrong start or direction gets a friendly demonstration. No red crosses, no lost progress.
-3. Speak everything. A 4-year-old navigates by sound, pictures and her companion, never by reading.
-4. Short and finite. Jugnu gets sleepy when the daily limit is reached and the session closes with a goodnight.
-5. Paper is the finish line. A letter only counts as mastered when she can write it with a pencil.
-6. Make it hers. Her name, her photos, her family's voices, her own toys as letter pictures.
+1. Play first, practice inside it. Tracing leads straight into a find or count scene.
+2. Correct, never punish. A wrong start or direction gets a friendly demonstration. No red, no buzzer, no lost progress.
+3. Speak everything. A 4-year-old finds her way by sound, pictures and her companion, never by reading.
+4. Short and finite. Each activity ends by itself (a daily limit and goodnight come in Slice 12).
+5. Paper is the finish line. The app is practice for writing with a pencil.
+6. Make it hers. Her name, her family's voices (Slice 6), her own shelf of finds.
 
-**What changed from v1**
+## The screens, as built
 
-| v1 | v2 |
-| --- | --- |
-| One tracing flow per letter | A story world with three places to restore |
-| English letters only | English letters, numbers 0 to 10, Urdu letters |
-| Points and confetti | Collections that visibly grow each world |
-| Child picks 3, 5 or 10 reps | Parent sets a daily time limit; the app picks reps |
-| Heatmap and tremor engine | Three simple checks per stroke: start, direction, shape |
-| Parent dashboard only | Dashboard plus family voice recordings and printable worksheets |
+### Front door
 
-## Story world
+The first time she opens the app each day (by the tablet's own date), she sees the front of a house with a closed door. She taps the door, it swings open with a warm light and a door sound, and the bookshelf appears. Later visits that day go straight to the bookshelf. `?door=1` always shows the door.
 
-The story gives every tracing a reason: a storm blew the letters out of the night sky, and Jugnu needs her help to put them back.
+### Bookshelf (home)
 
-**The companion: Jugnu the firefly** (جگنو, Urdu for firefly)
+Seven books stand on a shelf, left to right: **ABC**, **123**, **Urdu**, **Shapes**, **Games**, **Drawing**, **Stories**. Shapes and Stories are faint with a lock: a tap makes them wiggle and does nothing else (they come in Slices 11 and 12). Tapping an open book opens its cover, then its screen. A toy box on the shelf opens her shelf of finds.
 
-- Her finger becomes Jugnu's trail of light. Tracing literally paints with glow, so the reward is built into the action.
-- Jugnu demonstrates every stroke by flying it first, then waits at the start dot.
-- Personality: curious, a little clumsy, never disappointed. When she goes the wrong way, Jugnu bumps into a leaf, giggles and shows the right way.
-- Grows brighter as she progresses; she can pick its color and a small hat.
-- Speaks English or Urdu, or switches mid-sentence the way many bilingual families talk.
+The home button (top of the left column) always returns here. The back button goes one step up. The music button turns the music on or off.
 
-**The three worlds**
+### Character boards: ABC, 123 and Urdu
 
-| World | Content | Look and mood | What grows back when she succeeds |
+Each board is a grid of large tiles, one per character, each in its own color. No tile color is red, and each one is dark enough to read on white.
+
+- **ABC**: A to Z. **123**: 0 to 9. **Urdu**: the 39 letters in qaida order, filling from the top right.
+- A tile is bright (tappable) when its character file exists in `data/chars/index.json`. Today every capital and digit is bright. Urdu tiles stay faint until Slice 10.
+- A character she has finished with no help from Jugnu shows a gold star on its tile.
+- Tapping a bright tile pops it and opens the writing screen.
+
+### Writing: three practice rounds
+
+Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to 5 allowed). Three round lights at the top show done, now and to come.
+
+| Round | Stage | What she sees | Help given |
 | --- | --- | --- | --- |
-| Alphabet Forest | 26 English letters, one case first | Sunny forest, soft greens | Each letter brings back its animal or object: trace B and a ball bounces into the clearing |
-| Number Town | 0 to 10 first, 11 to 20 later | Toy town with a little train | Each number fills a train carriage with that many things, which she counts aloud |
-| Urdu Garden (باغ) | Urdu letters, taught in shape families | Evening garden with lanterns | Each letter lights a lantern and brings back a creature: ت brings a titli (butterfly) |
+| 1 | Dots | The letter's track, numbered start dots, arrows. Jugnu flies each stroke first | Wide path |
+| 2 | Ghost | A faded track. Only the next start dot glows | Narrower path |
+| 3 | Alone | A very faint track on the four colored lines | Narrowest path. Judged when she lifts |
 
-**Home screen: the map**
+- Strokes must be drawn in order. Stroke k is always compared with reference stroke k. Some letters also accept known joined versions (for example, both strokes of 4 in one go).
+- **Never stuck.** After 3 misses in a row on one stroke, Jugnu demonstrates it. After 5, Jugnu draws it himself and the round starts again. The stage never drops inside a round.
+- **The star.** A round counts only when she drew every stroke herself. The gold star needs a whole practice with no help: no assist, and no demonstration after misses in rounds 2 or 3.
+- When the last round is done, the whole letter glows, then the find or count scene opens.
+- If she leaves mid-way, the next visit resumes at the round she left (`td.rounds`).
 
-- The three worlds sit on one map as islands. Jugnu flies to today's adventure, which glows; the others are visible but quiet.
-- One obvious path per day avoids choice overload. After the daily adventure, she may revisit any lit-up letter for free play.
-- Restored places stay restored. Over weeks the map fills with color, creatures and lanterns: her progress is the landscape, not a score.
-
-## A daily session, step by step
-
-One session teaches one new character, reviews up to two old ones, and ends on a win in about 10 minutes. Timings below are design targets to tune by watching her, not research figures.
-
-1. **Hello (15 s).** Jugnu flies in and greets her by name, in a parent's recorded voice.
-2. **Warm-up (60 s).** One pre-writing game: rain lines, train tracks, ocean waves or bouncing loops. Each warm-up pattern matches a stroke in today's letter.
-3. **Meet the character (30 s).** The letter appears big, says its name and sound, and its picture word animates. Example: "B, buh, Ball!" and a ball bounces in.
-4. **Watch Jugnu (10 s).** Jugnu flies the strokes slowly, leaving glowing numbered dots.
-5. **Trace with dots (Stage 1).** Two or three goes, with Jugnu leading.
-6. **Ghost trace (Stage 2).** Two or three goes on a faded letter. The path narrows a little after each success.
-7. **Write it alone (Stage 3).** One or two goes on the colored writing lines, no help.
-8. **Bring it to life (5 s).** Her own letter turns into its picture and joins the world; a sticker lands in her book.
-9. **Review (1 to 2 min).** One or two older characters marked practice more, straight to Stage 2.
-10. **Bonus game (2 min).** One mini-game from the fun layer, rotated daily.
-11. **Mission (off-screen).** Either Go Find It or a paper mission (see off-screen bridges).
-12. **Goodnight.** Jugnu yawns and floats to its lantern. The app returns to a calm map that stays dim until tomorrow's session or a parent unlock.
-
-If she fails three times in a row, the app quietly drops back one stage, switches to a mini-game, and ends on something she can do.
-
-## Tracing engine
-
-Every character is stored as an ordered list of strokes, and each stroke is checked on three things only: where it starts, which way it goes, and whether it follows the shape.
-
-**The three stages**
-
-| Stage | What she sees | Help given | Passes when |
-| --- | --- | --- | --- |
-| 1. Dots | Big letter, numbered start dots, arrows, Jugnu at the start | Wide path; Jugnu flies ahead | Starts at the dot, right direction, stays roughly on the path |
-| 2. Ghost | Faded letter, only the first start dot glows | Path narrows after each success | Same checks, tighter path |
-| 3. Alone | Only the colored writing lines | None while writing | Correct start, direction and shape, checked after she lifts her finger |
-
-**Feedback rules**
+**Feedback rules** (every round)
 
 | What happens | App response | Never do |
 | --- | --- | --- |
-| Starts in the wrong place | Start dot pulses; Jugnu hops onto it: "Start here!" | Red cross, buzzer |
-| Goes the wrong direction | Glow stops; Jugnu flies the right way once, then she tries again | Erase her whole letter |
-| Wanders off the path | Trail dims; she carries on from where she left it | Snap her line onto the path (hides the real error) |
-| Finishes a stroke well | Trail sparkles, one soft chime | A big celebration after every stroke |
-| Finishes the character | Her letter comes alive for 2 to 3 seconds | Anything that interrupts with menus or adverts |
+| Starts in the wrong place | The start dot pulses and Jugnu hops onto it | Red cross, buzzer |
+| Goes the wrong direction | The glow stops. Jugnu flies the right way once, then she tries again | Erase her whole letter |
+| Wanders off the path | The trail dims. She carries on from where she left it | Snap her line onto the path |
+| Finishes a stroke well | The trail sparkles, one soft chime | A big celebration after every stroke |
+| Finishes the character | Her letter glows | Anything that interrupts with menus |
 
-**How the checks work (for the build)**
+### Find scenes (letters) and count scenes (numbers)
+
+After a letter's last round, a room appears (living room, kitchen, study or bedroom) with 7 objects standing in it. Three start with her letter, and four do not.
+
+- She taps the three that start with her letter. Each found object glows, plays a small animation and flies into a basket.
+- A wrong tap shows that object's own word for 2 seconds, with no sound.
+- After 10 seconds with no find, the objects still to find wiggle once.
+- The scene uses the room that holds the most of that letter's objects.
+- Letters with fewer than 3 find pictures skip the scene and go straight back to the board. Today that is every letter except E F H I L T. Slice 5G adds pictures for every letter.
+
+After a number from 1 to 9, three placemats appear, each holding a different count of small things (eggs, cups, flowers…). She taps the mat with her number of things. It moves to the middle, and she taps each item once to count it; the numbers appear in the order she taps. Sometimes one item is golden. 0 has no count scene.
+
+Every find and every counted group joins her collection.
+
+### Her shelf of finds
+
+The toy box on the bookshelf opens her collection: the newest 24 finds stand on wooden planks. These are the objects she found and the groups she counted. Up to 500 are kept (`td.finds`).
+
+### Games book
+
+A menu of tiles in four rows, one row per kind of game. Each game ends after a few sets, and finishing one gives its tile a star.
+
+| Row | Games | How it plays |
+| --- | --- | --- |
+| Match (draw a line) | Numbers to things, Colors to things, Letter to picture, Thing to its shadow, Shape to thing | Two columns of 4 cards. She draws a line from each card to its partner. 3 sets make a play |
+| Follow the path | Animals to homes, Furniture to rooms | Three crossing roads. She traces each traveller's road to its home |
+| Sort it | By color, By kind | Six things along the top. She drags each into the right one of two baskets. 2 boards make a play |
+| Odd one out | By kind, By color | A row of four cards. She taps the one that is different. 5 rows make a play |
+
+In every game, Jugnu shows the first move himself. Repeated misses make the right answer wiggle (or, in Follow the path, make Jugnu fly the road). Wrong moves make no sound.
+
+### Drawing book
+
+- **Free paper.** Crayons and an eraser on a blank board. A press-and-hold ring clears the page. There is no scoring.
+- **Dot to dot**, in three levels. Levels 1 and 2 have six pictures each (house, sun, fish, car, cat, tree). Level 3 has four pictures with two things each (car and building, house and tree, fish and sun, cat and house). She joins the numbered dots, and the finished shape fills with color. She can then color over it with crayons and the eraser, and tap the big tick when she is done. Finishing 3 pictures of a level opens the next level.
+
+### Music
+
+Gentle background music is generated in the browser (Web Audio, no files). There are three tunes: one for the bookshelf and her shelf of finds, one for boards, games and drawing, and a slow, soft one at a third of the volume while she writes. There is no music at the door. Music is off until it is turned on, and the choice is remembered.
+
+### Parent tools (built so far)
+
+- `index.html?setup=1`: her name and how to say it.
+- `recorder.html`: the stroke recorder, for hand-recorded characters.
+- `glyphs.html`: a review page for the generated characters (`npm run glyphs`).
+- `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
+- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every find-scene tap and every game move.
+
+### Voice, for now
+
+Spoken prompts are switched off (`SPEECH_ON = false` in `src/audio.js`) until Slice 6 brings recorded family voices. Today the app speaks through chimes, pops, Jugnu's movements and pictures.
+
+## Tracing engine
+
+Every character is an ordered list of strokes in line units: y = 0 is the sky line, 0.5 the fence, 1 the grass line and 1.3 the ground line. The capitals and digits are generated from exact lines and arcs (`data/glyphs.js`, `npm run glyphs`). `recorder.html` stays for hand-recorded overrides.
+
+**How the checks work** (`src/geometry.js`)
 
 - Resample her stroke into a fixed number of points.
-- Start check: is her first point within a radius of the stroke's start dot?
-- Direction check: does she move along the reference path in the right order?
-- Shape check: average distance from her points to the reference path, compared with the allowed path width.
-- This is plain geometry. No AI is needed, it runs offline, and every result can be tested.
+- Direction: does she move along the reference path in the right order?
+- Shape: the average distance from her points to the reference path, compared with the stage's allowed width.
+- Start: is her first point near the stroke's start dot?
+- This is plain geometry: no AI, offline, and every result can be tested. Thresholds live in `DEFAULTS.stages`.
 
 **Input and hands**
 
-- Finger mode: thick, textured trails (paint, sand, glitter) and wide paths. Default at the start.
-- Chunky stylus: her tablet (Galaxy Tab A9+ or A11+) has no S Pen support, so a thick-tipped capacitive stylus behaves exactly like a finger. Palm guard: the app follows only the first touch inside the writing area and ignores every other touch until it lifts.
-- Left-handed setting: Jugnu and buttons move to the side her hand does not cover.
+- Finger, or a thick capacitive stylus (the tablet has no S Pen). Palm guard: the app follows only the first touch in the writing area until it lifts.
+- Ink is drawn in `requestAnimationFrame` with coalesced events, so it keeps up with her finger.
+- She is right-handed: Jugnu and the buttons float on the left.
 
-**Urdu-specific rules**
+**Urdu rules** (Slice 10)
 
-- Strokes run right to left.
-- The letter body is written first, then dots and small marks as separate strokes.
+- Strokes run right to left. The body comes first, then dots and small marks as separate `dot` strokes, scored with `scoreDot`.
 - The checker also confirms the number of dots and whether they sit above or below.
 
 ## Content plan
 
-Each world teaches characters in families that share strokes, not in alphabet order, so one learned movement unlocks several characters.
+### English letters
 
-### Alphabet Forest
+- **Capitals:** all 26 are built. **Lowercase:** Slice 9A, using the fence line as the x-height, with i and j getting `dot` strokes.
+- **Find words** start with the letter's **sound**, not its name (Slice 5G). For example, I is insect, not ice cream, and E is egg, not eraser. X has no find pictures for now. The full list is in `09-build-sequence.md`, Slice 5G.
+- **Words level:** short words built from letters she knows (Slice 9C).
 
-**Teaching order.** If capitals come first: straight lines (E F H I L T), then straight plus curve (B D J P R U), then curves (C G O Q S), then diagonals (A K M N V W X Y Z). If lowercase comes first, start with the letters that begin with a c-stroke (c, o, a, d, g, q). This grouping is a proposed sequence, not a published standard.
+### Numbers
 
-**Picture words.** One main picture per letter plus one alternate. All start with a single clear sound, avoid blends like bl or cr, and are things a 4-year-old knows.
+- 0 to 9 are built, and 1 to 9 have count scenes. 10 to 20 come in Slice 9B (two digits side by side, left digit first).
+- Mirror-image numbers are common at this age. The app treats them as a direction cue, never as an error.
+- Optional later: Urdu numerals (۰ ۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹), which need their own font and stroke model.
 
-| Letter | Sound | Main picture | Alternate |
-| --- | --- | --- | --- |
-| A | /æ/ | Apple | Ant |
-| B | /b/ | Ball | Book |
-| C | /k/ | Cup | Cat |
-| D | /d/ | Duck | Door |
-| E | /ɛ/ | Egg | Elephant |
-| F | /f/ | Fish | Fan |
-| G | /g/ | Goat | Gift |
-| H | /h/ | Hat | House |
-| I | /ɪ/ | Insect | Igloo |
-| J | /dʒ/ | Jam | Jug |
-| K | /k/ | Kite | Key |
-| L | /l/ | Lion | Lamp |
-| M | /m/ | Moon | Mango |
-| N | /n/ | Nest | Nose |
-| O | /ɑ/ | Octopus | Ostrich |
-| P | /p/ | Pen | Pot |
-| Q | /kw/ | Queen | Quilt |
-| R | /r/ | Rabbit | Rain |
-| S | /s/ | Sun | Sock |
-| T | /t/ | Teddy | Tap |
-| U | /ʌ/ | Umbrella | Up |
-| V | /v/ | Van | Vase |
-| W | /w/ | Window | Watch |
-| X | /ks/ | Box (letter at the end) | Fox |
-| Y | /j/ | Yo-yo | Yogurt |
-| Z | /z/ | Zebra | Zip |
+### Urdu
 
-### Number Town
-
-- Range: 0 to 10 first, 11 to 20 once those are secure.
-- Proposed order: 1, 7, 4, 0, 6, 9, 2, 3, 5, 8, 10. It moves from single straight strokes to curves and turns; adjust it using her own data.
-- Every number ends with counting: trace 4, then load 4 mangoes onto the train and count them aloud with Jugnu. This uses her counting strength as the reward.
-- Mirror-image numbers are common at this age. The app treats them as a direction cue ("Jugnu's 3 faces this way"), never as an error message.
-- Optional pack: Urdu numerals (۰ ۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹). Some digits differ from the Arabic forms, so the pack needs an Urdu-specific font and stroke model.
-
-### Urdu Garden
-
-**The big idea: one body, many letters.** Most Urdu letters share a body shape and differ only in dots or a small mark. She learns the body once, then adds dots to unlock each sibling. That makes Urdu feel faster, not harder.
+**One body, many letters.** Most Urdu letters share a body shape and differ only in dots or a small mark. She learns the body once, then adds dots to unlock each sibling.
 
 | Body family | Letters | What tells them apart |
 | --- | --- | --- |
-| Alif | ا آ | Single top-down stroke; madd mark on آ |
-| Boat | ب پ ت ٹ ث | Dots below or above; small ط mark on ٹ |
+| Alif | ا آ | A single top-down stroke; the madd mark on آ |
+| Boat | ب پ ت ٹ ث | Dots below or above; a small ط mark on ٹ |
 | Hook | ج چ ح خ | Dots inside or above |
-| Dal | د ڈ ذ | Small ط mark or dot above |
-| Ray | ر ڑ ز ژ | Small ط mark or dots above |
+| Dal | د ڈ ذ | A small ط mark or a dot above |
+| Ray | ر ڑ ز ژ | A small ط mark or dots above |
 | Seen | س ش | Three dots on ش |
-| Swad | ص ض | Dot on ض |
-| Toay | ط ظ | Dot on ظ |
-| Ain | ع غ | Dot on غ |
+| Swad | ص ض | A dot on ض |
+| Toay | ط ظ | A dot on ظ |
+| Ain | ع غ | A dot on غ |
 | Fay and Qaaf | ف ق | One dot or two, and a different tail |
-| Kaaf | ک گ | Extra stroke on گ |
+| Kaaf | ک گ | An extra stroke on گ |
 | Single letters | ل م و ء | Each taught on its own |
-| Noon | ن ں | Dot or no dot |
-| He forms | ہ ھ | Different shapes; ھ appears inside sounds like بھ and پھ |
+| Noon | ن ں | A dot or no dot |
+| He forms | ہ ھ | Different shapes |
 | Ye forms | ی ے | Different shapes; ے comes only at the end of a word |
 
-**Three Urdu traps the design must handle**
+**Three Urdu traps**
 
-1. Several letters share one sound in Urdu: ت and ط, س ص and ث, ز ذ ض and ظ, ح and ہ. Sound-only phonics will confuse her, so Jugnu always says the letter's name first ("Swaad"), then a word.
-2. Some letters never start a word, such as ڑ and ں. Their picture word shows the letter highlighted at the end, for example ڑ in پہاڑ (mountain).
-3. Printed Urdu often uses decorative typefaces. The tracing model must be a simple handwriting style that matches her qaida or school.
+1. Several letters share one sound (ت and ط; س ص and ث; ز ذ ض and ظ; ح and ہ). Jugnu always says the letter's name first, then a word.
+2. Some letters never start a word (ڑ, ں). Their picture word shows the letter at the end.
+3. The tracing model must be a simple handwriting style that matches her qaida, not a decorative typeface.
 
-**Draft picture words** (from my own knowledge; check them against her qaida or teacher before building)
+**Draft picture words** (to check against her qaida or teacher before Slice 10)
 
 | Letter | Name | Picture word | Meaning |
 | --- | --- | --- | --- |
@@ -228,180 +220,75 @@ Each world teaches characters in families that share strokes, not in alphabet or
 | م | Meem | مچھلی (machhli) | Fish |
 | ہ | Hay | ہاتھی (haathi) | Elephant |
 
-Version 1 teaches standalone letter shapes only. Joined forms (for example ب joining ا to make با) come in a later phase.
+Version 1 teaches standalone letter shapes only; joined forms come later. Family words such as امی (Ammi) and ابو (Abbu) make a good later pack.
 
-**Family words as a special pack.** امی (Ammi) and ابو (Abbu) use only ا, م, ی, ب and و. Writing her parents' names early is a big motivator.
+## What comes next (summary)
 
-## Fun layer
+The full order, with goals and checks, is in `09-build-sequence.md`.
 
-Fun comes from three things: things she makes come alive, collections that grow, and her family inside the app. Points and leaderboards are left out on purpose.
+| Slice | What it adds |
+| --- | --- |
+| 5G | Sound-first find pictures for every letter, garden and sea backdrops, the finds review sheet |
+| 5H | More game variety, and the Missing piece game |
+| 5I | Practice and review: round 3 as a copy-it round judged on shape, reviews after 1, 3 and 7 days, a practice-more list, an optional "again?" |
+| 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
+| 9A, 9B, 9C | Lowercase; numbers 10 to 20; a words level |
+| 10 | Urdu: dot strokes, the Urdu font, recorder support, Dot Detective |
+| 8 | Parent zone: lock, settings, progress, last attempts, weekly wrong starts, reset |
+| 7 | Install as an app: full screen, offline, pinned |
+| 11 | The Shapes book |
+| 12 | Stories and the daily rhythm: goodnight, a time limit, Jugnu's light, a warm-up |
+| Trial | Two weeks of daily use |
 
-**Mini-games** (one per session, rotated)
+### Planned: parent zone (Slice 8)
 
-| Game | How it plays | What it builds |
-| --- | --- | --- |
-| Firefly Rain | Draw downward lines to make rain fall on seeds; flowers pop up | Pre-writing: vertical strokes |
-| Train Tracks | Draw left-to-right tracks so the train reaches the station | Pre-writing: horizontal strokes |
-| Magic Reveal | Tracing a letter scratches away fog to reveal a hidden picture | Accuracy, motivation |
-| Hungry Frog | The frog asks for a letter by name; she taps the right one of three to feed it | Letter recognition |
-| Letter Builder | Build a letter from stick and curve pieces, then trace it | Understanding letter shapes |
-| Count and Carry | Trace a number, then load that many mangoes onto the train | Number writing plus counting |
-| Dot Detective | Jugnu names an Urdu letter; she adds the right dots to the body | Telling Urdu siblings apart |
-| Silly Jugnu | Jugnu writes a letter backwards; she spots it and fixes it | Reversal awareness |
-| Sky Writing | Stand up and draw the letter huge in the air with Jugnu | Big-arm movement, a screen break |
-| Family Duet | Parent and child each trace on half the screen, then compare | Shared play with a parent |
-| Name Quest | Boss level: trace her own name, unlocked once its letters are secure; Urdu version too | Her biggest motivator |
+Behind a gate (press and hold for 3 seconds, then a simple sum): daily limit, settings, a progress grid per book, a replay of her last attempt on any character, her wrong starts per week, the practice-more list, and a reset. There is no "struggling" label anywhere.
 
-**Rewards and collections**
+### Planned: practice and review (Slice 5I)
 
-- Sticker book: each sticker grows with her. It arrives as a pencil sketch after her first try, fills with color once the character is secure, and earns a gold star when mastered on paper. Her Go Find It photo sits beside it.
-- World restoration: the forest, town and garden visibly fill with life. No coins, no shop.
-- Jugnu's glow: grows brighter with progress; unlock colors and small hats.
-- Paper badge: a gold star only after a letter is confirmed on paper.
-- No streak penalty. If she skips days, Jugnu is simply happy to see her.
+Round 3 becomes a copy-it round. She writes the letter beside a model, and it is judged on shape at 75 to 125% of the model's size. A character she has secured comes back for a review after 1, 3 and 7 days. Characters she often gets wrong go on a practice-more list. After the star, an optional "again?" lets her go round once more.
 
-**Make it hers**
-
-- Her name and a drawn avatar on the map.
-- Family voice pack: parents (and later grandparents) record praise such as "Shabash!" and "Well done", plus letter names. The app plays them at random among the standard lines.
-- Narration language: English, Urdu, or mixed.
-- Custom picture words: a parent can swap in her own toy, for example her teddy's name for T.
-
-## Off-screen bridges
-
-The app's real job is better writing on paper, so every session ends by sending her away from the screen.
-
-| Bridge | How it works | Version |
-| --- | --- | --- |
-| Go Find It | Jugnu asks her to find something real that starts with today's letter. She takes a photo, which goes into her sticker book and never leaves the tablet. | v1 |
-| Paper missions | One tap prints a worksheet of her practice-more letters. It uses the same colored lines, start dots and arrows as the app. | v1 |
-| Paper check | A parent looks at the finished sheet and taps happy, okay or practice more for each letter. Two happy ratings earn the paper badge. | v1 |
-| Photo scoring | A parent photographs the sheet and an AI vision model rates each letter's formation. This is the only feature where AI may earn its place; it is an untested idea and must be trialed on real sheets first. | Later |
-| Hands-on ideas | A short weekly suggestion for parents: letters in sand, play-dough snakes, shaving foam on a tray. | v1 |
-| Sky Writing | Big arm-sized letters in the air (also a mini-game). | v1 |
-
-The colored writing lines must be identical in the app and on paper:
-
-| Line | Color | Used for |
-| --- | --- | --- |
-| Sky | Blue | Top of tall letters and capitals |
-| Fence (dashed) | Gray | Middle: top of short lowercase letters |
-| Grass | Green | Base: where every letter sits |
-| Ground | Brown | Bottom: tails of g, j, p, q, y |
-
-Urdu letters use the Grass line as their base, with space above and below for dots and tails. Check the exact line spacing against her qaida.
-
-## Adaptive learning
-
-Every character moves through five states, and each session is built from them automatically: one new character, up to two reviews, one warm-up. All thresholds below are starting values to tune with her real data.
-
-| State | Enters when | What the app does |
-| --- | --- | --- |
-| New | Not yet introduced | Waits its turn in the family order |
-| Learning | Introduced today | Runs Stages 1 to 3 |
-| Practice more | 2 or more of her last 5 Stage 3 tries had a wrong start or direction | Reviews it every session from Stage 2; adds it to paper missions |
-| Secure in app | Correct at Stage 3 in 3 separate sessions | Reviews it 1, 3 and 7 days later, then occasionally |
-| Mastered on paper | Parent gives two happy ratings on paper | Rare surprise reviews only |
-
-**Treasure Checkup (weekly).** Jugnu hides five secure characters in a treasure map; she writes each one on the lines with no help. Any slip moves that character back to practice more, quietly, with no message to her.
-
-**What the app records per attempt:** character, stage, start correct (yes or no), direction correct (yes or no), shape score, time taken, finger or stylus, date. That is enough for every rule above and for the parent's stroke replay.
-
-## UX and UI rules for a 4-year-old
-
-The child side of the app has no text, no menus and never more than three choices on a screen; everything else lives behind the parent gate.
+## UX rules for a 4-year-old
 
 | Area | Rule |
 | --- | --- |
-| Navigation | One obvious path per day. At most three choices on any child screen. No nested menus. |
-| Text | None on child screens. Every prompt is spoken. A replay-sound button (an ear) sits in the same corner on every screen. |
-| Touch targets | Large and well spaced, so a small finger never hits the wrong one. Where possible, tap anywhere to continue. |
-| Gestures | Tap and drag only. No pinch, long-press or swipe navigation, which 4-year-olds trigger by accident. |
-| Writing area | At Stage 1 the letter fills most of the screen height, then shrinks across weeks toward paper size. |
-| Layout | Landscape. The letter sits in the center; Jugnu and buttons sit on the side her writing hand does not cover. |
-| Color | Bright but calm backgrounds, a high-contrast letter path, and color never the only signal (also shape and sound). |
-| Sound | Gentle chimes, never buzzers. Music fades out while she is writing. Separate volume for voice and music in the parent zone. |
-| Motion | Short animations of about 3 seconds, never while she is tracing. No flashing. |
-| Response speed | The glowing trail must follow her finger with no visible lag; lag breaks the feeling of drawing. |
-| Exits | Home and back buttons sit behind the parent gate. Android's app pinning keeps her inside the app. |
-| Celebration | Small and varied for each stroke; one bigger moment when the whole character comes alive. |
-
-**Key screens** (clickable mockups: https://claude.ai/artifact/QPXJQqQ3vZEYm2q73RZdo8)
-
-1. Map home: three islands, today's adventure glowing, Jugnu ready.
-2. Tracing screen: big letter, start dots, Jugnu, colored lines, ear button.
-3. Letter comes alive: her letter turns into its picture and joins the world.
-4. Sticker book: her collection, with her Go Find It photos.
-5. Urdu Garden: Dot Detective on the boat family.
-6. Parent zone: progress grid and settings.
-
-## Parent zone
-
-The parent zone sits behind a gate (press and hold for 3 seconds, then answer a simple sum) and holds every setting, all progress, and the family tools.
-
-| Area | What it holds |
-| --- | --- |
-| Daily limit | 5, 10 or 15 minutes; default 10 |
-| Learning setup | Capitals or lowercase first; English letter style to match her school; Urdu letter list and style; Urdu numerals on or off |
-| Child setup | Name and avatar; left or right hand; finger or stylus; narration in English, Urdu or mixed |
-| Progress | A grid per world: Mastered on paper, Secure, Learning, Practice more. No "struggling" label. |
-| Stroke replay | Watch exactly how she wrote any character, slowed down, with her start point marked |
-| Weekly note | What she learned this week, which characters need practice, one off-screen activity idea |
-| Printables | Print a worksheet of her practice-more characters, or any family |
-| Voice recorder | Record praise, letter names and her name in your own voice |
-| Custom words | Swap a picture word for one of her own things, with a photo |
-| Profiles | More than one child, each with their own progress |
+| Choices | At most 3 choices per question or prompt. Menus (the bookshelf, the boards, the games and drawing menus) are exempt |
+| Text | No instructions in text on child screens. The only words are the characters themselves and an object's word in a find scene |
+| Touch targets | At least 88 CSS px, well spaced |
+| Gestures | Tap and drag only. No pinch, long-press or swipe navigation. Context menu, text selection, scrolling and pull-to-refresh are blocked |
+| Layout | Landscape. Jugnu and the buttons float on the left, over the writing area. The whole screen stays writable |
+| Color | Bright but calm, and never red as feedback. Color is never the only signal |
+| Sound | Gentle chimes, never buzzers. Wrong moves are silent. Music is quiet while she writes |
+| Motion | Short animations, never while she is tracing |
+| Response speed | The ink follows her finger with no visible lag |
 
 ## Guardrails
 
-The app stays short, private and pressure-free by design, because a 4-year-old's total screen budget is small.
-
 | Area | Rule | Why |
 | --- | --- | --- |
-| Screen time | Default 10 minutes a day, set by the parent; Jugnu's bedtime closes the session | WHO guidance for ages 3 to 4: sedentary screen time no more than 1 hour a day, less is better ([source](https://www.technologynetworks.com/neuroscience/news/limit-screen-time-for-children-under-five-says-who-318671)) |
-| Off-screen time | Every session ends with an off-screen mission | The same WHO guidance stresses non-screen activities with a caregiver, such as reading and puzzles |
-| Privacy | Offline first; all data and photos stay on the tablet; no child account; no adverts; no third-party tracking | Nothing about her leaves the device |
-| Wellbeing | No streak penalties, no losing progress, no comparisons with other children, no diagnostic words like "struggling" or "tremor" | Pressure and labels at 4 cause anxiety, not progress |
-| Inclusion | Left-handed mode; color is never the only signal | Works for lefties and color-blind children |
-| Before selling | Review children's privacy rules for each store and market (for example Google Play's family app requirements, and US COPPA if sold there) | Not needed for home use, essential before release |
+| Screen time | A parent-set daily limit with Jugnu's goodnight (Slice 12). Until then, a parent watches the time | WHO guidance for ages 3 to 4: sedentary screen time no more than 1 hour a day, less is better |
+| Privacy | Offline. All data stays on the tablet. No account, no adverts, no analytics, no third-party scripts, no network calls once installed | Nothing about her leaves the device |
+| No AI | No AI feature and no API keys anywhere in the project | Keeps it private, offline and testable |
+| Wellbeing | No streak penalties, no lost progress, no comparisons, no diagnostic words | Pressure and labels at 4 cause anxiety, not progress |
 
-## Build plan
+## Tech
 
-Build for her first in four gated phases, and only turn it into a product once paper results show it works. Durations are estimates for a part-time builder using Claude Code.
+| Layer | Choice |
+| --- | --- |
+| App | Plain HTML, CSS and vanilla JavaScript modules; no framework, no bundler |
+| Drawing | SVG for lines, tracks and pictures; one canvas for her ink |
+| Storage | `localStorage` for settings and progress; IndexedDB for audio clips (Slice 6) |
+| Tests | Node's built-in test runner (`npm test`) |
+| Hosting | GitHub Pages, installed from Chrome as a home-screen app (Slice 7) |
 
-| Phase | Time (estimate) | What happens | Gate to the next phase |
-| --- | --- | --- | --- |
-| 0. Baseline | 1 to 2 weeks | She plays LetterSchool's free version; note what's missing. Confirm her school's letter style and her Urdu qaida. | 3 or more gaps worth building; open decisions settled |
-| 1. Home prototype | 2 to 4 weeks | Browser app on her tablet: tracing, Jugnu, stickers. 6 English letters, 3 numbers, the Urdu boat family. | She asks to play; fewer wrong starts; no trail lag |
-| 2. Full family app | 6 to 10 weeks | All three worlds, adaptive reviews, parent zone, printables, family voice recordings, Go Find It | Clear paper improvement on 10 or more letters over 6 weeks |
-| 3. Product | Later, only if Phase 2 works | Native Flutter app, professional art and voices, privacy review, pilot with 5 to 10 families, pricing test | n/a |
+## Retired
 
-Phase 1 is the next build: small enough for a few weekends, but complete enough to tell whether she loves it.
+Ideas from Spec v2 that we dropped, and why.
 
-**Tech choices**
-
-| Layer | Phase 1: home prototype | Phase 3: product |
+| Retired | Replaced by | Why |
 | --- | --- | --- |
-| App | One HTML page in the tablet's browser, built with Claude Code | Flutter app for Android, iOS later |
-| Pen input | Browser pointer events, following one touch at a time (no S Pen on her tablet) | Flutter's pointer device types |
-| Character data | One JSON file per character: strokes as point lists, start dots, picture word | Same files |
-| Scoring | Plain geometry, no AI | Same |
-| Storage | Browser storage on the tablet | drift (SQLite) |
-| Art | Simple SVG drawings | Commissioned illustrator |
-| Voice | Your own recordings | Professional English and Urdu voice artist |
-
-**The hidden effort is stroke data.** About 100 characters need correct stroke paths across English, numbers and Urdu. Shortcut: build a small stroke-recorder page first. You trace each character slowly in the right order on the tablet, and it saves the stroke file for the app and the printables.
-
-## Open decisions
-
-These choices change what gets built, and only you can make them; most are settled by checking her school and qaida.
-
-- [ ] Capitals or lowercase first in English? Match what her school teaches.
-- [ ] Which English letter style does her school use? Stroke order differs between styles for letters like k, f and y.
-- [ ] Which Urdu alphabet list and order? Counts differ depending on whether ء, ھ and ں are included.
-- [ ] Which Urdu handwriting model? Use the one in her qaida or school book.
-- [ ] Western digits only, or Urdu numerals too?
-- [ ] Voices: your own recordings, a hired voice, or text-to-speech? Urdu text-to-speech quality on Android needs testing first.
-- [ ] Companion: show her three characters (firefly, baby dragon, kitten) and let her pick. Her choice beats mine.
-- [ ] Daily limit default: 5, 10 or 15 minutes?
-- [ ] Check the draft Urdu picture words with a native speaker or her teacher.
+| The map with three islands (Alphabet Forest, Number Town, Urdu Garden) | The front door and the bookshelf | A shelf of books is easier for her to find her way around, and it grows simply by adding a book (Shapes, Stories) |
+| Sticker stages (pencil sketch, then color, then gold star) | Gold stars on the board tiles, and her shelf of finds | A star is clear at a glance. The finds shelf gives her a collection that visibly grows, without a second reward system |
+| The v2 mini-game list (Firefly Rain, Train Tracks, Magic Reveal, Hungry Frog, Letter Builder, Count and Carry, Silly Jugnu, Sky Writing, Family Duet, Name Quest) | The games we built: Match (5 sets), Follow the path, Sort it and Odd one out, plus the Drawing book. **Dot Detective moves to Urdu** (Slice 10) | The built games share a few engines, play well with a finger on her tablet, and cover the same skills. Dot Detective only makes sense once Urdu letters exist |
+| Dropping back one stage after 3 fails | Never-stuck help: Jugnu demonstrates after 3 misses and draws the stroke after 5, and the round starts again | Dropping a stage felt like losing ground. Help that comes to her keeps her moving, and the stage stays where the round put it |
+| AI photo scoring of paper worksheets | Nothing for now (a parent looks at her paper) | It conflicts with the no-AI rule: it would need an online model and API keys, and would send pictures of her work off the tablet |
