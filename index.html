@@ -325,6 +325,10 @@
     .sc-obj.rw-lemon .lem { animation: rw-wobble .45s ease-in-out infinite alternate; }
     .sc-obj.rw-lemon .drops { opacity: 1; animation: rw-rise 1.4s ease-out infinite; }
     .sc-obj.rw-tomato .tom { animation: rw-hop2 .6s ease-in-out infinite; }
+    /* Slice 5G pictures: each moves its <g class="anim"> one of three ways. */
+    .sc-obj.rw-hop .anim { animation: rw-hop2 .7s ease-in-out infinite; }
+    .sc-obj.rw-wobble .anim { animation: rw-wobble .5s ease-in-out infinite alternate; }
+    .sc-obj.rw-swing .anim { animation: rw-swing .8s ease-in-out infinite alternate; }
     .art .num { opacity: 0; }
     .art .steam, .art .scoop2, .art .drops { opacity: 0; }
     @keyframes rw-rise { from { transform: translateY(60px); opacity: 0; } 30% { opacity: .75; } to { transform: translateY(-80px); opacity: 0; } }

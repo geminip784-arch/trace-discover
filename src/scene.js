@@ -1,13 +1,13 @@
-// scene.js — the find and count scenes on screen (Slice 5C). finds.js decides
+// scene.js — the find and count scenes on screen (Slices 5C and 5G). finds.js decides
 // what is in a scene; this file draws it and plays it.
 // Child-screen rules: no text but the words under objects and the numbers,
 // no failure sound, nothing red, every target at least 88 px, Jugnu the only
 // character and on the left. Every tap on an object, a group or an item goes
 // into the attempt log as a "find" entry.
 
-import { ROOMS, BASKET } from '../data/finds.js';
+import { PLACES, BASKET } from '../data/finds.js';
 import {
-  FINDS, HINT_MS, WORD_MS, letterScene, numberScene, makeGroup, groupWord, startCount, tapCount,
+  HINT_MS, WORD_MS, letterScene, numberScene, makeGroup, groupWord, startCount, tapCount,
   sceneFit, groupScale, countScale, COUNT_BOX, findLogEntry,
 } from './finds.js';
 import { logAttempt, saveFind } from './storage.js';
@@ -61,7 +61,7 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
   const cancel = (t) => { clearTimeout(t); timers.delete(t); };
   const log = (fields) => logAttempt(findLogEntry({ char, scene: isNumber ? 'number' : 'letter', ...fields, ms: performance.now() - opened }));
 
-  view.innerHTML = `<div class="sc-stage">${ROOMS[scene.room].backdrop}</div>${JUGNU_IMG}`;
+  view.innerHTML = `<div class="sc-stage">${PLACES[scene.room].backdrop}</div>${JUGNU_IMG}`;
   const stage = view.querySelector('.sc-stage');
   stage.firstElementChild.classList.add('sc-backdrop');
 
@@ -82,11 +82,12 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
   if (isNumber) playNumber();
   else playLetter();
 
-  // ---- letters: find 3 ----
+  // ---- letters: find 3 (or 2) ----
   function playLetter() {
+    const goal = scene.targets; // 3, or 2 for a letter with only 2 pictures
     const dots = document.createElement('div');
     dots.className = 'sc-dots';
-    dots.innerHTML = '<i></i><i></i><i></i>';
+    dots.innerHTML = '<i></i>'.repeat(goal);
     const basket = document.createElement('div');
     basket.className = 'sc-basket';
     basket.innerHTML = `<div class="sc-minis"></div>${BASKET}`; // the basket in the top-right corner, clear of every spot
@@ -119,7 +120,7 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
     });
 
     function tapObject(it) {
-      if (it.found || found >= FINDS) return;
+      if (it.found || found >= goal) return;
       log({ step: 'find', word: it.word, ok: it.right });
       if (!it.right) {
         // Wiggle and say its own name (on screen) for a moment. No sound.
@@ -138,7 +139,7 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
       it.label.classList.add('show');
       it.el.classList.add('found', `rw-${it.reward}`);
       chime();
-      if (found < FINDS) armHint();
+      if (found < goal) armHint();
       else if (hint) cancel(hint);
       const k = found;
       later(() => flyToBasket(it, k), FOUND_MS);
@@ -164,7 +165,7 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
         basket.querySelector('.sc-minis').appendChild(mini);
         replay(basket, 'wig');
         dots.children[k - 1].classList.add('on');
-        if (k === FINDS) finish();
+        if (k === goal) finish();
       }, FLY_MS);
     }
 
@@ -176,7 +177,7 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
 
     armHint();
     hooks.pause = () => { if (hint) cancel(hint); hint = null; };
-    hooks.resume = () => { if (found < FINDS) armHint(); };
+    hooks.resume = () => { if (found < goal) armHint(); };
   }
 
   // ---- numbers: pick the group, then count ----

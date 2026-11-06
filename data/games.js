@@ -202,7 +202,7 @@ const inner = (art) => art.replace(/^<svg[^>]*>|<\/svg>$/g, '');
 const objectArt = (id) => OBJECTS.find((o) => o.id === id).art;
 
 // ---- letter to picture: one object per recorded letter, its word unambiguous ----
-export const LETTER_PICTURES = { E: 'egg', F: 'fork', H: 'hat', I: 'ice-cream', L: 'lemon', T: 'tiger' };
+export const LETTER_PICTURES = { E: 'egg', F: 'fork', H: 'hat', I: 'insect', L: 'lemon', T: 'tiger' };
 export const LETTER_INK = '#1D2B8F'; // the tracing ink (src/render.js INK.core)
 
 // A recorded character (data/chars/<id>.json) drawn as one card: its strokes

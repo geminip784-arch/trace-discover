@@ -1,13 +1,15 @@
 // finds.js — pure functions only. No DOM, no storage, no audio.
-// The rules of the find and count scenes (Slice 5C): which room, which objects
-// and where, the placemat groups, the counting order, the sizes on screen, the
+// The rules of the find and count scenes (Slices 5C and 5G): which place,
+// which objects and where, the placemat groups, the counting order, the sizes on screen, the
 // collection list and the attempt-log entry. scene.js draws and plays them.
 // Every random choice takes `rand` (Math.random by default) so tests can repeat it.
 
-import { OBJECTS, ROOMS, THINGS } from '../data/finds.js';
+import { OBJECTS, ROOMS, PLACES, THINGS } from '../data/finds.js';
 
-export const FINDS = 3;          // right objects in a letter scene
-export const OTHERS = 4;         // objects that do not start with her letter
+export const FINDS = 3;          // right objects in a letter scene, when the letter has 3 or more
+export const MIN_FINDS = 2;      // a letter with fewer find pictures than this has no scene
+export const SPOTS = 7;          // objects in a letter scene: the right ones, then others up to 7
+export const OTHERS = SPOTS - FINDS; // objects that do not start with her letter (5 when she finds 2)
 export const HINT_MS = 10000;    // no find for this long: the objects left to find wiggle once
 export const WORD_MS = 2000;     // a wrong tap shows that object's own word this long
 export const GOLD_CHANCE = 0.25; // one golden item in the group she counts
@@ -27,46 +29,58 @@ export function shuffle(list, rand = Math.random) {
 }
 
 // ---------------------------------------------------------------------------
-// Letters: find 3
+// Letters: find 3 (or 2)
 
-export const objectsFor = (letter, objects = OBJECTS) => objects.filter((o) => o.letter === letter);
+// A picture that can stand in a find scene (finds: false pictures only show on her shelf).
+export const inScenes = (o) => o.finds !== false;
 
-// A letter has a scene when the library holds at least 3 of its objects.
-export const hasLetterScene = (letter, objects = OBJECTS) => objectsFor(letter, objects).length >= FINDS;
+// Her letter's find pictures.
+export const objectsFor = (letter, objects = OBJECTS) => objects.filter((o) => o.letter === letter && inScenes(o));
 
-// How many of her letter's objects each room holds.
-export function roomCounts(letter) {
-  const counts = Object.fromEntries(Object.keys(ROOMS).map((r) => [r, 0]));
-  for (const o of objectsFor(letter)) for (const r of o.rooms) counts[r] += 1;
+// How many right objects her letter's scene has: 3, or 2 when only 2 exist.
+export const targetsFor = (letter, objects = OBJECTS) => Math.min(FINDS, objectsFor(letter, objects).length);
+
+// A letter has a scene when the library holds at least 2 of its pictures.
+export const hasLetterScene = (letter, objects = OBJECTS) => objectsFor(letter, objects).length >= MIN_FINDS;
+
+// How many of her letter's pictures each place holds.
+export function roomCounts(letter, objects = OBJECTS) {
+  const counts = Object.fromEntries(Object.keys(PLACES).map((r) => [r, 0]));
+  for (const o of objectsFor(letter, objects)) for (const r of o.places) counts[r] += 1;
   return counts;
 }
 
-// The room that holds the most of her letter's objects; a tie is broken at random.
-export function roomFor(letter, rand = Math.random) {
-  const counts = roomCounts(letter);
+// The place that holds the most of her letter's pictures; a tie is broken at random.
+export function roomFor(letter, rand = Math.random, objects = OBJECTS) {
+  const counts = roomCounts(letter, objects);
   const most = Math.max(...Object.values(counts));
   return pick(Object.keys(counts).filter((r) => counts[r] === most), rand);
 }
 
-// `count` objects from `list`, the room's own first, the rest from other rooms.
-function preferRoom(list, room, count, rand) {
-  const own = shuffle(list.filter((o) => o.rooms.includes(room)), rand);
-  const rest = shuffle(list.filter((o) => !o.rooms.includes(room)), rand);
-  return [...own, ...rest].slice(0, count);
+// `count` objects from `list`: the place's own first; then, borrowed from other
+// places, portable things (food, toys, small objects) before animals, so a horse
+// never turns up in the kitchen while a cup could have come instead.
+export function preferPlace(list, place, count, rand = Math.random) {
+  const own = shuffle(list.filter((o) => o.places.includes(place)), rand);
+  const rest = list.filter((o) => !o.places.includes(place));
+  const portable = shuffle(rest.filter((o) => !o.animal), rand);
+  const animals = shuffle(rest.filter((o) => o.animal), rand);
+  return [...own, ...portable, ...animals].slice(0, count);
 }
 
-// { room, items }: 3 objects that start with her letter and 4 that do not, each
-// on its own spot of the room, in random places. item: { ...object, right, spot }.
-// null when the letter has no scene.
-export function letterScene(letter, rand = Math.random) {
-  if (!hasLetterScene(letter)) return null;
-  const room = roomFor(letter, rand);
-  const right = preferRoom(objectsFor(letter), room, FINDS, rand);
-  const others = preferRoom(OBJECTS.filter((o) => o.letter !== letter), room, OTHERS, rand);
-  const spots = shuffle(ROOMS[room].spots, rand);
+// { room, targets, items }: `targets` (3, or 2) pictures that start with her
+// letter and others up to 7 that do not, each on its own spot of the place, in
+// random order. item: { ...object, right, spot }. null when the letter has no scene.
+export function letterScene(letter, rand = Math.random, objects = OBJECTS) {
+  if (!hasLetterScene(letter, objects)) return null;
+  const room = roomFor(letter, rand, objects);
+  const targets = targetsFor(letter, objects);
+  const right = preferPlace(objectsFor(letter, objects), room, targets, rand);
+  const others = preferPlace(objects.filter((o) => inScenes(o) && o.letter !== letter), room, SPOTS - targets, rand);
+  const spots = shuffle(PLACES[room].spots, rand);
   const items = [...right.map((o) => ({ ...o, right: true })), ...others.map((o) => ({ ...o, right: false }))]
     .map((o, i) => ({ ...o, spot: spots[i] }));
-  return { room, items: shuffle(items, rand) };
+  return { room, targets, items: shuffle(items, rand) };
 }
 
 // ---------------------------------------------------------------------------
@@ -75,8 +89,8 @@ export function letterScene(letter, rand = Math.random) {
 export const hasNumberScene = (id) => /^[1-9]$/.test(id);
 
 // What comes after she finishes writing a character: its find or count scene
-// ('openScene'), or, when it has none (a letter with fewer than 3 find
-// pictures, or 0), straight back to its board and its star ('letterDone').
+// ('openScene'), or, when it has none (a letter with fewer than 2 find
+// pictures, such as U and X, or 0), straight back to its board and its star ('letterDone').
 // The values are session.js navigate() event types.
 export const afterWriting = (id, objects = OBJECTS) =>
   (hasLetterScene(id, objects) || hasNumberScene(id) ? 'openScene' : 'letterDone');
@@ -175,6 +189,13 @@ export function cleanFinds(list) {
   return list.filter((e) => (e && typeof e === 'object')
     && ((typeof e.o === 'string' && OBJECTS.some((o) => o.id === e.o))
       || (typeof e.g === 'string' && THINGS[e.g] && Number.isInteger(e.n) && e.n >= 1 && e.n <= 9)));
+}
+
+// The picture of one saved find on her shelf, or null. Pictures kept out of
+// find scenes (ice cream, eraser) still show, so nothing she found disappears.
+export function findArt(entry, objects = OBJECTS) {
+  if (entry?.g) return THINGS[entry.g] ? makeGroup(entry.g, entry.n, entry.gold ? 0 : -1).svg : null;
+  return objects.find((o) => o.id === entry?.o)?.art ?? null;
 }
 
 // The kind of her last counted group (so the next number scene can avoid it).
