@@ -12,7 +12,7 @@ import {
   shapeArt, shapeThingArt, FURNITURE, ROOM_IDS, ROOM_HOME, roomArt,
 } from '../data/games.js';
 import {
-  GAME_ROWS, GAMES, MATCH_GAMES, kindOf, PAIRS, makeSet, lettersSet, shadowsSet, shapesSet, cardsOf,
+  GAME_ROWS, GAME_LINES, GAMES, MATCH_GAMES, kindOf, PAIRS, makeSet, lettersSet, shadowsSet, shapesSet, cardsOf,
   dropCard, startMatch, partnerCard, showsFirstMove, firstMovePair, PATH, pathThings, pathBoard,
   boardDone, firstMoveRoad, startsAtAnimal, stepTrace, startTrace, gameLogEntry, boardFit,
 } from '../src/games.js';
@@ -51,12 +51,20 @@ test('every menu tile opens its own game (so each earns its own star)', () => {
   for (const game of GAMES) assert.deepEqual(navigate({ screen: 'games' }, { type: 'openGame', game }), { screen: 'play', game });
 });
 
-test('menu tiles stay at least 88 px with four rows (room for Sort it and Odd one out)', () => {
-  // index.html: --t = min(210px, (100vw - 260px) / 5.6, (100vh - 40px) / rows - 40px)
-  const tile = (w, h, rows) => Math.min(210, (w - 260) / 5.6, (h - 40) / rows - 40);
+test('menu tiles stay at least 88 px: the rows sit on four lines, and every line fits across', () => {
+  // index.html: --t = min(210px, (100vw - 260px) / 5.6, (100vh - 40px) / lines - 40px)
+  const tile = (w, h, lines) => Math.min(210, (w - 260) / 5.6, (h - 40) / lines - 40);
+  assert.equal(GAME_LINES.length, 4);
+  assert.deepEqual(GAME_LINES.flat().sort(), GAME_ROWS.map((r) => r.kind).sort(), 'every row on one line');
   for (const [w, h] of [[1280, 626], [1280, 800]]) {
-    assert.ok(tile(w, h, GAME_ROWS.length) >= 88);
-    assert.ok(tile(w, h, 4) >= 88, `${w}x${h} with 4 rows: ${tile(w, h, 4)}`);
+    const t = tile(w, h, GAME_LINES.length);
+    assert.ok(t >= 88, `${w}x${h}: ${t}`);
+    // A line's width: its tiles (22 px apart) and its rows (64 px apart), inside the menu (136 px left, 24 right).
+    for (const kinds of GAME_LINES) {
+      const tiles = kinds.reduce((n, k) => n + GAME_ROWS.find((r) => r.kind === k).games.length, 0);
+      const width = tiles * t + (tiles - kinds.length) * 22 + (kinds.length - 1) * 64;
+      assert.ok(width <= w - 160, `${kinds.join('+')} fits across at ${w}x${h}`);
+    }
   }
 });
 

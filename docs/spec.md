@@ -105,6 +105,7 @@ A menu of tiles in four rows, one row per kind of game. Each game ends after a f
 | Follow the path | Animals to homes, Furniture to rooms | Three crossing roads. She traces each traveller's road to its home |
 | Sort it | By color, By kind | Six things along the top. She drags each into the right one of two baskets. 2 boards make a play |
 | Odd one out | By kind, By color | A row of four cards. She taps the one that is different. 5 rows make a play |
+| Missing piece | Levels 1 to 4 | Three shapes, each with a gap; she drags the piece that fits from a row below. 3 rounds make a play |
 
 In every game, Jugnu shows the first move himself. Repeated misses make the right answer wiggle (or, in Follow the path, make Jugnu fly the road). Wrong moves make no sound. In the drag games (Match, Sort it, Follow the path), a plain tap on a card, without dragging, makes it wiggle; it is not a try and is not logged. In Odd one out a tap is her answer.
 
@@ -118,6 +119,19 @@ In every game, Jugnu shows the first move himself. Repeated misses make the righ
 | Thing to its shadow | Any find picture with an outline of its own. Plain rounds and boxes are left out, and a set never holds two shadows from one look-alike group (horse and zebra, for example) |
 | Shape to thing | 4 things per shape: circle (ball, clock, cookie, button), square (block, window, gift, dice), triangle (roof, pizza slice, tent, party hat), tall rectangle (door, book, phone, fridge) |
 | Follow the path | 3 of 8 animals: bee and hive, duck and pond, dog and kennel, bird and nest, fish and bowl, rabbit and hutch, cow and barn, spider and web |
+
+The menu sits on four lines: Match; Follow the path and Sort it side by side; Odd one out; Missing piece.
+
+**Missing piece (Slice 5H).** Three shapes (circle, square, triangle, tall rectangle) each have a gap: a quarter, a half or a corner cut out, shown as a dashed hole. The pieces wait on a shelf below. The right piece snaps into its gap; a whole shape glows with a chime. A wrong piece bounces back silently; letting go away from every gap is not a try. Jugnu places the first piece in the first round. After 3 wrong tries in a row, the right piece for that gap wiggles. Every round is generated fresh (shapes, missing parts, colors and places), and a referee checks it: exactly one piece fits each gap, and, comparing outlines by shape and ignoring size, the only pieces with a gap's outline are its right piece and that piece's twin in another color.
+
+| Level | What she sees | Pieces |
+| --- | --- | --- |
+| 1 | Three shapes of three colors | 6: the right pieces, and each one's twin in the next shape's color. So every gap has a piece of its outline in the wrong color, and one of its color with the wrong outline |
+| 2 | Everything one color: only the outline tells them apart | 6: the right pieces and three of other outlines |
+| 3 | Like level 1, but one shape is missing two pieces (two quarters or two corners) | 8, on two rows |
+| 4 | Find-library pictures on cards tinted with their color, a quarter, half or corner cut out | 6, as level 1, with the picture in place of the color. Only cuts that hold at least a quarter picture are used (`data/missing-cuts.js`) |
+
+Each level is its own tile with its own star (a finished play). A level opens after 3 finished rounds of the one before (`td.missing`), like the Drawing book; a locked tile is faint and wiggles.
 
 A play never repeats a set (or board, or row) from the play before it of the same game. What each game's last play held is kept in `td.lastPlay`.
 

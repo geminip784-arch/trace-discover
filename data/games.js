@@ -734,3 +734,47 @@ Object.assign(MENU, {
   'odd-kinds': tileGrid(['apple', 'banana', 'grapes', 'ball-blue']),
   'odd-colors': tileGrid(['apple', 'car-red', 'cup-red', 'cup-blue']),
 });
+
+// ---------------------------------------------------------------------------
+// Slice 5H: Missing piece. The shapes and their pieces are drawn from
+// geometry in src/games.js; here are level 4's pictures and the menu tiles.
+
+// Level 4: find-library pictures on a square card tinted with their color.
+// Each has one main color (tests/missing.test.js reads the art), and a round
+// never shows two of one color, so the picture tells its pieces apart.
+export const MISSING_PICTURES = {
+  apple: 'red', heart: 'red',
+  banana: 'yellow', star: 'yellow',
+  whale: 'blue', cup: 'blue',
+  pear: 'green', parrot: 'green',
+  fish: 'orange', juice: 'orange',
+  grapes: 'purple', octopus: 'purple',
+  sock: 'pink',
+};
+export const missingPictureArt = (id) => objectArt(id);
+
+// The menu tiles (200 x 160): a broken shape and its piece, and the level's
+// dots in the corner (like the Drawing book's levels).
+const levelDots = (n) => [...Array(n).keys()].map((i) => `<circle cx="${14 + i * 18}" cy="14" r="7" fill="#2A2370"/>`).join('');
+const GAP = 'fill="#FFF8E7" stroke="#B9A88F" stroke-width="3" stroke-dasharray="7 6"';
+Object.assign(MENU, {
+  'missing-1': svg('0 0 200 160', levelDots(1)
+    + '<circle cx="80" cy="88" r="56" fill="#FF4D4D" stroke="#D93636" stroke-width="4"/>'
+    + `<path d="M80 88 L136 88 A56 56 0 0 0 80 32 Z" ${GAP}/>`
+    + '<path d="M150 70 L196 70 A46 46 0 0 0 150 24 Z" fill="#FF4D4D" stroke="#D93636" stroke-width="4" stroke-linejoin="round" transform="rotate(-8 170 50)"/>'),
+  'missing-2': svg('0 0 200 160', levelDots(2)
+    + '<rect x="26" y="36" width="104" height="104" rx="6" fill="#4D96FF" stroke="#2F74D9" stroke-width="4"/>'
+    + `<path d="M130 92 L130 140 L82 140 Z" ${GAP}/>`
+    + '<path d="M190 96 L190 144 L142 144 Z" fill="#4D96FF" stroke="#2F74D9" stroke-width="4" stroke-linejoin="round"/>'
+    + '<rect x="148" y="30" width="40" height="40" rx="4" fill="#4D96FF" stroke="#2F74D9" stroke-width="4"/>'),
+  'missing-3': svg('0 0 200 160', levelDots(3)
+    + '<rect x="20" y="36" width="110" height="110" rx="6" fill="#FFD43B" stroke="#E7B500" stroke-width="4"/>'
+    + `<rect x="75" y="36" width="55" height="55" ${GAP}/><rect x="20" y="91" width="55" height="55" ${GAP}/>`
+    + '<rect x="146" y="28" width="46" height="46" rx="3" fill="#FFD43B" stroke="#E7B500" stroke-width="4"/>'
+    + '<rect x="146" y="96" width="46" height="46" rx="3" fill="#FFD43B" stroke="#E7B500" stroke-width="4"/>'),
+  'missing-4': svg('0 0 200 160', levelDots(4)
+    + '<rect x="22" y="30" width="118" height="118" rx="10" fill="#FFE3E3" stroke="#FF9A9A" stroke-width="4"/>'
+    + `<svg x="30" y="34" width="102" height="110" viewBox="0 0 200 240">${inner(objectArt('apple'))}</svg>`
+    + `<path d="M140 92 L140 148 L84 148 Z" ${GAP}/>`
+    + '<path d="M192 100 L192 152 L140 152 Z" fill="#FFE3E3" stroke="#FF9A9A" stroke-width="4" stroke-linejoin="round"/>'),
+});

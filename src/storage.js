@@ -260,3 +260,30 @@ export function saveLastPlay(game, keys, store = globalThis.localStorage) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Missing piece (Slice 5H): finished rounds per level, { [level]: count }. A
+// level opens after 3 finished rounds of the one before (src/games.js missingLevelOpen).
+
+export const MISSING_KEY = 'td.missing';
+
+export function readMissingRounds(store = globalThis.localStorage) {
+  try {
+    const all = JSON.parse(store.getItem(MISSING_KEY) ?? '{}');
+    if (!all || typeof all !== 'object' || Array.isArray(all)) return {};
+    return Object.fromEntries(Object.entries(all).filter(([, n]) => Number.isInteger(n) && n >= 0));
+  } catch {
+    return {};
+  }
+}
+
+export function addMissingRound(level, store = globalThis.localStorage) {
+  try {
+    const all = readMissingRounds(store);
+    all[level] = (all[level] ?? 0) + 1;
+    store.setItem(MISSING_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
