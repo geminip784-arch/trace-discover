@@ -87,3 +87,6 @@ counting thing), fairy (Jugnu is the only character).
 
 - **[later]** Odd one out: a tap is her answer there, so a plain tap is not a wiggle. If she taps cards just to see them move, a short press could be needed before a tap counts.
 - **[later]** The find-library pictures (alligator, letter pictures, shadows) have room round them in their 200 x 240 box, so they look a little smaller on a card than the games' own pictures. A per-picture crop would fill the cards better.
+- **[5H]** Missing piece: rotated pieces, which she turns to fit (a quarter that only fits once turned). Today pieces are never turned, so a quarter at another place is another outline.
+- **[5H]** A two-step games menu: pick a kind of game (match, path, sort, odd one out, missing piece), then a set or level. The tiles would stay large as more games come (today Follow the path and Sort it share a line so every tile stays at least 88 px).
+- **[later]** Missing piece level 4: a few cuts are thin (the star's top quarters, the sock's bottom-left corner). If she cannot tell them apart, raise the 25% bar in `tools/missing-cuts.js` and run `npm run missing-cuts`.

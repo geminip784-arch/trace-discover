@@ -13,7 +13,7 @@ import {
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
-  readGameStars, saveGameStar, readDrawStars, saveDrawStar,
+  readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
 } from './storage.js';
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
@@ -23,12 +23,13 @@ import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
-import { GAME_ROWS, kindOf } from './games.js';
+import { GAME_ROWS, GAME_LINES, kindOf, missingLevelOpen, missingLevel } from './games.js';
 import { MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
 import { playSort } from './sort.js';
 import { playOdd } from './odd.js';
+import { playMissing } from './missing.js';
 import { playDots } from './dots.js';
 import { playPaper } from './paper.js';
 import { LEVELS, levelPictures, levelOpen, pictureId } from './drawing.js';
@@ -39,6 +40,7 @@ const GAME_COLORS = {
   numbers: '#1E88E5', colors: '#FB8C00', letters: '#3949AB', shadows: '#546E7A', shapes: '#8E24AA',
   path: '#43A047', 'path-rooms': '#00897B', 'sort-colors': '#E8590C', 'sort-kinds': '#6D4C41',
   'odd-kinds': '#C2185B', 'odd-colors': '#5E35B1',
+  'missing-1': '#D81B60', 'missing-2': '#1E88E5', 'missing-3': '#F9A825', 'missing-4': '#00897B',
 };
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
@@ -240,23 +242,33 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   }
   window.addEventListener('resize', sizeBoard);
 
-  // ---- the games book (Slices 5D and 5F) ----
+  // ---- the games book (Slices 5D, 5F and 5H) ----
   // A row of picture tiles per kind of game (src/games.js GAME_ROWS), one tile
-  // per set; a gold star on each she has finished.
+  // per set; a gold star on each she has finished. The rows sit on four lines
+  // (GAME_LINES: Follow the path and Sort it share one). Missing piece has a
+  // tile per level: a level opens after 3 finished rounds of the one before;
+  // a locked tile is faint and wiggles.
   function drawGames(view, newGameStar) {
     view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}<div class="gm-menu"></div>`;
     const menu = view.querySelector('.gm-menu');
-    menu.style.setProperty('--rows', GAME_ROWS.length);
+    menu.style.setProperty('--rows', GAME_LINES.length);
     const stars = readGameStars();
-    for (const { kind, games } of GAME_ROWS) {
-      const row = document.createElement('div');
-      row.className = `gm-row gm-row-${kind}`;
-      menu.appendChild(row);
-      for (const id of games) addTile(row, id);
+    const rounds = readMissingRounds();
+    for (const kinds of GAME_LINES) {
+      const line = document.createElement('div');
+      line.className = 'gm-line';
+      menu.appendChild(line);
+      for (const kind of kinds) {
+        const row = document.createElement('div');
+        row.className = `gm-row gm-row-${kind}`;
+        line.appendChild(row);
+        for (const id of GAME_ROWS.find((r) => r.kind === kind).games) addTile(row, id);
+      }
     }
     function addTile(row, id) {
+      const locked = kindOf(id) === 'missing' && !missingLevelOpen(missingLevel(id), rounds);
       const el = document.createElement('div');
-      el.className = 'gm-tile';
+      el.className = `gm-tile${locked ? ' locked' : ''}`;
       el.style.setProperty('--c', GAME_COLORS[id]);
       el.setAttribute('role', 'button');
       el.setAttribute('aria-label', id);
@@ -269,6 +281,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       }
       el.addEventListener('click', () => {
         if (busy) return;
+        if (locked) return wiggle(el, 'wig');
         busy = true;
         popSound();
         el.classList.add('picked');
@@ -365,7 +378,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       saveGameStar(id);
       go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
     };
-    const play = { path: playPath, sort: playSort, odd: playOdd, match: playMatch }[kindOf(id)];
+    const play = { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing }[kindOf(id)];
     game = play(view, { game: id, onDone });
     if (upright) game.pause();
   }

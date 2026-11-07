@@ -25,7 +25,11 @@ export const GAME_ROWS = [
   { kind: 'path', games: ['path', 'path-rooms'] },
   { kind: 'sort', games: ['sort-colors', 'sort-kinds'] },
   { kind: 'odd', games: ['odd-kinds', 'odd-colors'] },
+  { kind: 'missing', games: ['missing-1', 'missing-2', 'missing-3', 'missing-4'] }, // Slice 5H: one tile per level
 ];
+// The menu's lines, top to bottom: each a list of kinds side by side. Follow
+// the path and Sort it share a line, so the tiles stay at least 88 px.
+export const GAME_LINES = [['match'], ['path', 'sort'], ['odd'], ['missing']];
 export const GAMES = GAME_ROWS.flatMap((r) => r.games);
 export const MATCH_GAMES = GAME_ROWS.find((r) => r.kind === 'match').games;
 export const kindOf = (game) => GAME_ROWS.find((r) => r.games.includes(game))?.kind ?? null;
@@ -575,6 +579,369 @@ export function tapOdd(state, row, index) {
 // The place a tap lands on: inside a card, or within `margin` units of it.
 export const oddCards = () => ODD.xs.map((x, i) => ({ place: i, x0: x - ODD.card / 2, y0: ODD.y - ODD.card / 2, x1: x + ODD.card / 2, y1: ODD.y + ODD.card / 2 }));
 export const hitOdd = (point, margin = 0) => hitCard(point, oddCards(), margin)?.place ?? null;
+
+// ---------------------------------------------------------------------------
+// Missing piece (Slice 5H): three shapes, each with a gap; she drags the piece
+// that fits from a row below. A piece fits one gap only: the same part of the
+// same shape, in the same color (or, at level 4, cut from the same picture).
+//
+// Geometry: a shape is a polygon in its own box, 0..1 each way (a circle is a
+// 48-gon). A part (the piece cut out) is that polygon clipped to a quarter, a
+// half or a corner. On the board a shape's box is MISSING.size units square.
+//
+// Outlines are compared by shape, ignoring size and place (sameForm): a
+// rectangle missing its top half leaves a hole shaped much like a square. In a
+// round, the only pieces whose outline matches a gap's are its right piece and
+// (levels 1, 3 and 4) that piece's twin in another color, put there on purpose;
+// at level 2 (one color) only the right piece. checkRound() is the referee:
+// rounds are drawn at random until it agrees.
+
+export const MISSING = {
+  levels: [1, 2, 3, 4],
+  roundsPerPlay: 3,     // three rounds make a play; a play earns the level's star
+  unlockAfter: 3,       // finished rounds of a level that open the next one
+  hintAfter: 3,         // wrong tries in a row, then the right piece wiggles
+  size: 200,            // a shape's box, in units
+  shapeXs: [330, 640, 950],
+  shapeTop: 50,
+  tray: {               // where the pieces wait: one row of 6, or two rows of 4 (level 3)
+    one: { ys: [470], step: 165, scale: 0.7, box: [150, 140] },
+    two: { ys: [400, 535], step: 190, scale: 0.62, box: [170, 130] },
+    least: 100,         // a small piece (a corner) is never drawn smaller than this, nor above its own size
+  },
+  formTol: 0.15,        // outlines this close (Hausdorff, after scaling to size 1) look alike
+  shapes: ['circle', 'square', 'triangle', 'rectangle'],
+};
+export const MISSING_GAMES = MISSING.levels.map((l) => `missing-${l}`);
+export const missingLevel = (game) => Number(game.split('-')[1]);
+
+const circlePoly = (n = 48) => Array.from({ length: n }, (_, i) => {
+  const a = (i / n) * 2 * Math.PI;
+  return [0.5 + 0.5 * Math.cos(a), 0.5 + 0.5 * Math.sin(a)];
+});
+export const SHAPE_POLYS = {
+  circle: circlePoly(),
+  square: [[0, 0], [1, 0], [1, 1], [0, 1]],
+  rectangle: [[0.22, 0], [0.78, 0], [0.78, 1], [0.22, 1]],
+  triangle: [[0.5, 0.04], [0.98, 0.92], [0.02, 0.92]],
+  card: [[0, 0], [1, 0], [1, 1], [0, 1]], // level 4: a picture on a square card
+};
+
+export function bbox(poly) {
+  const xs = poly.map((p) => p[0]);
+  const ys = poly.map((p) => p[1]);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+
+// Sutherland-Hodgman: `poly` clipped to the convex polygon `clip` (any winding).
+export function clipPoly(poly, clip) {
+  const area = clip.reduce((a, p, i) => { const q = clip[(i + 1) % clip.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0);
+  const sgn = Math.sign(area);
+  let out = poly;
+  for (let i = 0; i < clip.length && out.length; i++) {
+    const a = clip[i];
+    const b = clip[(i + 1) % clip.length];
+    const inside = (p) => sgn * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])) >= -1e-12;
+    const cross = (p, q) => {
+      const d = (q[0] - p[0]) * (b[1] - a[1]) - (q[1] - p[1]) * (b[0] - a[0]);
+      const t = ((a[0] - p[0]) * (b[1] - a[1]) - (a[1] - p[1]) * (b[0] - a[0])) / d;
+      return [p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])];
+    };
+    const input = out;
+    out = [];
+    for (let k = 0; k < input.length; k++) {
+      const p = input[k];
+      const q = input[(k + 1) % input.length];
+      if (inside(q)) {
+        if (!inside(p)) out.push(cross(p, q));
+        out.push(q);
+      } else if (inside(p)) out.push(cross(p, q));
+    }
+  }
+  return out;
+}
+
+const box = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+const BIG = 2;
+// The regions a part is cut with, around the middle of the shape's box.
+function regions(b) {
+  const cx = (b.x0 + b.x1) / 2;
+  const cy = (b.y0 + b.y1) / 2;
+  return {
+    'q-tl': box(-BIG, -BIG, cx, cy), 'q-tr': box(cx, -BIG, BIG, cy), 'q-bl': box(-BIG, cy, cx, BIG), 'q-br': box(cx, cy, BIG, BIG),
+    'h-l': box(-BIG, -BIG, cx, BIG), 'h-r': box(cx, -BIG, BIG, BIG), 'h-t': box(-BIG, -BIG, BIG, cy), 'h-b': box(-BIG, cy, BIG, BIG),
+  };
+}
+// A corner: the triangle at a vertex, its two sides `leg` long along the edges.
+function cornerAt(poly, i, leg) {
+  const v = poly[i];
+  const towards = (p) => { const d = Math.hypot(p[0] - v[0], p[1] - v[1]); return [v[0] + ((p[0] - v[0]) / d) * leg, v[1] + ((p[1] - v[1]) / d) * leg]; };
+  return [towards(poly[(i + poly.length - 1) % poly.length]), v, towards(poly[(i + 1) % poly.length])];
+}
+const CORNERS = {
+  square: { 'c-tl': 0, 'c-tr': 1, 'c-br': 2, 'c-bl': 3 },
+  rectangle: { 'c-tl': 0, 'c-tr': 1, 'c-br': 2, 'c-bl': 3 },
+  card: { 'c-tl': 0, 'c-tr': 1, 'c-br': 2, 'c-bl': 3 },
+  triangle: { 'c-t': 0, 'c-br': 1, 'c-bl': 2 },
+};
+// Which parts each shape can lose: quarters (not a triangle), halves, corners (not a circle).
+export const PARTS = {
+  circle: ['q-tl', 'q-tr', 'q-bl', 'q-br', 'h-l', 'h-r', 'h-t', 'h-b'],
+  square: ['q-tl', 'q-tr', 'q-bl', 'q-br', 'h-l', 'h-r', 'h-t', 'h-b', 'c-tl', 'c-tr', 'c-br', 'c-bl'],
+  rectangle: ['q-tl', 'q-tr', 'q-bl', 'q-br', 'h-l', 'h-r', 'h-t', 'h-b', 'c-tl', 'c-tr', 'c-br', 'c-bl'],
+  triangle: ['h-l', 'h-r', 'h-t', 'h-b', 'c-t', 'c-br', 'c-bl'],
+  card: ['q-tl', 'q-tr', 'q-bl', 'q-br', 'h-l', 'h-r', 'h-t', 'h-b', 'c-tl', 'c-tr', 'c-br', 'c-bl'],
+};
+export const partKind = (part) => ({ q: 'quarter', h: 'half', c: 'corner' }[part[0]]);
+
+const partCache = new Map();
+// A part's polygon, in its shape's box (0..1).
+export function partPoly(shape, part) {
+  const key = `${shape}:${part}`;
+  if (!partCache.has(key)) {
+    const poly = SHAPE_POLYS[shape];
+    let out;
+    if (part[0] === 'c') {
+      const i = CORNERS[shape][part];
+      // A picture card's corner reaches well in, so its piece holds part of the picture.
+      const legs = { triangle: 0.42, card: 0.8 };
+      const leg = legs[shape] ?? 0.45 * Math.min(bbox(poly).x1 - bbox(poly).x0, bbox(poly).y1 - bbox(poly).y0);
+      out = cornerAt(poly, i, leg);
+    } else {
+      out = clipPoly(poly, regions(bbox(poly))[part]);
+    }
+    partCache.set(key, out);
+  }
+  return partCache.get(key);
+}
+
+// An outline's form: its boundary scaled so its longer side is 1, its box at
+// the origin, and resampled to n points evenly along it.
+function formPoints(poly, n = 96) {
+  const b = bbox(poly);
+  const k = 1 / Math.max(b.x1 - b.x0, b.y1 - b.y0);
+  const pts = poly.map(([x, y]) => [(x - b.x0) * k, (y - b.y0) * k]);
+  const segs = pts.map((p, i) => [p, pts[(i + 1) % pts.length]]);
+  const lens = segs.map(([p, q]) => Math.hypot(q[0] - p[0], q[1] - p[1]));
+  const total = lens.reduce((a, l) => a + l, 0);
+  const out = [];
+  let seg = 0;
+  let run = 0;
+  for (let i = 0; i < n; i++) {
+    const at = (i / n) * total;
+    while (run + lens[seg] < at && seg < segs.length - 1) { run += lens[seg]; seg += 1; }
+    const t = lens[seg] ? (at - run) / lens[seg] : 0;
+    const [p, q] = segs[seg];
+    out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+  }
+  return out;
+}
+const formCache = new Map();
+const formOf = (shape, part) => {
+  const key = `${shape}:${part}`;
+  if (!formCache.has(key)) formCache.set(key, formPoints(partPoly(shape, part)));
+  return formCache.get(key);
+};
+// How unlike two outlines are, ignoring size and place: the farthest any point
+// of one is from the other (0: the same shape).
+export function formDistance(a, b) {
+  const far = (p, q) => Math.max(...p.map(([x, y]) => Math.min(...q.map(([u, v]) => Math.hypot(x - u, y - v)))));
+  return Math.max(far(a, b), far(b, a));
+}
+const sameCache = new Map();
+// Two parts whose outlines look the same, whatever their size.
+export function sameForm(a, b) {
+  const key = [`${a.shape}:${a.part}`, `${b.shape}:${b.part}`].sort().join('|');
+  if (!sameCache.has(key)) sameCache.set(key, formDistance(formOf(a.shape, a.part), formOf(b.shape, b.part)) < MISSING.formTol);
+  return sameCache.get(key);
+}
+
+// Two gaps in one shape (level 3): two quarters (a circle), two corners (a
+// triangle), or either (a square or a rectangle).
+function twoParts(shape, rand) {
+  const kind = { circle: 'q', triangle: 'c' }[shape] ?? pick(['q', 'c'], rand);
+  return shuffle(PARTS[shape].filter((p) => p[0] === kind), rand).slice(0, 2);
+}
+
+// The round's pieces, in a shuffled order along the tray.
+//   right piece: one per gap (right: the gap's index)
+//   levels 1, 3, 4: a twin of each right piece in the next shape's paint
+//     (decoyOf: the gap whose outline it has), so every gap has a piece of
+//     its outline in another paint, and one of its paint with another outline
+//   level 2: one paint; three pieces of other outlines than every gap's
+function piecesFor(level, shapes, gaps, rand) {
+  const right = gaps.map((g, i) => ({ shape: g.shape, part: g.part, paint: g.paint, right: i, decoyOf: -1 }));
+  let decoys;
+  if (level === 2) {
+    const paint = shapes[0].paint;
+    const options = shuffle(shapes.flatMap((sh) => PARTS[sh.shape].map((part) => ({ shape: sh.shape, part }))), rand)
+      .filter((c) => !gaps.some((g) => sameForm(c, g)));
+    decoys = [];
+    for (const c of options) {
+      if (decoys.some((d) => sameForm(d, c))) continue;
+      decoys.push({ ...c, paint, right: -1, decoyOf: -1 });
+      if (decoys.length === 3) break;
+    }
+  } else {
+    decoys = gaps.map((g, i) => {
+      const next = shapes[(g.shapeIdx + 1) % shapes.length];
+      return { shape: g.shape, part: g.part, paint: next.paint, right: -1, decoyOf: i };
+    });
+  }
+  return shuffle([...right, ...decoys], rand).map((p, slot) => ({ ...p, slot }));
+}
+
+// A piece fits a gap: the same part of the same shape, in the same paint.
+export const fits = (piece, gap) => piece.shape === gap.shape && piece.part === gap.part && piece.paint === gap.paint;
+
+// The referee. Returns a list of what is wrong with a round (empty: fair).
+export function checkRound(round) {
+  const problems = [];
+  const { gaps, pieces, level } = round;
+  for (const [i, g] of gaps.entries()) {
+    const fitting = pieces.filter((p) => fits(p, g));
+    if (fitting.length !== 1 || fitting[0].right !== i) problems.push(`gap ${i}: ${fitting.length} pieces fit`);
+    // Only its right piece, and its twin in another paint, have its outline.
+    const lookAlike = pieces.filter((p) => sameForm(p, g));
+    const allowed = pieces.filter((p) => p.right === i || p.decoyOf === i);
+    if (lookAlike.length !== allowed.length || lookAlike.some((p) => !allowed.includes(p))) problems.push(`gap ${i}: another piece has its outline`);
+    if (level !== 2) {
+      if (!pieces.some((p) => sameForm(p, g) && p.paint !== g.paint)) problems.push(`gap ${i}: no piece of its outline in another paint`);
+      if (!pieces.some((p) => p.paint === g.paint && !sameForm(p, g))) problems.push(`gap ${i}: no piece of its paint with another outline`);
+    }
+  }
+  for (const [i, a] of gaps.entries()) {
+    for (const b of gaps.slice(i + 1)) if (sameForm(a, b)) problems.push('two gaps share an outline');
+  }
+  return problems;
+}
+
+// One round of a level. rand: the random source; colors: the paint names
+// (data/games.js COLORS); pictures: level 4's { id: color }; cuts: level 4's
+// { id: { cuts } } (data/missing-cuts.js), the parts of each picture's card
+// that hold enough of the picture. Every level 4 piece, twins included, is one
+// of its picture's cuts.
+export const pieceAllowed = (p, cuts) => p.shape !== 'card' || cuts[p.paint].cuts.includes(p.part);
+export function missingRound(level, { rand = Math.random, colors, pictures, cuts } = {}) {
+  for (let tries = 0; tries < 500; tries++) {
+    let shapes;
+    if (level === 4) {
+      const byColor = {};
+      for (const [id, c] of Object.entries(pictures)) (byColor[c] ??= []).push(id);
+      shapes = shuffle(Object.keys(byColor), rand).slice(0, 3).map((c) => ({ shape: 'card', paint: pick(byColor[c], rand) }));
+    } else {
+      const paints = level === 2 ? Array(3).fill(pick(colors, rand)) : shuffle(colors, rand).slice(0, 3);
+      shapes = shuffle(MISSING.shapes, rand).slice(0, 3).map((shape, i) => ({ shape, paint: paints[i] }));
+    }
+    const double = level === 3 ? Math.floor(rand() * 3) : -1;
+    const partsOf = (sh) => (sh.shape === 'card' ? cuts[sh.paint].cuts : PARTS[sh.shape]);
+    shapes.forEach((sh, i) => { sh.parts = i === double ? twoParts(sh.shape, rand) : [pick(partsOf(sh), rand)]; });
+    const gaps = shapes.flatMap((sh, shapeIdx) => sh.parts.map((part) => ({ shape: sh.shape, part, paint: sh.paint, shapeIdx })));
+    const round = { level, shapes, gaps, pieces: piecesFor(level, shapes, gaps, rand) };
+    if (level === 4 && !round.pieces.every((p) => pieceAllowed(p, cuts))) continue;
+    if (round.pieces.length === 2 * gaps.length && checkRound(round).length === 0) return round;
+  }
+  throw new Error('no fair round');
+}
+
+// What a round holds, whatever the places: two rounds with one key are the same round.
+export const roundKey = (round) => round.shapes.map((sh) => `${sh.paint}-${sh.shape}-${sh.parts.join('+')}`).sort().join('|');
+
+// A play: MISSING.roundsPerPlay rounds, none the same as one of her last play.
+export const missingPlay = (level, last = [], opts = {}) => freshPlay(() => missingRound(level, opts), roundKey, MISSING.roundsPerPlay, last);
+
+// A level opens after MISSING.unlockAfter finished rounds of the level before.
+// rounds: { [level]: finished rounds }.
+export function missingLevelOpen(level, rounds) {
+  if (level <= 1) return true;
+  return (rounds[level - 1] ?? 0) >= MISSING.unlockAfter && missingLevelOpen(level - 1, rounds);
+}
+
+// ---- on the board (units) ----
+
+// Where each shape's box sits: { x0, y0 } (its top left).
+export const shapeBoxes = (round) => round.shapes.map((_, i) => ({ x0: MISSING.shapeXs[i] - MISSING.size / 2, y0: MISSING.shapeTop }));
+
+// A gap's or piece's place: the centre of its part's box, on the board.
+export function partCentre(round, gapIdx) {
+  const g = round.gaps[gapIdx];
+  const b = bbox(partPoly(g.shape, g.part));
+  const sb = shapeBoxes(round)[g.shapeIdx];
+  return [sb.x0 + ((b.x0 + b.x1) / 2) * MISSING.size, sb.y0 + ((b.y0 + b.y1) / 2) * MISSING.size];
+}
+// A gap's box on the board, for the drop.
+export function gapBox(round, gapIdx) {
+  const g = round.gaps[gapIdx];
+  const b = bbox(partPoly(g.shape, g.part));
+  const sb = shapeBoxes(round)[g.shapeIdx];
+  const S = MISSING.size;
+  return { gap: gapIdx, x0: sb.x0 + b.x0 * S, y0: sb.y0 + b.y0 * S, x1: sb.x0 + b.x1 * S, y1: sb.y0 + b.y1 * S };
+}
+
+export const trayOf = (round) => (round.pieces.length > 6 ? MISSING.tray.two : MISSING.tray.one);
+// How big a piece is drawn in the tray: the tray's scale, but a small piece
+// keeps up to its own size so it stays easy to see.
+export function pieceTrayScale(round, piece) {
+  const b = bbox(partPoly(piece.shape, piece.part));
+  const longest = Math.max(b.x1 - b.x0, b.y1 - b.y0) * MISSING.size;
+  return Math.min(1, Math.max(trayOf(round).scale, MISSING.tray.least / longest));
+}
+
+// Where a piece waits in the tray (its centre).
+export function pieceHome(round, piece) {
+  const t = trayOf(round);
+  const perRow = Math.ceil(round.pieces.length / t.ys.length);
+  const row = Math.floor(piece.slot / perRow);
+  const col = piece.slot % perRow;
+  return [640 + (col - (perRow - 1) / 2) * t.step, t.ys[row]];
+}
+
+// The gap a released piece lands on: its centre on or within `margin` units of
+// an open gap's box (the nearest). null when none.
+export function hitGap(point, round, filled, margin = 0) {
+  const boxes = round.gaps.map((_, i) => gapBox(round, i)).filter((b) => !filled.includes(b.gap));
+  return hitCard(point, boxes, margin)?.gap ?? null;
+}
+
+// The piece under her finger: the nearest waiting piece whose tray box she touched.
+export function hitPiece(point, round, placed, margin = 0) {
+  const [w, h] = trayOf(round).box;
+  const boxes = round.pieces.filter((p) => !placed.includes(p.slot)).map((p) => {
+    const [x, y] = pieceHome(round, p);
+    return { p, x0: x - w / 2, y0: y - h / 2, x1: x + w / 2, y1: y + h / 2 };
+  });
+  return hitCard(point, boxes, margin)?.p ?? null;
+}
+
+// One round being played. dropPiece: she let go of `piece` over gap `to`, or
+// away from every gap (null). Returns { state, ok, counted, hint, done }:
+//   ok       the piece fits: it snaps in
+//   counted  a wrong gap (letting go away from every gap is not a try)
+//   hint     after MISSING.hintAfter wrong tries in a row: the slot of the
+//            right piece for the gap she last tried (it wiggles); otherwise null
+//   done     every gap is filled
+export const startMissing = () => ({ filled: [], placed: [], wrongInRow: 0 });
+export function dropPiece(state, round, piece, to) {
+  if (state.placed.includes(piece.slot) || to === null || state.filled.includes(to)) {
+    return { state, ok: false, counted: false, hint: null, done: false };
+  }
+  if (fits(piece, round.gaps[to])) {
+    const filled = [...state.filled, to];
+    return {
+      state: { filled, placed: [...state.placed, piece.slot], wrongInRow: 0 },
+      ok: true, counted: false, hint: null, done: filled.length === round.gaps.length,
+    };
+  }
+  const wrongInRow = state.wrongInRow + 1;
+  const hint = wrongInRow >= MISSING.hintAfter ? round.pieces.find((p) => p.right === to).slot : null;
+  return { state: { ...state, wrongInRow: hint === null ? wrongInRow : 0 }, ok: false, counted: true, hint, done: false };
+}
+
+// Jugnu's first move: the right piece for the first gap.
+export const firstMovePiece = (round) => round.pieces.find((p) => p.right === 0);
+
+// The log's names: 'red-circle-q-tl' (paint, shape or picture, part).
+export const pieceLabel = (p) => `${p.paint}-${p.shape}-${p.part}`;
 
 // ---------------------------------------------------------------------------
 // The attempt log: one "game" entry per release. Stroke and find entries keep their format.

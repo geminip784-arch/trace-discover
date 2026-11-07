@@ -30,7 +30,7 @@ const alikeOf = (row) => row.items.filter((_, i) => i !== row.odd);
 
 test('Odd one out has its own menu row: by kind, by color', () => {
   assert.deepEqual(GAME_ROWS.find((r) => r.kind === 'odd').games, ['odd-kinds', 'odd-colors']);
-  assert.equal(GAME_ROWS.length, 4);
+  assert.equal(GAME_ROWS.length, 5, 'match, path, sort, odd, missing');
   for (const g of ['odd-kinds', 'odd-colors']) assert.ok(isInlineSvg(MENU[g]), g);
 });
 

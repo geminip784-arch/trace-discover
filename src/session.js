@@ -144,7 +144,10 @@ export function startScreen({ lastVisit = null, today, forceDoor = false, char =
 
 const SHELF = { screen: 'shelf' };
 // Every tile of the games menu (src/games.js GAME_ROWS; tests/session.test.js checks they agree).
-const GAME_IDS = ['numbers', 'colors', 'letters', 'shadows', 'shapes', 'path', 'path-rooms', 'sort-colors', 'sort-kinds', 'odd-kinds', 'odd-colors'];
+const GAME_IDS = [
+  'numbers', 'colors', 'letters', 'shadows', 'shapes', 'path', 'path-rooms', 'sort-colors', 'sort-kinds', 'odd-kinds', 'odd-colors',
+  'missing-1', 'missing-2', 'missing-3', 'missing-4',
+];
 // The Drawing book's pictures, per level (data/drawings.js has their dots).
 const SIX = ['house', 'sun', 'fish', 'car', 'cat', 'tree'];
 const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-sun', 'cat-house'] };
