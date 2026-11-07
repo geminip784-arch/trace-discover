@@ -20,6 +20,7 @@ export const CONFIG = {
   roundPauseMs: 1100,     // after a round, its light comes on; the next round starts after this long
   // The copy-it round (Slice 5I, src/copy.js).
   copyWaitMs: 2000,       // judge her letter this long after her last lift (unless it is already complete)
+  copyHintMs: 5000,       // fewer strokes than the letter needs: after this long Jugnu shows the next one on the card
   copyTries: 3,           // failed copies before the round counts as done with help
   copyDemoMs: 1100,       // Jugnu draws one stroke of the model card this fast
   copyFadeMs: 900,        // after a failed copy, her letter fades out over this long

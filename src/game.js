@@ -22,7 +22,9 @@
 // start dot and an arrow on every stroke. Jugnu draws it once on the card, then
 // she writes the whole letter anywhere on the lines. It is judged as a whole
 // (src/copy.js) once she has drawn enough strokes, or CONFIG.copyWaitMs after her
-// last lift. A fail: her letter fades and Jugnu draws, on the card, the stroke
+// last lift when fewer strokes make the whole letter joined. If she stops part
+// way, after CONFIG.copyHintMs Jugnu shows the next stroke on the card (a hint,
+// not a fail). A fail: her letter fades and Jugnu draws, on the card, the stroke
 // that went wrong (all of it when the size was wrong); she tries again. After
 // CONFIG.copyTries failed copies the round counts as done, with help (no star).
 
@@ -37,7 +39,7 @@ import {
   CONFIG, ROUNDS, initialState, applyLift, roundCount, stageForRound,
   startRounds, markHelp, isHelp, finishRound, starEarned, roundLights, isCopyRound, finishCopy,
 } from './progress.js';
-import { scoreCopy, copyReady, copyLogEntry } from './copy.js';
+import { scoreCopy, copyStatus, copyLogEntry } from './copy.js';
 import { logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
@@ -295,14 +297,26 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     return alive;
   }
 
-  // Her finger lifted in the copy round: judge now if the letter is complete,
-  // else wait (any new touch cancels the wait).
+  // Her finger lifted in the copy round (src/copy.js copyStatus): judge now if
+  // the letter is complete; judge after a short wait if it reads as a whole
+  // joined letter; if it reads as unfinished, wait longer and then let Jugnu
+  // show the next stroke on the card. Any new touch cancels the wait.
   function endCopyStroke(a) {
     const id = ink.end();
     copy.strokes.push(a.points);
     copy.ids.push(id);
-    if (copyReady(copy.strokes, char)) judgeCopy();
-    else later(judgeCopy, CONFIG.copyWaitMs);
+    const { action, next } = copyStatus(copy.strokes, char);
+    if (action === 'judge-now') judgeCopy();
+    else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
+    else later(() => hintCopy(next), CONFIG.copyHintMs);
+  }
+
+  // She stopped part way: Jugnu draws the next stroke on the card. Her strokes
+  // stay on the lines, nothing is judged or logged, and it is not a failed copy.
+  async function hintCopy(k) {
+    if (phase !== 'trace') return;
+    if (!(await showOnCard([k]))) return;
+    phase = 'trace';
   }
 
   async function judgeCopy() {

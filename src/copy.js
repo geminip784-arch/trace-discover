@@ -14,7 +14,7 @@
 //    reference stroke she never drew is missing. A stroke after the letter is
 //    complete is extra.
 
-import { DEFAULTS, pathLength, scoreStroke, scoreDot } from './geometry.js';
+import { DEFAULTS, pathLength, scoreStroke, scoreDot, resample, meanPairDistance } from './geometry.js';
 import { candidatesFor, nextStrokes, pickCandidate, variantLabel } from './variants.js';
 
 // Her letter's size, as a share of the model's height.
@@ -160,13 +160,78 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
 }
 
 // Judge now? Yes once she has drawn as many strokes as the letter has, or when
-// fewer strokes already make a passing letter (she joined some). Otherwise the
-// game waits CONFIG.copyWaitMs after her last lift and judges then.
+// fewer strokes already make a passing letter (she joined some).
 export function copyReady(strokes, char, opts = {}) {
   const used = usableStrokes(strokes, char, opts.cfg ?? DEFAULTS);
   if (used.length === 0) return false;
   if (used.length >= char.strokes.length) return true;
   return scoreCopy(strokes, char, opts).ok;
+}
+
+// How far her strokes are from a reference reading, in line units: every one of
+// her strokes is fitted (all together, one uniform scale) to the box of the
+// reference strokes it is read as, and compared in either direction (so a
+// backwards stroke still reads as the stroke she meant). Infinity: no height to fit.
+function readingError(used, refs, cfg) {
+  const ref = boxOf(refs);
+  const hers = boxOf(used);
+  const tall = ref.h >= ref.w;
+  const refSide = side(ref, tall);
+  const herSide = side(hers, tall);
+  if (refSide < cfg.minLength || herSide < cfg.minLength) return Infinity;
+  const k = refSide / herSide;
+  let total = 0;
+  used.forEach((pts, i) => {
+    const c = resample(pts.map(([x, y]) => [ref.cx + (x - hers.cx) * k, ref.cy + (y - hers.cy) * k]), cfg.samples);
+    const r = resample(refs[i], cfg.samples);
+    total += Math.min(meanPairDistance(c, r), meanPairDistance(c, [...r].reverse()));
+  });
+  return total / used.length;
+}
+
+// Every way to read her strokes, in order, as the letter's strokes in their
+// allowed order (joined versions and anyOrder groups included). Each reading is
+// { refs (one reference path per stroke of hers), done (reference strokes covered) }.
+function readings(n, char, gap) {
+  const out = [];
+  const walk = (i, done, refs) => {
+    if (i === n) return out.push({ refs, done });
+    if (done.every(Boolean)) return; // more strokes than the letter has: no reading
+    const next = nextStrokes(char, done);
+    const options = char.strokes[next[0]].kind === 'dot'
+      ? next.map((k) => ({ from: k, to: k, points: char.strokes[k].points }))
+      : candidatesFor(char, done, gap);
+    for (const v of options) {
+      const d = [...done];
+      for (let k = v.from; k <= v.to; k++) d[k] = true;
+      walk(i + 1, d, [...refs, v.points]);
+    }
+  };
+  walk(0, new Array(char.strokes.length).fill(false), []);
+  return out;
+}
+
+// After her lift, what the copy round does next:
+//   'judge-now'  she has drawn as many strokes as the letter has, or her joined
+//                letter already passes
+//   'judge-soon' fewer strokes, but they read best as the whole letter (joined):
+//                judged CONFIG.copyWaitMs after her last lift
+//   'hint'       fewer strokes, and they read best as the start of the letter:
+//                after CONFIG.copyHintMs Jugnu shows `next` on the model card. Her
+//                strokes stay; it is not a failed copy.
+// Returns { action, next } (next: the reference stroke to show, for 'hint').
+export function copyStatus(strokes, char, opts = {}) {
+  const cfg = opts.cfg ?? DEFAULTS;
+  const used = usableStrokes(strokes, char, cfg);
+  if (used.length > 0 && copyReady(strokes, char, opts)) return { action: 'judge-now', next: null };
+  let best = null;
+  for (const r of readings(used.length, char, opts.gap)) {
+    const error = used.length === 0 ? 0 : readingError(used, r.refs, cfg);
+    if (!best || error < best.error) best = { ...r, error };
+  }
+  if (best && best.error < Infinity && best.done.every(Boolean)) return { action: 'judge-soon', next: null };
+  const done = best && best.error < Infinity ? best.done : new Array(char.strokes.length).fill(false);
+  return { action: 'hint', next: nextStrokes(char, done)[0] };
 }
 
 const round4 = (v) => (Number.isFinite(v) ? Number(v.toFixed(4)) : null);

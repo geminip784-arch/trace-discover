@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  COPY_SIZE, COPY_STAGE, boxOf, refBox, fitLetter, scoreCopy, copyReady, copyLogEntry, usableStrokes,
+  COPY_SIZE, COPY_STAGE, boxOf, refBox, fitLetter, scoreCopy, copyReady, copyStatus, copyLogEntry, usableStrokes,
 } from '../src/copy.js';
 import { DEFAULTS } from '../src/geometry.js';
 import { CONFIG, finishCopy, isCopyRound } from '../src/progress.js';
@@ -206,11 +206,12 @@ test('judge now: once she has drawn as many strokes as the letter has, or a join
   // Two wrong strokes are still "as many as the letter has": judged at once.
   assert.equal(copyReady(copyOf(l, { reverse: [0, 1] }), l), true);
   const e = load('E');
-  assert.equal(copyReady(copyOf(e, { drop: [3] }), e), false); // waits CONFIG.copyWaitMs
+  assert.equal(copyReady(copyOf(e, { drop: [3] }), e), false); // unfinished: see copyStatus
 });
 
-test('the wait after her last lift is 2 seconds, and she gets 3 tries', () => {
+test('the wait after her last lift is 2 seconds for a whole letter, 5 for an unfinished one, and she gets 3 tries', () => {
   assert.equal(CONFIG.copyWaitMs, 2000);
+  assert.equal(CONFIG.copyHintMs, 5000);
   assert.equal(CONFIG.copyTries, 3);
 });
 
@@ -259,4 +260,83 @@ test('the copy log entry is a new "copy" type with the fit, the size and every s
   assert.equal(e.strokes[1].directionOk, false);
   assert.equal(e.helped, false);
   assert.doesNotThrow(() => JSON.stringify(e));
+});
+
+// ---- After her lift: judge, or wait and hint (copyStatus) ----
+
+test('a complete letter (as many strokes as the model) is judged at once, right or wrong', () => {
+  for (const id of ['L', 'H', 'E', '4']) {
+    const char = load(id);
+    assert.deepEqual(copyStatus(copyOf(char, { k: 0.9, dx: -1 }), char), { action: 'judge-now', next: null }, id);
+    assert.equal(copyStatus(copyOf(char, { reverse: [0] }), char).action, 'judge-now', id);
+  }
+});
+
+test('a joined letter that passes is judged at once', () => {
+  const l = load('L');
+  const one = [[...l.strokes[0].points, ...l.strokes[1].points]];
+  assert.equal(copyStatus(one, l).action, 'judge-now');
+});
+
+test('a joined letter that does not pass is judged after the 2-second wait, not hinted', () => {
+  const l = load('L');
+  // L in one go, but far too big: whole, yet it fails.
+  const one = [[...l.strokes[0].points, ...l.strokes[1].points].map(([x, y]) => [x * 1.6, y * 1.6])];
+  assert.equal(scoreCopy(one, l).reason, 'too-big');
+  assert.deepEqual(copyStatus(one, l), { action: 'judge-soon', next: null });
+  // L in one go, drawn backwards.
+  const back = [[...l.strokes[0].points, ...l.strokes[1].points].reverse()];
+  assert.equal(copyStatus(back, l).action, 'judge-soon');
+});
+
+test('fewer strokes than the letter needs: wait for the hint, which shows the next stroke', () => {
+  const cases = [
+    ['L', [0], 1],
+    ['H', [0], 1],
+    ['H', [0, 1], 2],
+    ['E', [0, 1, 2], 3],
+    ['A', [0, 1], 2],
+    ['4', [0], 1],
+    ['K', [0, 1], 2],
+  ];
+  for (const [id, keep, next] of cases) {
+    const char = load(id);
+    const drop = char.strokes.map((_, i) => i).filter((i) => !keep.includes(i));
+    for (const [k, dx] of [[1, 0], [0.8, -1.2], [1.2, 0.9]]) {
+      const got = copyStatus(copyOf(char, { drop, k, dx }), char);
+      assert.deepEqual(got, { action: 'hint', next }, `${id} with strokes ${keep.map((i) => i + 1)} at ${k}`);
+    }
+  }
+});
+
+test('the hint still finds the next stroke when a stroke so far was drawn backwards', () => {
+  const h = load('H');
+  assert.deepEqual(copyStatus(copyOf(h, { drop: [2], reverse: [1] }), h), { action: 'hint', next: 2 });
+});
+
+test('4: stroke 1 alone reads as unfinished, though strokes 2 and 3 may be joined', () => {
+  const four = load('4');
+  const s = four.strokes.map((x) => x.points);
+  assert.deepEqual(copyStatus([s[0]], four), { action: 'hint', next: 1 });
+  assert.equal(copyStatus([s[0], [...s[1], ...s[2]]], four).action, 'judge-now');
+  assert.deepEqual(copyStatus([s[0], s[1]], four), { action: 'hint', next: 2 });
+});
+
+test('either order (T): the hint shows whichever stroke she has not drawn', () => {
+  const t = load('T');
+  assert.deepEqual(copyStatus(copyOf(t, { drop: [1] }), t), { action: 'hint', next: 1 });
+  assert.deepEqual(copyStatus(copyOf(t, { drop: [0] }), t), { action: 'hint', next: 0 });
+});
+
+test('only stray taps: the hint shows stroke 1', () => {
+  const l = load('L');
+  assert.deepEqual(copyStatus([[[1, 0.5]]], l), { action: 'hint', next: 0 });
+});
+
+test('a hint is not a failed copy: only a judged copy moves the count (finishCopy)', () => {
+  // The game calls finishCopy only when it judges; a hint changes no state.
+  const rp = { round: 2, helped: false };
+  const two = finishCopy(rp, { ok: false, fails: 1 }, 3);
+  assert.equal(two.fails, 2);
+  assert.equal(two.again, true);
 });
