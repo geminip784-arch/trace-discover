@@ -76,7 +76,8 @@ counting thing), fairy (Jugnu is the only character).
 
 ## Slice 5G: follow-ups
 
-- **[later]** The 5C living room and bedroom backdrops paint a sun in the window. The sun is now a find picture (S, from the sea), and an S scene in the bedroom borrows it, so she may see two suns. If it confuses her, take the sun out of those windows.
+- ✅ **[5G]** The room backdrops no longer paint any find-object shape: window suns became clouds, the living room's framed star a small landscape, the bedroom's wallpaper stars dots, the study's chalk circle a triangle. A test guards it.
+- **[later]** The lunchbox picture (5C art) has a small star printed on its front, and star is now a find picture. If she taps the lunchbox in an S scene, swap that star for a plain shape.
 - **[later]** X has no find pictures: no common word for a 4-year-old starts with its sound. A scene with the letter at the end (box, fox) would need its own rule.
 - **[later]** U has only umbrella. A second sound-first U picture (up, under) is hard to draw as one object.
 - **[later]** The zoo is only chosen on a tie (no letter has two of its pictures there). A second zoo animal for a letter would give the zoo its own scenes.

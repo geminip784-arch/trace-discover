@@ -140,6 +140,22 @@ test('seven places: the four rooms, the farm-garden, the zoo and the sea; count 
   for (const n of NUMBERS) for (const seed of SEEDS.slice(0, 30)) assert.ok(ROOMS[numberScene(n, { rand: seeded(seed) }).room]);
 });
 
+test('no backdrop paints a find-object shape: no sun, no star, no find picture', () => {
+  for (const [id, place] of Object.entries(PLACES)) {
+    const b = place.backdrop;
+    // A sun: a big yellow disc (window suns became clouds in Slice 5G).
+    for (const m of b.matchAll(/<circle [^>]*r="([\d.]+)"[^>]*fill="(#FFD43B|#FFE066|#FFF3B0|#FFB703)"/g)) {
+      assert.ok(Number(m[1]) < 15, `${id}: a yellow disc of radius ${m[1]}`);
+    }
+    // A star: the five-pointed paths the rooms used to have (framed star, wallpaper stars).
+    assert.ok(!/l12 26 28 3|l2 5 5 1 -4 3/.test(b), `${id}: a star`);
+    // A ring or sun drawn as a yellow outline circle (the old chalk circle).
+    assert.ok(!/<circle [^>]*fill="none"[^>]*stroke="#FFE066"/.test(b), `${id}: a yellow ring`);
+    // No find object's picture pasted into a backdrop.
+    assert.ok(!b.includes('class="art"'), `${id}: an object picture`);
+  }
+});
+
 test('every room has 7 object spots, 3 placemat spots and a pool of at least 4 things', () => {
   for (const [id, room] of Object.entries(ROOMS)) {
     assert.equal(room.spots.length, 7, id);
