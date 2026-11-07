@@ -9,16 +9,20 @@
 
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, gridFor, localDay,
-  startScreen, navigate, tuneFor, bookOf, tileColorOf,
+  startScreen, navigate, tuneFor, bookOf, tileColorOf, BOARD_ORDER, booksWithDue,
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
+  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore,
 } from './storage.js';
+import {
+  enrolStars, pickToday, dueToday, recordPractice, recordReview, reviewLogEntry, isDay,
+} from './review.js';
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
 import { startGame } from './game.js';
-import { HOUSE, DOOR, ICONS, STAR, TURN, bookCover } from './art.js';
+import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, bookCover } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
@@ -55,6 +59,11 @@ const JUGNU_IMG = '<img class="buddy" src="assets/jugnu.svg" alt="" draggable="f
 // options: { manifest, params (URLSearchParams), now (Date) }
 export function startShell(els, { manifest, params, now = new Date() }) {
   const debugOn = params.get('debug') === '1';
+  // ?debug=1&today=2026-11-08 pretends the tablet's date is that day, to check
+  // reviews. Everything saved then goes to separate test keys (storage.js
+  // testStore), so her real progress is never touched.
+  const debugToday = debugOn && isDay(params.get('today')) ? params.get('today') : null;
+  if (debugToday) useStore(testStore(globalThis.localStorage));
   let state = startScreen({
     lastVisit: readLastVisit(),
     today: localDay(now),
@@ -68,6 +77,36 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   let game = null;    // the running tracing game, while she writes
   let musicOn = readMusic();
   let upright = false; // the tablet is upright: the turn picture covers everything
+
+  // ---- reviews (Slice 5I) ----
+  // The tablet's calendar day, read afresh each time (the app may stay open past
+  // midnight), or the pretend day of ?debug=1&today= (see the top of startShell).
+  const todayNow = () => debugToday ?? localDay(new Date());
+
+  // Today's due letters (at most 2): picked the first time a shelf or board is
+  // drawn each day, then fixed for the day. Stars from before reviews existed
+  // are added to the schedule once, first.
+  function dueNow() {
+    const today = todayNow();
+    const before = readReviews();
+    const reviews = pickToday(enrolStars(before, readStars(), today), today, BOARD_ORDER);
+    if (reviews !== before) saveReviews(reviews);
+    return dueToday(reviews, today);
+  }
+
+  // A practice or a review has finished: move the letter along its schedule,
+  // update the practice-more list and, for a review, log it. Stars are never touched here.
+  function recordSitting({ id, helped, failedCopies, wrongStarts }, isReview) {
+    const today = todayNow();
+    const saved = { reviews: readReviews(), list: readPracticeMore() };
+    const outcome = { helped, failedCopies, wrongStarts };
+    const out = isReview
+      ? recordReview(saved, id, { ok: !helped, ...outcome }, today)
+      : recordPractice(saved, id, outcome, today);
+    saveReviews(out.reviews);
+    savePracticeMore(out.list);
+    if (isReview) logAttempt(reviewLogEntry(out.entry));
+  }
 
   // ---- buttons ----
   els.home.innerHTML = ICONS.home;
@@ -165,9 +204,10 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       go(navigate(state, { type: 'openToys' }));
     });
     const row = view.querySelector('.books');
+    const glowing = booksWithDue(dueNow()); // a book holding one of today's reviews glows
     for (const book of BOOKS) {
       const el = document.createElement('div');
-      el.className = `book${book.open ? '' : ' locked'}`;
+      el.className = `book${book.open ? '' : ' locked'}${book.open && glowing.includes(book.id) ? ' due' : ''}`;
       el.setAttribute('role', 'button');
       el.setAttribute('aria-label', book.id);
       el.innerHTML = `<div class="pages"></div><div class="cover">${bookCover(book)}</div>`;
@@ -201,7 +241,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       <div class="board"><div class="tiles" dir="${board.dir}"></div></div>`;
     const grid = view.querySelector('.tiles');
     grid.classList.add(`script-${board.script}`);
-    const tiles = boardTiles(state.book, manifest, readStars());
+    const tiles = boardTiles(state.book, manifest, readStars(), dueNow());
     for (const t of tiles) {
       const el = document.createElement('div');
       el.className = `tile${t.bright ? ' bright' : ' faint'}`;
@@ -209,6 +249,14 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       el.setAttribute('role', 'button');
       el.setAttribute('aria-label', t.id);
       el.innerHTML = `<span class="glyph">${t.glyph}</span>`;
+      // Due for review: the tile glows gently and carries a small firefly light.
+      if (t.due) {
+        el.classList.add('due');
+        const mark = document.createElement('span');
+        mark.className = 'due-mark';
+        mark.innerHTML = DUE_MARK;
+        el.appendChild(mark);
+      }
       if (t.star) {
         const star = document.createElement('span');
         star.className = `star${t.id === newStar ? ' new' : ''}`;
@@ -223,7 +271,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
         el.classList.add('picked');
         setTimeout(() => {
           busy = false;
-          go(navigate(state, { type: 'openChar', id: t.id, manifest }));
+          go(navigate(state, { type: 'openChar', id: t.id, manifest, review: t.due }));
         }, TILE_PICK_MS);
       });
       grid.appendChild(el);
@@ -472,12 +520,18 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       charId: state.char,
       manifest,
       debugOn,
-      onDone: ({ id, star }) => {
+      review: state.review === true,
+      onDone: (done) => {
         if (state !== mine) return;
-        // A practice Jugnu helped with still glows and chimes, but earns no gold star.
-        if (star) saveStar(id);
+        const { id, star } = done;
+        // A review never adds or takes a star. A practice Jugnu helped with still
+        // glows and chimes, but earns no gold star.
+        const isReview = state.review === true;
+        const newStar = !isReview && star ? id : null;
+        if (newStar) saveStar(id);
+        recordSitting(done, isReview);
         // Then the find or count scene, when her character has one.
-        go(navigate(state, { type: afterWriting(id) }), { newStar: star ? id : null });
+        go(navigate(state, { type: afterWriting(id) }), { newStar });
       },
     });
     // She may have pressed home while the character was loading.

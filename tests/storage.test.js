@@ -201,3 +201,132 @@ test('Slice 5E: broken or blocked storage never stops the Drawing book', () => {
   assert.deepEqual(readDrawStars(blocked), []);
   assert.equal(saveDrawStar('L1:sun', blocked), false);
 });
+
+// ---- reviews and the practice-more list (Slice 5I) ----
+import { REVIEWS_KEY, PRACTICE_MORE_KEY, readReviews, saveReviews, readPracticeMore, savePracticeMore } from '../src/storage.js';
+import { emptyReviews } from '../src/review.js';
+
+test('reviews: saved to td.reviews and read back', () => {
+  const store = memoryStore();
+  assert.deepEqual(readReviews(store), emptyReviews());
+  const r = { enrolled: true, letters: { L: { step: 1, due: '2026-11-10' } }, graduated: ['H'], today: { day: '2026-11-07', ids: ['L'] } };
+  assert.equal(saveReviews(r, store), true);
+  assert.deepEqual(readReviews(store), r);
+  assert.equal(REVIEWS_KEY, 'td.reviews');
+});
+
+test('practice-more: saved to td.practiceMore and read back', () => {
+  const store = memoryStore();
+  assert.deepEqual(readPracticeMore(store), []);
+  const list = [{ id: 'S', reasons: ['copies', 'starts'], day: '2026-11-07' }];
+  assert.equal(savePracticeMore(list, store), true);
+  assert.deepEqual(readPracticeMore(store), list);
+  assert.equal(PRACTICE_MORE_KEY, 'td.practiceMore');
+});
+
+test('reviews and practice-more: damaged or blocked storage never stops the game', () => {
+  const broken = memoryStore();
+  broken.setItem(REVIEWS_KEY, '{not json');
+  broken.setItem(PRACTICE_MORE_KEY, '{not json');
+  assert.deepEqual(readReviews(broken), emptyReviews());
+  assert.deepEqual(readPracticeMore(broken), []);
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('full'); } };
+  assert.deepEqual(readReviews(blocked), emptyReviews());
+  assert.deepEqual(readPracticeMore(blocked), []);
+  assert.equal(saveReviews(emptyReviews(), blocked), false);
+  assert.equal(savePracticeMore([], blocked), false);
+});
+
+test('saving reviews leaves the stars alone', () => {
+  const store = memoryStore();
+  saveStar('L', store);
+  saveReviews({ enrolled: true, letters: { L: { step: 0, due: '2026-11-08' } }, graduated: [], today: null }, store);
+  savePracticeMore([{ id: 'L', reasons: ['help'], day: '2026-11-07' }], store);
+  assert.deepEqual(readStars(store), ['L']);
+});
+
+// ---- test mode (?debug=1&today=): her real progress is never touched ----
+import { readFileSync } from 'node:fs';
+import { TEST_PREFIX, testStore, useStore, readLastVisit as lastVisit } from '../src/storage.js';
+import { saveLastVisit as setLastVisit } from '../src/storage.js';
+
+test('test mode reads her real data, saves every change to test keys, and leaving it shows her real data unchanged', () => {
+  const real = memoryStore();
+  // Her real progress before the parent's check.
+  saveStar('L', real);
+  saveRounds('E', { round: 1, helped: false }, real);
+  saveReviews({ enrolled: true, letters: { L: { step: 1, due: '2026-11-10' } }, graduated: [], today: null }, real);
+  savePracticeMore([{ id: 'S', reasons: ['starts'], day: '2026-11-06' }], real);
+  logAttempt({ type: 'copy', char: 'L', ok: true }, real);
+  saveFind({ o: 'lemon' }, real);
+  saveLastVisit('2026-11-07', real);
+  const realKeys = [...['td.stars', 'td.rounds', 'td.reviews', 'td.practiceMore', 'td.attempts', 'td.finds', 'td.lastVisit']];
+  const before = Object.fromEntries(realKeys.map((k) => [k, real.getItem(k)]));
+
+  useStore(testStore(real));
+  try {
+    // Reads see her real data.
+    assert.deepEqual(readStars(), ['L']);
+    assert.deepEqual(readRounds('E'), { round: 1, helped: false });
+    assert.equal(readReviews().letters.L.step, 1);
+    // A pretend day of play changes everything.
+    saveStar('H');
+    saveRounds('E', { round: 2, helped: true });
+    clearRounds('E');
+    saveRounds('K', { round: 1, helped: false });
+    saveReviews({ enrolled: true, letters: { L: { step: 2, due: '2026-11-17' }, H: { step: 0, due: '2026-11-11' } }, graduated: [], today: { day: '2026-11-10', ids: [] } });
+    savePracticeMore([{ id: 'H', reasons: ['help'], day: '2026-11-10' }]);
+    logAttempt({ type: 'review', char: 'L', result: 'pass' });
+    saveFind({ o: 'lion' });
+    setLastVisit('2026-11-10');
+    saveMusic(true);
+    // ...and test mode sees those changes.
+    assert.deepEqual(readStars(), ['L', 'H']);
+    assert.equal(readRounds('E'), null);
+    assert.deepEqual(readRounds('K'), { round: 1, helped: false });
+    assert.equal(readReviews().letters.L.step, 2);
+    assert.deepEqual(readPracticeMore().map((e) => e.id), ['H']);
+    assert.equal(readAttempts().length, 2);
+    assert.equal(readFinds().length, 2);
+    assert.equal(lastVisit(), '2026-11-10');
+    // Every change went to a test key.
+    assert.ok(real.getItem(`${TEST_PREFIX}td.stars`));
+    assert.ok(real.getItem(`${TEST_PREFIX}td.reviews`));
+  } finally {
+    useStore(null);
+  }
+
+  // Her real keys are byte-for-byte what they were.
+  for (const k of realKeys) assert.equal(real.getItem(k), before[k], k);
+  assert.equal(real.getItem('td.music'), null);
+  // Reading her real data (out of test mode) shows it unchanged.
+  assert.deepEqual(readStars(real), ['L']);
+  assert.deepEqual(readRounds('E', real), { round: 1, helped: false });
+  assert.deepEqual(readReviews(real).letters, { L: { step: 1, due: '2026-11-10' } });
+  assert.deepEqual(readPracticeMore(real), [{ id: 'S', reasons: ['starts'], day: '2026-11-06' }]);
+  assert.equal(readAttempts(real).length, 1);
+});
+
+test('test mode: a later check carries on from the test copy, and the real data stays as it was', () => {
+  const real = memoryStore();
+  saveStar('L', real);
+  useStore(testStore(real));
+  try {
+    saveStar('H');
+  } finally {
+    useStore(null);
+  }
+  useStore(testStore(real));
+  try {
+    assert.deepEqual(readStars(), ['L', 'H']);
+  } finally {
+    useStore(null);
+  }
+  assert.deepEqual(readStars(real), ['L']);
+});
+
+test('every function in storage.js uses the active store (no direct localStorage default)', () => {
+  const src = readFileSync(new URL('../src/storage.js', import.meta.url), 'utf8');
+  assert.equal(src.match(/globalThis\.localStorage/g).length, 1); // only activeStore itself
+  assert.equal(src.match(/store = activeStore\(\)/g).length, src.match(/store = /g).length);
+});

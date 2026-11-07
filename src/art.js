@@ -44,6 +44,15 @@ export const ICONS = {
 // A gold star for a completed character (viewBox 0 0 40 40).
 export const STAR = `<svg ${NS} viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L25 14 L37 15 L28 23 L31 35 L20 29 L9 35 L12 23 L3 15 L15 14 Z" fill="#FFC21A" stroke="#D99400" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
 
+// A letter due for review: a small firefly light, a warm glowing dot with two little wings. No text.
+export const DUE_MARK = `<svg ${NS} viewBox="0 0 40 40" aria-hidden="true">
+  <circle cx="20" cy="22" r="15" fill="#FFE066" opacity="0.45"/>
+  <ellipse cx="12" cy="14" rx="7" ry="5" fill="#E3F2FF" stroke="#9CC6EC" stroke-width="1.5"/>
+  <ellipse cx="28" cy="14" rx="7" ry="5" fill="#E3F2FF" stroke="#9CC6EC" stroke-width="1.5"/>
+  <circle cx="20" cy="22" r="9" fill="#FFD43B" stroke="#F2A900" stroke-width="2"/>
+  <circle cx="17" cy="19" r="3" fill="#FFF8D6"/>
+</svg>`;
+
 // The small padlock on a locked book.
 const LOCK = '<g transform="translate(70 170)"><circle r="20" fill="#fff" opacity=".95"/><path d="M-8 -2 V-8 a8 8 0 0 1 16 0 V-2" fill="none" stroke="#6B6F7B" stroke-width="4" stroke-linecap="round"/><rect x="-11" y="-3" width="22" height="16" rx="3" fill="#6B6F7B"/><circle cy="4" r="2.6" fill="#fff"/></g>';
 

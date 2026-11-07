@@ -9,7 +9,7 @@
 // at its round's stage: full track and Jugnu's demonstrations, then a thinner
 // track with the next start dot, then a faint track. Every finished round is
 // saved per character, so she resumes at the same round. After the last one
-// the letter glows, a chime plays, then onDone({ id, star }) hands back to the
+// the letter glows, a chime plays, then onDone({ id, star, ... }) hands back to the
 // shell: star is true when no round needed Jugnu's help.
 //
 // Screen size: everything she draws is kept in letter units, and every change of
@@ -27,6 +27,11 @@
 // not a fail). A fail: her letter fades and Jugnu draws, on the card, the stroke
 // that went wrong (all of it when the size was wrong); she tries again. After
 // CONFIG.copyTries failed copies the round counts as done, with help (no star).
+//
+// Slice 5I part 2: a review (`review: true`) is the copy-it round alone. It shows
+// one round light, and never reads, saves or clears her saved practice rounds.
+// onDone also reports the sitting, for the review schedule and the practice-more
+// list (src/review.js): { id, star, helped, failedCopies, wrongStarts, review }.
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
@@ -87,7 +92,7 @@ function pauseAnimations() {
 // Plays one character. els: { area, lines, ink, fx, jugnu, rounds }.
 // Returns { stop() }: stop() ends everything at once (the home button).
 // A character that cannot be loaded gives an empty screen; only the debug panel says why.
-export async function startGame(els, { charId, manifest = [], debugOn = false, onDone = () => {} }) {
+export async function startGame(els, { charId, manifest = [], debugOn = false, review = false, onDone = () => {} }) {
   const char = await loadChar(charId, manifest);
   if (!char) {
     const panel = debugOn ? createDebugPanel(0) : null;
@@ -107,7 +112,11 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
 
   setProfile(readProfile());
   const rounds = roundCount(ROUNDS);
-  let rp = startRounds(readRounds(char.id), rounds); // { round, helped }
+  // A review starts at the last round (the copy-it round) and saves nothing to td.rounds.
+  let rp = review ? { round: rounds - 1, helped: false } : startRounds(readRounds(char.id), rounds); // { round, helped }
+  const keepRounds = (fn) => { if (!review) fn(); };
+  // This sitting, for the practice-more list: judged copies that failed, and wrong starts.
+  const sitting = { failedCopies: 0, wrongStarts: 0 };
   const freshRound = () => ({ ...initialState(strokes.length), stage: stageForRound(rp.round, rounds) });
   let progress = freshRound();
   let goodStrokes = 0; // passed strokes so far: a "good" line is said once per CONFIG.goodEvery
@@ -173,7 +182,11 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   // The round lights, top right: done, now, to come. `lit` lights one up.
   function drawLights(lit = -1) {
     if (!els.rounds) return;
-    els.rounds.replaceChildren(...roundLights(rp, rounds).map((kind, i) => {
+    // A review shows only its one round's light.
+    const lights = roundLights(rp, rounds);
+    const first = review ? rounds - 1 : 0;
+    els.rounds.replaceChildren(...lights.slice(first).map((kind, j) => {
+      const i = j + first;
       const el = document.createElement('i');
       el.className = `rl ${kind}${i === lit ? ' lit' : ''}`;
       return el;
@@ -325,6 +338,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     const result = scoreCopy(copy.strokes, char);
     const r = finishCopy(rp, { ok: result.ok, fails: copy.fails }, rounds);
     logAttempt(copyLogEntry({ char: char.id, result, attempt: copy.fails + 1, helped: r.helpedOut }));
+    if (!result.ok) sitting.failedCopies += 1;
+    sitting.wrongStarts += result.strokes.filter((x) => x.startOk === false && x.reason !== 'extra-stroke').length;
     debug?.copy(result);
     if (result.ok) {
       chime();
@@ -363,11 +378,11 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     const finished = rp.round;
     rp = r.state;
     if (r.allDone) {
-      clearRounds(char.id);
+      keepRounds(() => clearRounds(char.id));
       drawLights(finished);
       return finishLetter(herLetter);
     }
-    saveRounds(char.id, rp);
+    keepRounds(() => saveRounds(char.id, rp));
     drawLights(r.repeat ? -1 : finished);
     letterChime();
     updateDebug();
@@ -402,7 +417,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     await wait(CONFIG.letterGlowMs);
     if (!alive) return;
     phase = 'done';
-    onDone({ id: char.id, star: starEarned(rp) });
+    onDone({ id: char.id, star: starEarned(rp), helped: rp.helped, ...sitting, review });
   }
 
   // Ink style for her next point, from the live trackers. She is on the path when
@@ -473,6 +488,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     // Too short to be a real try (a tap): logged, but never added to the fail streak.
     const counted = result.reason !== 'too-short';
     if (counted && !a.startOk) result = { ...result, ok: false, reason: 'wrong-start', startOk: false };
+    if (counted && result.reason === 'wrong-start') sitting.wrongStarts += 1;
     const variant = result.ok ? variantLabel(pick.variant) : 'none';
     const lift = applyLift(progress, { ok: result.ok, from: pick.variant.from, to: pick.variant.to, counted });
 
@@ -495,7 +511,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     progress = lift.state;
     if (!rp.helped && isHelp(stage, lift)) {
       rp = markHelp(rp);
-      saveRounds(char.id, rp); // she may leave now: the help is remembered
+      keepRounds(() => saveRounds(char.id, rp)); // she may leave now: the help is remembered
     }
     if (debug) {
       debug.show(pick.variant.from, { ...result, variant, counted, assisted: lift.assist }, progress.current);
