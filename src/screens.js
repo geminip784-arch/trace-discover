@@ -14,7 +14,7 @@ import {
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
-  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt,
+  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore,
 } from './storage.js';
 import {
   enrolStars, pickToday, dueToday, recordPractice, recordReview, reviewLogEntry, isDay,
@@ -59,6 +59,11 @@ const JUGNU_IMG = '<img class="buddy" src="assets/jugnu.svg" alt="" draggable="f
 // options: { manifest, params (URLSearchParams), now (Date) }
 export function startShell(els, { manifest, params, now = new Date() }) {
   const debugOn = params.get('debug') === '1';
+  // ?debug=1&today=2026-11-08 pretends the tablet's date is that day, to check
+  // reviews. Everything saved then goes to separate test keys (storage.js
+  // testStore), so her real progress is never touched.
+  const debugToday = debugOn && isDay(params.get('today')) ? params.get('today') : null;
+  if (debugToday) useStore(testStore(globalThis.localStorage));
   let state = startScreen({
     lastVisit: readLastVisit(),
     today: localDay(now),
@@ -75,8 +80,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
 
   // ---- reviews (Slice 5I) ----
   // The tablet's calendar day, read afresh each time (the app may stay open past
-  // midnight). For checks on the tablet, ?debug=1&today=2026-11-08 pretends it is that day.
-  const debugToday = debugOn && isDay(params.get('today')) ? params.get('today') : null;
+  // midnight), or the pretend day of ?debug=1&today= (see the top of startShell).
   const todayNow = () => debugToday ?? localDay(new Date());
 
   // Today's due letters (at most 2): picked the first time a shelf or board is

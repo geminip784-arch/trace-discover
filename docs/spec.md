@@ -194,7 +194,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
 - The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every judged copy (type `copy`: character, try 1 to 3, fitted scale, size and size check, each stroke's start, direction and shape, pass or fail, time), every review (type `review`: character, the day it was due, its interval, pass or fail, the next due day or graduated, and any practice-more reasons), every find-scene tap and every game move.
-- `?debug=1&today=2026-11-08` pretends the tablet's date is that day, to check reviews without waiting (debug only).
+- `?debug=1&today=2026-11-08` pretends the tablet's date is that day, to check reviews without waiting (debug only). In this test mode the app reads her real progress but saves every change (stars, rounds, reviews, the practice-more list, finds, the log, everything) to separate keys starting `test.`. Opening the app without `today=` shows her real progress, untouched. A later test-mode visit carries on from the test copy.
 
 ### Voice, for now
 
