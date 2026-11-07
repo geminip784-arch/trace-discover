@@ -7,7 +7,7 @@ import {
   localDay, isFirstVisitToday, startScreen, navigate, tuneFor, isBookOpen,
 } from '../src/session.js';
 import { tileColorOf } from '../src/session.js';
-import { GAMES } from '../src/games.js';
+import { GAMES, kindOf } from '../src/games.js';
 
 const MANIFEST = ['E', 'F', 'H', 'I', 'L', 'T', '1', '4', '7'];
 
@@ -230,17 +230,19 @@ test('a character\'s tile color, for her letter in a find scene', () => {
   assert.equal(tileColorOf('zz'), null);
 });
 
-test('Slice 5D: games -> a game -> back to the games; home goes to the shelf', () => {
+test('Slice 5D: games -> a game -> back to its sets; home goes to the shelf', () => {
   const games = navigate(SHELF, { type: 'openBook', book: 'games' });
   assert.deepEqual(games, { screen: 'games' });
   for (const game of GAMES) {
-    const play = navigate(games, { type: 'openGame', game });
+    const sets = navigate(games, { type: 'openKind', kind: kindOf(game) });
+    const play = navigate(sets, { type: 'openGame', game });
     assert.deepEqual(play, { screen: 'play', game });
-    assert.deepEqual(navigate(play, { type: 'gameDone' }), games);
-    assert.deepEqual(navigate(play, { type: 'back' }), games);
+    assert.deepEqual(navigate(play, { type: 'gameDone' }), sets);
+    assert.deepEqual(navigate(play, { type: 'back' }), sets);
     assert.deepEqual(navigate(play, { type: 'home' }), SHELF);
   }
-  assert.equal(navigate(games, { type: 'openGame', game: 'chess' }), games);
+  const match = navigate(games, { type: 'openKind', kind: 'match' });
+  assert.equal(navigate(match, { type: 'openGame', game: 'chess' }), match);
   assert.equal(navigate(SHELF, { type: 'openGame', game: 'path' }), SHELF);
   assert.equal(navigate(ABC, { type: 'gameDone' }), ABC);
   assert.equal(tuneFor('play'), 'board');

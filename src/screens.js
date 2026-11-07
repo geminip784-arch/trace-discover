@@ -23,8 +23,8 @@ import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
-import { GAME_ROWS, GAME_LINES, kindOf, missingLevelOpen, missingLevel } from './games.js';
-import { MENU } from '../data/games.js';
+import { GAME_KINDS, gamesOf, kindStars, gameTile, kindOf } from './games.js';
+import { MENU, KIND_MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
 import { playSort } from './sort.js';
@@ -42,6 +42,8 @@ const GAME_COLORS = {
   'odd-kinds': '#C2185B', 'odd-colors': '#5E35B1',
   'missing-1': '#D81B60', 'missing-2': '#1E88E5', 'missing-3': '#F9A825', 'missing-4': '#00897B',
 };
+// The first step's tiles: each kind of game's frame color.
+const KIND_COLORS = { match: '#1E88E5', path: '#43A047', sort: '#E8590C', odd: '#C2185B', missing: '#5E35B1' };
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
 const BOOK_OPEN_MS = 650;  // a book's cover opens, then its screen
@@ -242,55 +244,74 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   }
   window.addEventListener('resize', sizeBoard);
 
-  // ---- the games book (Slices 5D, 5F and 5H) ----
-  // A row of picture tiles per kind of game (src/games.js GAME_ROWS), one tile
-  // per set; a gold star on each she has finished. The rows sit on four lines
-  // (GAME_LINES: Follow the path and Sort it share one). Missing piece has a
-  // tile per level: a level opens after 3 finished rounds of the one before;
-  // a locked tile is faint and wiggles.
+  // ---- the games book (Slices 5D, 5F and 5H; the two-step menu) ----
+  // Step 1: a big picture tile per kind of game (src/games.js GAME_KINDS), with
+  // a tiny gold star for each of its sets she has finished. Step 2: that kind's
+  // sets, one tile each, with a gold star on each she has finished. Missing
+  // piece has a tile per level: a level opens after 3 finished rounds of the
+  // one before; a locked tile is faint and wiggles. Back goes up one step.
   function drawGames(view, newGameStar) {
     view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}<div class="gm-menu"></div>`;
     const menu = view.querySelector('.gm-menu');
-    menu.style.setProperty('--rows', GAME_LINES.length);
     const stars = readGameStars();
-    const rounds = readMissingRounds();
-    for (const kinds of GAME_LINES) {
-      const line = document.createElement('div');
-      line.className = 'gm-line';
-      menu.appendChild(line);
-      for (const kind of kinds) {
-        const row = document.createElement('div');
-        row.className = `gm-row gm-row-${kind}`;
-        line.appendChild(row);
-        for (const id of GAME_ROWS.find((r) => r.kind === kind).games) addTile(row, id);
-      }
+    const { kind } = state;
+    if (kind) {
+      const rounds = readMissingRounds();
+      const ids = gamesOf(kind);
+      menu.style.setProperty('--n', ids.length);
+      for (const id of ids) addSet(gameTile(id, stars, rounds));
+    } else {
+      menu.style.setProperty('--n', GAME_KINDS.length);
+      for (const k of GAME_KINDS) addKind(k);
     }
-    function addTile(row, id) {
-      const locked = kindOf(id) === 'missing' && !missingLevelOpen(missingLevel(id), rounds);
+
+    function tile(color, art, label) {
       const el = document.createElement('div');
-      el.className = `gm-tile${locked ? ' locked' : ''}`;
-      el.style.setProperty('--c', GAME_COLORS[id]);
+      el.className = 'gm-tile';
+      el.style.setProperty('--c', color);
       el.setAttribute('role', 'button');
-      el.setAttribute('aria-label', id);
-      el.innerHTML = MENU[id];
-      if (stars.includes(id)) {
-        const star = document.createElement('span');
-        star.className = `star${id === newGameStar ? ' new' : ''}`;
-        star.innerHTML = STAR;
-        el.appendChild(star);
+      el.setAttribute('aria-label', label);
+      el.innerHTML = art;
+      menu.appendChild(el);
+      return el;
+    }
+    // A tap pops the tile, then opens what it holds.
+    function pick(el, event) {
+      if (busy) return;
+      busy = true;
+      popSound();
+      el.classList.add('picked');
+      setTimeout(() => {
+        busy = false;
+        go(navigate(state, event));
+      }, TILE_PICK_MS);
+    }
+    function addKind(k) {
+      const el = tile(KIND_COLORS[k], KIND_MENU[k], k);
+      el.dataset.kind = k;
+      const n = kindStars(k, stars);
+      if (n) {
+        const row = document.createElement('span');
+        row.className = 'gm-stars';
+        row.innerHTML = STAR.repeat(n);
+        el.appendChild(row);
+      }
+      el.addEventListener('click', () => pick(el, { type: 'openKind', kind: k }));
+    }
+    function addSet({ id, locked, star }) {
+      const el = tile(GAME_COLORS[id], MENU[id], id);
+      el.dataset.game = id;
+      if (locked) el.classList.add('locked');
+      if (star) {
+        const s = document.createElement('span');
+        s.className = `star${id === newGameStar ? ' new' : ''}`;
+        s.innerHTML = STAR;
+        el.appendChild(s);
       }
       el.addEventListener('click', () => {
-        if (busy) return;
-        if (locked) return wiggle(el, 'wig');
-        busy = true;
-        popSound();
-        el.classList.add('picked');
-        setTimeout(() => {
-          busy = false;
-          go(navigate(state, { type: 'openGame', game: id }));
-        }, TILE_PICK_MS);
+        if (locked) return busy || wiggle(el, 'wig');
+        pick(el, { type: 'openGame', game: id });
       });
-      row.appendChild(el);
     }
   }
 

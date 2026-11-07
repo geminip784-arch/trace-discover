@@ -778,3 +778,13 @@ Object.assign(MENU, {
     + `<path d="M140 92 L140 148 L84 148 Z" ${GAP}/>`
     + '<path d="M192 100 L192 152 L140 152 Z" fill="#FFE3E3" stroke="#FF9A9A" stroke-width="4" stroke-linejoin="round"/>'),
 });
+
+// ---------------------------------------------------------------------------
+// The menu's first step: a tile per kind of game (200 x 160). Each is a small
+// fan of cards with the kind's first set on the front, so it reads as "a pile
+// of games inside".
+const KIND_FRONT = { match: 'numbers', path: 'path', sort: 'sort-colors', odd: 'odd-kinds', missing: 'missing-1' };
+const fanCard = (turn) => `<rect x="30" y="16" width="140" height="124" rx="16" fill="#fff" stroke="#E3D3BE" stroke-width="4" transform="rotate(${turn} 100 78)"/>`;
+export const KIND_MENU = Object.fromEntries(Object.entries(KIND_FRONT).map(([kind, id]) => [kind, svg('0 0 200 160',
+  fanCard(-11) + fanCard(8) + fanCard(0)
+  + MENU[id].replace('<svg ', '<svg x="38" y="24" width="124" height="108" '))]));

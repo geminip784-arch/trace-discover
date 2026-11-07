@@ -313,14 +313,14 @@ test('levels open like the Drawing book: after 3 finished rounds of the one befo
   assert.equal(missingLevelOpen(4, { 2: 3, 3: 3 }), false, 'every level before must be open');
 });
 
-test('its own menu row: a tile per level, each its own game with its own star', () => {
+test('its own kind on the menu: a tile per level, each its own game with its own star', () => {
   assert.deepEqual(GAME_ROWS.find((r) => r.kind === 'missing').games, MISSING_GAMES);
   assert.deepEqual(MISSING_GAMES, ['missing-1', 'missing-2', 'missing-3', 'missing-4']);
   for (const g of MISSING_GAMES) {
     assert.ok(GAMES.includes(g));
     assert.equal(kindOf(g), 'missing');
     assert.ok(isInlineSvg(MENU[g]), g);
-    assert.deepEqual(navigate({ screen: 'games' }, { type: 'openGame', game: g }), { screen: 'play', game: g });
+    assert.deepEqual(navigate({ screen: 'games', kind: 'missing' }, { type: 'openGame', game: g }), { screen: 'play', game: g });
   }
   assert.equal(missingLevel('missing-3'), 3);
 });
