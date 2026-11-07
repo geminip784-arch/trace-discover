@@ -41,7 +41,10 @@ Ice cream and eraser leave the find scenes and the Letter to picture game. Their
 - [ ] You have approved the art on `finds.html`
 
 ### 5H — Game variety and the Missing piece game
-More sets for the existing games, so a play does not repeat, and a new **Missing piece** game.
+More sets for the existing games, so a play does not repeat, and a new **Missing piece** game. Two pull requests:
+
+1. **Game variety** (built): pools for every game (7 colors with 3 or 4 things each, every letter's sound-first words, any distinctive shadow, 4 things per shape, 8 animal homes, counts to 9), no repeat of the last play per game (`td.lastPlay`), a plain tap wiggles a card, and the lunchbox's star became stripes. Screenshots: `docs/screenshots/slice-5h/`.
+2. **Missing piece**: starts after the first is merged.
 
 **Done when:**
 - [ ] Two plays of the same game in a row look different

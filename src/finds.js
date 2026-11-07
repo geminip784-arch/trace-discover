@@ -122,12 +122,13 @@ export function groupWord(kind, count) {
 
 // A placemat of `n` things (mockup4's makeGroup): up to 5 a row, each in a
 // 64 x 64 cell, every cell a <g class="cnt" data-i="..."> with a hidden number.
-// gold: the index of the golden item, or -1. Returns { svg, W, H } (W x H units).
+// gold: the index of the golden item, or -1. gapY: the room above each row for
+// its counting numbers (the games' cards need less: they have no numbers).
+// Returns { svg, W, H } (W x H units).
 export const CELL = 64;
-export function makeGroup(kind, n, gold = -1) {
+export function makeGroup(kind, n, gold = -1, gapY = 32) {
   const cols = Math.min(5, n);
   const rows = Math.ceil(n / 5);
-  const gapY = 32;
   const W = Math.max(1, cols) * CELL + 20;
   const H = rows * (CELL + gapY) + 22;
   let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" class="art" style="overflow:visible">`

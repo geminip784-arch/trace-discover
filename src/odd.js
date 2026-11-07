@@ -8,16 +8,18 @@
 // top fill as the rows are done. Five rows make a play. Everything is in board
 // units (1280 x 640). Every tap on a card goes into the attempt log as a
 // "game" entry; Jugnu's does not.
+// Slice 5H: no row repeats a row of her last play. (Here a tap is her answer,
+// so a plain tap is played as one, unlike the drag games.)
 // Child-screen rules: no text, no failure sound, nothing red as feedback, every
 // card at least 88 px, Jugnu the only character.
 
 import {
-  ODD, oddPlay, oddCards, hitOdd, startOdd, tapOdd, marginUnits, gameLogEntry, showsFirstMove, FIRST_MOVE_DELAY_MS,
+  ODD, oddPlay, oddKey, oddCards, hitOdd, startOdd, tapOdd, marginUnits, gameLogEntry, showsFirstMove, FIRST_MOVE_DELAY_MS,
 } from './games.js';
 import { oddThingArt } from '../data/games.js';
 import { mountBoard, svgEl, replay, JUGNU_IMG } from './match.js';
 import { trackSinglePointer } from './input.js';
-import { logAttempt } from './storage.js';
+import { logAttempt, readLastPlay, saveLastPlay } from './storage.js';
 import { chime, letterChime } from './audio.js';
 
 const NEXT_MS = 1300;     // a right answer glows, then the next row
@@ -33,7 +35,8 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
   const buddy = view.querySelector('.buddy');
   const board = mountBoard(view);
   board.el.classList.add('od-board');
-  const rows = oddPlay(game, rand);
+  const rows = oddPlay(game, rand, readLastPlay(game));
+  saveLastPlay(game, rows.map(oddKey));
 
   // The progress dots: one per row, filled when it is done.
   const dots = ODD.dots.xs.map((x) => svgEl('circle', { class: 'od-dot', cx: x, cy: ODD.dots.y, r: 14 }, board.svg));

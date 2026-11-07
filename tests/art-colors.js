@@ -44,18 +44,26 @@ function pathBox(d) {
   return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
 }
 
-// Every element's colors, with a rough area for each filled shape.
+// '#FFF' -> '#FFFFFF' (other values unchanged).
+const long = (c) => (c && /^#[0-9a-fA-F]{3}$/.test(c) ? `#${[...c.slice(1)].map((d) => d + d).join('')}` : c);
+
+// Every element's colors, with a rough area for each filled shape, and its
+// opacity (its own times its groups': a faint shine or ground shadow is low).
 export function colorsOf(art) {
   const out = [];
   const groups = []; // the fill of each <g> we are inside (null when it sets none)
+  const fades = [];  // the opacity of each <g> we are inside
   for (const [tag, name] of art.matchAll(/<\/?(g|rect|circle|ellipse|polygon|path|line)\b[^>]*>/g)) {
     const attr = (a) => tag.match(new RegExp(`\\s${a}="([^"]+)"`))?.[1];
     const num = (a) => Number(attr(a));
     if (name === 'g') {
-      if (tag.startsWith('</')) groups.pop();
-      else if (!tag.endsWith('/>')) groups.push(attr('fill') ?? null);
+      if (tag.startsWith('</')) { groups.pop(); fades.pop(); } else if (!tag.endsWith('/>')) {
+        groups.push(attr('fill') ?? null);
+        fades.push(Number(attr('opacity') ?? 1));
+      }
       continue;
     }
+    const opacity = fades.reduce((a, f) => a * f, Number(attr('opacity') ?? 1));
     let area = 0;
     if (name === 'rect') area = num('width') * num('height');
     if (name === 'circle') area = Math.PI * num('r') ** 2;
@@ -67,18 +75,21 @@ export function colorsOf(art) {
     }
     if (name === 'path') area = pathBox(attr('d'));
     // A shape with no fill of its own takes the fill of the group round it.
-    const fill = attr('fill') ?? [...groups].reverse().find((f) => f) ?? null;
-    if (fill && /^#[0-9a-fA-F]{6}$/.test(fill)) out.push({ color: fill, area });
-    const stroke = attr('stroke');
-    if (stroke && /^#[0-9a-fA-F]{6}$/.test(stroke)) out.push({ color: stroke, area: 0 });
+    const fill = long(attr('fill') ?? [...groups].reverse().find((f) => f) ?? null);
+    if (fill && /^#[0-9a-fA-F]{6}$/.test(fill)) out.push({ color: fill, area, opacity });
+    const stroke = long(attr('stroke'));
+    if (stroke && /^#[0-9a-fA-F]{6}$/.test(stroke)) out.push({ color: stroke, area: 0, opacity });
   }
   return out;
 }
 
 // A color's family by hue, or null for white, grey, near-black or a pale tint.
 // Brown and orange share hues; brown is the duller one.
-export function family(hex) {
-  if (!chromatic(hex)) return null;
+// minS: the least saturation that counts as a real color (a mid green such as
+// #4CAF50 sits just under the usual 0.4).
+export function family(hex, minS = 0.4) {
+  const c0 = hsl(hex);
+  if (c0.s < minS || c0.l < 0.2 || c0.l > 0.85) return null;
   const { h, s } = hsl(hex);
   if (h <= 15 || h >= 345) return 'red';
   if (h < 45) return s < 0.75 ? 'brown' : 'orange';

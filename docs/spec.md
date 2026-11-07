@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3 · Nov 6, 2026 · describes the app as built through Slice 5G, and where it goes next.
+Version 3 · Nov 7, 2026 · describes the app as built through Slice 5G and the first part of 5H (game variety), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -101,12 +101,25 @@ A menu of tiles in four rows, one row per kind of game. Each game ends after a f
 
 | Row | Games | How it plays |
 | --- | --- | --- |
-| Match (draw a line) | Numbers to things, Colors to things, Letter to picture (E egg, F fork, H hat, I insect, L lemon, T tiger), Thing to its shadow, Shape to thing | Two columns of 4 cards. She draws a line from each card to its partner. 3 sets make a play |
+| Match (draw a line) | Numbers to things, Colors to things, Letter to picture, Thing to its shadow, Shape to thing | Two columns of 4 cards. She draws a line from each card to its partner. 3 sets make a play |
 | Follow the path | Animals to homes, Furniture to rooms | Three crossing roads. She traces each traveller's road to its home |
 | Sort it | By color, By kind | Six things along the top. She drags each into the right one of two baskets. 2 boards make a play |
 | Odd one out | By kind, By color | A row of four cards. She taps the one that is different. 5 rows make a play |
 
-In every game, Jugnu shows the first move himself. Repeated misses make the right answer wiggle (or, in Follow the path, make Jugnu fly the road). Wrong moves make no sound.
+In every game, Jugnu shows the first move himself. Repeated misses make the right answer wiggle (or, in Follow the path, make Jugnu fly the road). Wrong moves make no sound. In the drag games (Match, Sort it, Follow the path), a plain tap on a card, without dragging, makes it wiggle; it is not a try and is not logged. In Odd one out a tap is her answer.
+
+**Variety (Slice 5H).** Every game draws from pools, so she cannot learn the answers by place:
+
+| Game | Pool |
+| --- | --- |
+| Numbers to things | 4 different counts from 1 to 9, in rows of five (the count scenes' placemats). All four mats in a set share one scale |
+| Colors to things | 4 of 7 colors, one thing each: red (apple, tomato, strawberry, crayon), yellow (lemon, banana, star, duck), blue (cup, book, ball, whale), green (leaf, alligator, parrot, olive), orange (orange, fish, juice), purple (grapes, plum, aubergine), pink (flower, sock, frock). Each thing's main fill is its color (tested) |
+| Letter to picture | Every letter with find pictures (all but X), each with one of its sound-first find words at random. Ice cream and eraser are never used |
+| Thing to its shadow | Any find picture with an outline of its own. Plain rounds and boxes are left out, and a set never holds two shadows from one look-alike group (horse and zebra, for example) |
+| Shape to thing | 4 things per shape: circle (ball, clock, cookie, button), square (block, window, gift, dice), triangle (roof, pizza slice, tent, party hat), tall rectangle (door, book, phone, fridge) |
+| Follow the path | 3 of 8 animals: bee and hive, duck and pond, dog and kennel, bird and nest, fish and bowl, rabbit and hutch, cow and barn, spider and web |
+
+A play never repeats a set (or board, or row) from the play before it of the same game. What each game's last play held is kept in `td.lastPlay`.
 
 ### Drawing book
 

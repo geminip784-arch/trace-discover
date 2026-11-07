@@ -8,17 +8,19 @@
 // Jugnu carries the leftmost thing into its basket himself. Two boards make
 // one play. Everything is in board units (1280 x 640). Every release goes into
 // the attempt log as a "game" entry; Jugnu's move does not.
+// Slice 5H: neither board repeats a board of her last play; a plain tap on a
+// thing makes it wiggle (not a try, not logged).
 // Child-screen rules: no text, no failure sound, nothing red as feedback,
 // every thing at least 88 px, Jugnu the only character.
 
 import {
-  SORT, sortBoard, thingHome, hitBasket, hitThing, basketSlot, startSort, dropThing, firstMoveThing,
+  SORT, sortPlay, sortKey, isPlainTap, thingHome, hitBasket, hitThing, basketSlot, startSort, dropThing, firstMoveThing,
   marginUnits, gameLogEntry, showsFirstMove, FIRST_MOVE_DELAY_MS,
 } from './games.js';
 import { sortThingArt, basketArt } from '../data/games.js';
 import { mountBoard, replay, JUGNU_IMG } from './match.js';
 import { trackSinglePointer } from './input.js';
-import { logAttempt } from './storage.js';
+import { logAttempt, readLastPlay, saveLastPlay } from './storage.js';
 import { chime, letterChime } from './audio.js';
 
 const DROP_MS = 320;      // a thing settles into its basket
@@ -39,6 +41,10 @@ export function playSort(view, { game, onDone = () => {}, rand = Math.random }) 
   const buddy = view.querySelector('.buddy');
   const board = mountBoard(view);
   board.el.classList.add('st-board');
+
+  // Both boards, drawn now so they can be saved: the next play avoids them.
+  const plan = sortPlay(game, readLastPlay(game), rand);
+  saveLastPlay(game, plan.map(sortKey));
 
   const opened = performance.now();
   let alive = true;
@@ -87,7 +93,7 @@ export function playSort(view, { game, onDone = () => {}, rand = Math.random }) 
     boardNo += 1;
     for (const el of board.el.querySelectorAll('.st-thing, .st-basket')) el.remove();
     board.el.classList.remove('gm-glow');
-    sb = sortBoard(game, rand);
+    sb = plan[boardNo - 1];
     state = startSort();
     inBasket = [0, 0];
     moving.clear();
@@ -179,6 +185,13 @@ export function playSort(view, { game, onDone = () => {}, rand = Math.random }) 
     if (!d) return;
     drag = null;
     const { t } = d;
+    if (isPlainTap(d.moved, board.s)) {
+      // A tap, not a drag: the thing wiggles in its place. Not a try, not logged.
+      t.el.classList.remove('st-lift');
+      place(t.el, thingHome(t));
+      replay(t.el, 'wig');
+      return;
+    }
     const center = [parseFloat(t.el.style.left) + SORT.size / 2, parseFloat(t.el.style.top) + SORT.size / 2];
     const to = hitBasket(center, marginUnits(board.s));
     const r = dropThing(state, t, to);
@@ -199,11 +212,15 @@ export function playSort(view, { game, onDone = () => {}, rand = Math.random }) 
       const t = hitThing(u, sb.things, [...state.placed, ...moving], marginUnits(board.s));
       if (!t) return;
       const [x, y] = thingHome(t);
-      drag = { t, offset: [x - u[0], y - u[1]] };
+      drag = { t, offset: [x - u[0], y - u[1]], down: u, moved: 0 };
       t.el.classList.add('st-lift');
     },
     onMove: (points) => {
       if (!drag) return;
+      for (const p of points) {
+        const q = board.toUnits(p);
+        drag.moved = Math.max(drag.moved, Math.hypot(q[0] - drag.down[0], q[1] - drag.down[1]));
+      }
       const u = board.toUnits(points[points.length - 1]);
       place(drag.t.el, [u[0] + drag.offset[0], u[1] + drag.offset[1]]);
     },

@@ -52,9 +52,9 @@ counting thing), fairy (Jugnu is the only character).
 ## Slice 5D: follow-ups
 
 - ✅ **[5F]** Follow the path, set 2: furniture to rooms. Built in Slice 5F (`path-rooms`).
-- **[9B]** Numbers to things uses counts from 1 to 5 for now. Raise it to 1 to 9 once she counts groups that big easily (makeGroup puts 5 in a row, so 6 to 9 need taller cards).
+- ✅ **[5H]** Numbers to things now uses counts from 1 to 9, in rows of five.
 - **[7]** In headless Chrome, a fast drag that ends while the finger is still moving starts a "fling"; a tap on the home or back button during that fling (about the next second) only stops the fling and does not press the button. It may not happen on the tablet (the writing area and games board are `touch-action: none`). If it does, the buttons could act on `pointerup` instead of `click`.
-- **[5H]** A tap on a card without dragging counts as a drop that missed: the card wiggles. If that confuses her, a tap could do nothing instead.
+- ✅ **[5H]** A plain tap on a card (no drag) now only makes it wiggle: it is not a try and is not logged.
 
 ## Slice 5E: follow-ups
 
@@ -77,8 +77,13 @@ counting thing), fairy (Jugnu is the only character).
 ## Slice 5G: follow-ups
 
 - ✅ **[5G]** The room backdrops no longer paint any find-object shape: window suns became clouds, the living room's framed star a small landscape, the bedroom's wallpaper stars dots, the study's chalk circle a triangle. A test guards it.
-- **[later]** The lunchbox picture (5C art) has a small star printed on its front, and star is now a find picture. If she taps the lunchbox in an S scene, swap that star for a plain shape.
+- ✅ **[5H]** The lunchbox's printed star is now two stripes.
 - **[later]** X has no find pictures: no common word for a 4-year-old starts with its sound. A scene with the letter at the end (box, fox) would need its own rule.
 - **[later]** U has only umbrella. A second sound-first U picture (up, under) is hard to draw as one object.
 - **[later]** The zoo is only chosen on a tie (no letter has two of its pictures there). A second zoo animal for a letter would give the zoo its own scenes.
 - **[5H]** The zip picture is a close-up of a zip (blue fabric, metal teeth, a pull tab). If she does not recognise it on the tablet, give it `finds: false` and Z skips its scene like U and X.
+
+## Slice 5H: follow-ups
+
+- **[later]** Odd one out: a tap is her answer there, so a plain tap is not a wiggle. If she taps cards just to see them move, a short press could be needed before a tap counts.
+- **[later]** The find-library pictures (alligator, letter pictures, shadows) have room round them in their 200 x 240 box, so they look a little smaller on a card than the games' own pictures. A per-picture crop would fill the cards better.
