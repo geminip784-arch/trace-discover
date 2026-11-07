@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { OBJECTS } from '../data/finds.js';
 import {
-  MENU, LETTER_PICTURES, letterArt, SHADOW_THINGS, shadowArt, objectPicture, SHAPES, SHAPE_THINGS,
+  MENU, LETTER_WORDS, letterArt, SHADOW_THINGS, shadowArt, objectPicture, SHAPES, SHAPE_THINGS,
   shapeArt, shapeThingArt, FURNITURE, ROOM_IDS, ROOM_HOME, roomArt,
 } from '../data/games.js';
 import {
@@ -62,29 +62,32 @@ test('menu tiles stay at least 88 px with four rows (room for Sort it and Odd on
 
 // ---- letter to picture ----
 
-test('letter to picture: one object per recorded letter, its word starts with that letter', () => {
-  assert.deepEqual(LETTER_PICTURES, { E: 'egg', F: 'fork', H: 'hat', I: 'insect', L: 'lemon', T: 'tiger' });
-  for (const [letter, id] of Object.entries(LETTER_PICTURES)) {
-    assert.ok(chars.includes(letter), `${letter} is a recorded character`);
-    const o = OBJECTS.find((x) => x.id === id);
-    assert.ok(o, id);
-    assert.equal(o.letter, letter);
-    assert.equal(o.word[0].toUpperCase(), letter);
+test('letter to picture: every letter with find pictures, each picture\'s word starting with its letter', () => {
+  assert.deepEqual(Object.keys(LETTER_WORDS).sort().join(''), 'ABCDEFGHIJKLMNOPQRSTUVWYZ', 'every letter but X');
+  for (const [letter, ids] of Object.entries(LETTER_WORDS)) {
+    assert.ok(chars.includes(letter), `${letter} has a character file`);
+    for (const id of ids) {
+      const o = OBJECTS.find((x) => x.id === id);
+      assert.ok(o, id);
+      assert.equal(o.letter, letter);
+      assert.equal(o.word[0].toUpperCase(), letter);
+      assert.notEqual(o.finds, false, `${id} is kept out`);
+    }
   }
-  assert.equal(new Set(Object.values(LETTER_PICTURES)).size, 6, 'no picture twice');
+  assert.deepEqual(LETTER_WORDS.E, ['egg', 'elephant', 'envelope'], 'no eraser');
 });
 
-test('letter sets: 4 different letters, each with its own picture', () => {
+test('letter sets: 4 different letters, each with one of its own pictures', () => {
   for (const seed of SEEDS) {
     const set = lettersSet(seeded(seed));
     assert.equal(set.pairs.length, PAIRS);
     assert.equal(new Set(set.pairs.map((p) => p.left.letter)).size, PAIRS);
-    for (const p of set.pairs) assert.equal(p.right.object, LETTER_PICTURES[p.left.letter]);
+    for (const p of set.pairs) assert.ok(LETTER_WORDS[p.left.letter].includes(p.right.object));
   }
 });
 
 test('a letter card is drawn from her letter file: one line per stroke, no text', () => {
-  for (const id of Object.keys(LETTER_PICTURES)) {
+  for (const id of Object.keys(LETTER_WORDS)) {
     const ch = loadChar(id);
     const art = letterArt(ch);
     assert.ok(isInlineSvg(art), id);
@@ -128,7 +131,8 @@ test('shape sets: all four shapes, each once, with one of its own things', () =>
       seen.add(p.right.thing);
     }
   }
-  assert.equal(seen.size, 8, 'every thing turns up');
+  assert.equal(seen.size, Object.values(SHAPES).flatMap((x) => x.things).length, 'every thing turns up');
+  for (const x of Object.values(SHAPES)) assert.ok(x.things.length >= 4, 'at least 4 things per shape');
 });
 
 // The bounding box of everything drawn (absolute coordinates only), and the
@@ -265,7 +269,9 @@ test('a furniture board: three different pieces, each on its own road to its roo
     assert.ok(roads.every((r) => r.to !== r.from), 'the roads cross');
   }
   assert.equal(seen.size, 4, 'every piece turns up');
-  assert.deepEqual(pathThings('path', seeded(1)), PATH.animals, 'set 1 keeps its animals');
+  const animals = pathThings('path', seeded(1));
+  assert.equal(new Set(animals).size, 3);
+  assert.ok(animals.every((a) => PATH.animals.includes(a)), 'set 1: three of its animals');
 });
 
 test('a furniture road plays like an animal road; the board is done when all three are home', () => {

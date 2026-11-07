@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { OBJECTS, ROOMS, PLACES, OUTDOORS, THINGS } from '../data/finds.js';
-import { LETTER_PICTURES, SHADOW_THINGS } from '../data/games.js';
+import { LETTER_WORDS, SHADOW_THINGS } from '../data/games.js';
 import {
   FINDS, SPOTS, letterScene, hasLetterScene, afterWriting, roomFor, roomCounts, objectsFor, targetsFor,
   inScenes, preferPlace, findArt,
@@ -102,9 +102,9 @@ test('ice cream and eraser never appear in a find scene, as a target or a distra
   }
 });
 
-test('Letter to picture shows insect for I; the Shadow game keeps ice cream', () => {
-  assert.equal(LETTER_PICTURES.I, 'insect');
-  assert.ok(!Object.values(LETTER_PICTURES).some((id) => RETIRED.includes(id)));
+test('Letter to picture shows insect for I, never ice cream or eraser; the Shadow game keeps ice cream', () => {
+  assert.ok(LETTER_WORDS.I.includes('insect'));
+  assert.ok(!Object.values(LETTER_WORDS).flat().some((id) => RETIRED.includes(id)));
   assert.ok(SHADOW_THINGS.includes('ice-cream'));
 });
 

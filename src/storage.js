@@ -230,3 +230,33 @@ export function saveDrawStar(id, store = globalThis.localStorage) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// The games book (Slice 5H): what the last play of each game showed, so the
+// next play of that game never repeats it. { [game id]: [set keys] }, where a
+// key names what one set (or board, or row) held (src/games.js setKey and friends).
+
+export const LAST_PLAY_KEY = 'td.lastPlay';
+
+export function readLastPlay(game, store = globalThis.localStorage) {
+  try {
+    const all = JSON.parse(store.getItem(LAST_PLAY_KEY) ?? '{}');
+    const keys = all && typeof all === 'object' ? all[game] : null;
+    return Array.isArray(keys) ? keys.filter((k) => typeof k === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLastPlay(game, keys, store = globalThis.localStorage) {
+  try {
+    let all;
+    try { all = JSON.parse(store.getItem(LAST_PLAY_KEY) ?? '{}'); } catch { all = null; }
+    if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+    all[game] = keys.filter((k) => typeof k === 'string');
+    store.setItem(LAST_PLAY_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}

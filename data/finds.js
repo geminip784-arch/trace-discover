@@ -5,6 +5,7 @@
 // the small countable things and their pools, the basket and the toy box.
 // The Slice 5C art was generated once from the mockup and is not hand-edited;
 // Slice 5G's pictures and outdoor places are drawn in data/find-art.js.
+// Slice 5H: the lunchbox's printed star became two stripes, so it is never taken for a star.
 //
 // Coordinates: a backdrop is 1280 x 640. A spot is { x, bottom, w }: the
 // object's centre, the y its base sits on, and its width (its height is
@@ -83,7 +84,7 @@ export const OBJECTS = [
   },
   {
     id: 'lunchbox', word: 'lunchbox', letter: 'L', places: ['kitchen', 'study'], reward: 'lunch',
-    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="224" rx="74" ry="9" fill="#000" opacity=".12"/><g class="pop"><circle cx="100" cy="124" r="26" fill="#FF3B3B"/><path d="M100 98 q4 -16 18 -18" stroke="#2F9E5B" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="114" cy="90" rx="10" ry="6" fill="#35D07F" transform="rotate(-30 114 90)"/></g><rect x="22" y="126" width="156" height="92" rx="16" fill="#FF6B6B"/><path d="M100 150 l8 17 19 2 -14 12 4 19 -17 -10 -17 10 4 -19 -14 -12 19 -2z" fill="#FFD43B"/><g class="lid" style="transform-origin:22px 126px"><rect x="22" y="98" width="156" height="32" rx="12" fill="#E84C4C"/><path d="M70 98 C70 70 130 70 130 98" stroke="#7A4E2D" stroke-width="10" fill="none" stroke-linecap="round"/><rect x="90" y="120" width="20" height="16" rx="4" fill="#FFD43B"/></g></svg>`,
+    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="224" rx="74" ry="9" fill="#000" opacity=".12"/><g class="pop"><circle cx="100" cy="124" r="26" fill="#FF3B3B"/><path d="M100 98 q4 -16 18 -18" stroke="#2F9E5B" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="114" cy="90" rx="10" ry="6" fill="#35D07F" transform="rotate(-30 114 90)"/></g><rect x="22" y="126" width="156" height="92" rx="16" fill="#FF6B6B"/><rect x="22" y="156" width="156" height="11" fill="#FFD43B"/><rect x="22" y="180" width="156" height="11" fill="#FFD43B"/><g class="lid" style="transform-origin:22px 126px"><rect x="22" y="98" width="156" height="32" rx="12" fill="#E84C4C"/><path d="M70 98 C70 70 130 70 130 98" stroke="#7A4E2D" stroke-width="10" fill="none" stroke-linecap="round"/><rect x="90" y="120" width="20" height="16" rx="4" fill="#FFD43B"/></g></svg>`,
   },
   {
     id: 'toys', word: 'toys', letter: 'T', places: ['living', 'bedroom'], reward: 'toys',

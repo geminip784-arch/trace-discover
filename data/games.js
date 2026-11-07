@@ -9,17 +9,22 @@ import { PICTURES } from './drawings.js';
 
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 const svg = (vb, body) => `<svg ${NS} viewBox="${vb}" class="art" style="overflow:visible">${body}</svg>`;
+const objectArt = (id) => OBJECTS.find((o) => o.id === id).art; // a find-library picture (200 x 240)
 
 // ---- colors to things ----
 
-// The six paint colors. Each set uses 4, each with one object of that color.
+// The seven paint colors. Each set uses 4, each with one object of that color,
+// picked from the color's pool (Slice 5H). Every object's main fill is its
+// color (tests/games5h.test.js reads the art), so a many-colored picture never
+// stands for one color.
 export const COLORS = {
-  red: { paint: '#FF4D4D', edge: '#D93636', thing: 'apple' },
-  yellow: { paint: '#FFD43B', edge: '#E7B500', thing: 'lemon' },
-  blue: { paint: '#4D96FF', edge: '#2F74D9', thing: 'cup' },
-  green: { paint: '#35C46A', edge: '#23994F', thing: 'leaf' },
-  orange: { paint: '#FF9A1F', edge: '#E07B00', thing: 'orange' },
-  purple: { paint: '#9B5DE5', edge: '#7B3FC4', thing: 'grapes' },
+  red: { paint: '#FF4D4D', edge: '#D93636', things: ['apple', 'tomato', 'strawberry', 'crayon'] },
+  yellow: { paint: '#FFD43B', edge: '#E7B500', things: ['lemon', 'banana', 'star', 'duck'] },
+  blue: { paint: '#4D96FF', edge: '#2F74D9', things: ['cup', 'book', 'blue-ball', 'whale'] },
+  green: { paint: '#35C46A', edge: '#23994F', things: ['leaf', 'alligator', 'parrot', 'olive'] },
+  orange: { paint: '#FF9A1F', edge: '#E07B00', things: ['orange', 'fish', 'juice'] },
+  purple: { paint: '#9B5DE5', edge: '#7B3FC4', things: ['grapes', 'plum', 'aubergine'] },
+  pink: { paint: '#FF8FD6', edge: '#E066B3', things: ['flower', 'sock', 'frock'] },
 };
 
 // A paint blob (60 x 60), with two little drops and a shine.
@@ -31,7 +36,7 @@ export const blob = (color) => {
     + '<ellipse cx="21" cy="21" rx="7" ry="4.5" fill="#fff" opacity=".4" transform="rotate(-30 21 21)"/>');
 };
 
-// The objects drawn for this slice (60 x 60, like the countable things).
+// The objects drawn for the colors game (60 x 60, like the countable things).
 const NEW_THINGS = {
   leaf: '<path d="M30 5 C51 12 55 37 30 55 C5 37 9 12 30 5 Z" fill="#35C46A" stroke="#23994F" stroke-width="3"/>'
     + '<path d="M30 12 V52" stroke="#23994F" stroke-width="3" stroke-linecap="round"/>'
@@ -47,13 +52,43 @@ const NEW_THINGS = {
     + '<g fill="#9B5DE5" stroke="#7B3FC4" stroke-width="2"><circle cx="20" cy="21" r="8"/><circle cx="30" cy="19" r="8"/><circle cx="40" cy="21" r="8"/>'
     + '<circle cx="25" cy="32" r="8"/><circle cx="35" cy="32" r="8"/><circle cx="30" cy="44" r="8"/></g>'
     + '<g fill="#fff" opacity=".45"><circle cx="17" cy="18" r="2.2"/><circle cx="27" cy="16" r="2.2"/><circle cx="22" cy="29" r="2.2"/><circle cx="27" cy="41" r="2.2"/></g>',
+  // Slice 5H: a plum (round, with a crease and a leaf) and an aubergine (long, with a green cap).
+  plum: '<path d="M30 16 C46 14 54 26 52 38 C50 50 40 56 30 55 C18 55 8 47 8 35 C8 23 18 16 30 16 Z" fill="#8E44C9" stroke="#6C2CA3" stroke-width="3"/>'
+    + '<path d="M30 18 C25 28 25 44 30 54" stroke="#6C2CA3" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".7"/>'
+    + '<path d="M30 17 q1 -7 5 -10" stroke="#5B3A12" stroke-width="3" fill="none" stroke-linecap="round"/>'
+    + '<path d="M34 10 C40 2 50 4 52 8 C46 13 39 13 34 10 Z" fill="#35D07F" stroke="#23994F" stroke-width="1.5"/>'
+    + '<ellipse cx="19" cy="30" rx="4" ry="7" fill="#fff" opacity=".4" transform="rotate(20 19 30)"/>',
+  aubergine: '<path d="M38 14 C50 18 54 30 50 40 C46 52 32 58 20 54 C8 50 6 40 14 34 C22 28 24 18 38 14 Z" fill="#7B3FC4" stroke="#5A2A99" stroke-width="3"/>'
+    + '<path d="M32 16 C34 8 44 6 50 12 C52 18 46 20 40 18 Z" fill="#35C46A" stroke="#23994F" stroke-width="2" stroke-linejoin="round"/>'
+    + '<path d="M44 10 q4 -6 9 -6" stroke="#23994F" stroke-width="3.5" fill="none" stroke-linecap="round"/>'
+    + '<ellipse cx="20" cy="42" rx="4" ry="8" fill="#fff" opacity=".35" transform="rotate(55 20 42)"/>',
 };
 
-// One object of a color (60 x 60).
-export const colorThing = (color) => {
-  const k = COLORS[color].thing;
-  return svg('0 0 60 60', NEW_THINGS[k] ?? THINGS[k].art);
+// Every object of the colors game, as an SVG. Most come from the countable
+// things, Sort it and the find library; the pink frock is the library's frock
+// painted pink (its own dress is cream with pink dots, so cream is its main fill).
+const PINK_FROCK = () => objectArt('frock')
+  .replace('fill="#FFF3E3" stroke="#F2D9A8"', 'fill="#FF8FD6" stroke="#E066B3"')
+  .replace('fill="#F2D9A8"/>', 'fill="#E066B3"/>')
+  .replace('<g fill="#FF8FB8">', '<g fill="#FFFFFF">')
+  .replace('<g fill="#FFD43B">', '<g fill="#FFC2EA">');
+const COLOR_ART = {
+  strawberry: () => sortThingArt('strawberry'),
+  banana: () => sortThingArt('banana'),
+  'blue-ball': () => sortThingArt('blue-ball'),
+  duck: () => ANIMALS.duck.art,
+  whale: () => objectArt('whale'),
+  alligator: () => objectArt('alligator'),
+  parrot: () => objectArt('parrot'),
+  olive: () => objectArt('olive'),
+  fish: () => objectArt('fish'),
+  juice: () => objectArt('juice'),
+  frock: PINK_FROCK,
 };
+export const colorThingArt = (id) => (COLOR_ART[id] ? COLOR_ART[id]() : svg('0 0 60 60', NEW_THINGS[id] ?? THINGS[id].art));
+
+// The first object of a color (the menu tile and Odd one out use these).
+export const colorThing = (color) => colorThingArt(COLORS[color].things[0]);
 
 // ---- follow the path ----
 
@@ -131,6 +166,106 @@ export const HOMES = {
     + '<rect x="56" y="66" width="28" height="12" rx="6" fill="#fff"/><circle cx="56" cy="72" r="5" fill="#fff"/><circle cx="84" cy="72" r="5" fill="#fff"/>'),
 };
 
+// Slice 5H: five more animals and their homes, so each board picks 3 of 8.
+// The fish, the rabbit and the nest are the find library's own pictures
+// (200 x 240); the rest are drawn here in the same style.
+Object.assign(ANIMALS, {
+  bird: {
+    home: 'nest',
+    art: svg('0 0 120 120',
+      '<ellipse cx="60" cy="110" rx="32" ry="6" fill="#000" opacity=".1"/>'
+      + '<path d="M86 66 L112 52 L108 74 Z" fill="#2F74D9" stroke="#2F74D9" stroke-width="3" stroke-linejoin="round"/>'
+      + '<path d="M50 100 V108 M66 100 V108" stroke="#FF9A1F" stroke-width="4" stroke-linecap="round"/>'
+      + '<ellipse cx="60" cy="70" rx="34" ry="30" fill="#4D96FF" stroke="#2F74D9" stroke-width="3"/>'
+      + '<ellipse cx="58" cy="80" rx="20" ry="16" fill="#BDE6FF"/>'
+      + '<path d="M62 62 Q84 58 92 74 Q76 84 62 62 Z" fill="#2F74D9"/>'
+      + '<circle cx="38" cy="46" r="22" fill="#4D96FF" stroke="#2F74D9" stroke-width="3"/>'
+      + '<path d="M18 46 L4 52 L18 56 Z" fill="#FF9A1F" stroke="#E07B00" stroke-width="2.5" stroke-linejoin="round"/>'
+      + '<circle cx="32" cy="40" r="4.5" fill="#1E1E3F"/><circle cx="33" cy="39" r="1.6" fill="#fff"/>'
+      + '<circle cx="42" cy="54" r="4" fill="#FF9EC4" opacity=".8"/>'
+      + '<path d="M38 24 q2 -10 10 -10" stroke="#2F74D9" stroke-width="3" fill="none" stroke-linecap="round"/>'
+      + '<ellipse cx="46" cy="64" rx="7" ry="4" fill="#fff" opacity=".35" transform="rotate(-30 46 64)"/>'),
+  },
+  fish: { home: 'bowl', art: objectArt('fish') },
+  rabbit: { home: 'hutch', art: objectArt('rabbit') },
+  cow: {
+    home: 'barn',
+    art: svg('0 0 120 120',
+      '<ellipse cx="62" cy="112" rx="42" ry="6" fill="#000" opacity=".1"/>'
+      + '<path d="M44 92 V110 M58 94 V110 M80 94 V110 M94 92 V110" stroke="#4A4F5C" stroke-width="8" stroke-linecap="round"/>'
+      + '<path d="M104 62 Q116 70 110 86" stroke="#4A4F5C" stroke-width="3" fill="none" stroke-linecap="round"/>'
+      + '<rect x="34" y="52" width="72" height="46" rx="22" fill="#FFFFFF" stroke="#9AA6B5" stroke-width="3"/>'
+      + '<path d="M62 54 Q74 60 70 74 Q60 78 56 66 Q56 58 62 54 Z M88 72 Q100 72 100 84 Q92 92 84 84 Q82 76 88 72 Z" fill="#3B3B4F"/>'
+      + '<path d="M14 26 Q8 18 12 12 M44 26 Q50 18 46 12" stroke="#E7C9A0" stroke-width="5" fill="none" stroke-linecap="round"/>'
+      + '<ellipse cx="10" cy="36" rx="9" ry="5" fill="#3B3B4F" transform="rotate(-20 10 36)"/>'
+      + '<ellipse cx="48" cy="36" rx="9" ry="5" fill="#3B3B4F" transform="rotate(20 48 36)"/>'
+      + '<rect x="12" y="24" width="34" height="44" rx="16" fill="#FFFFFF" stroke="#9AA6B5" stroke-width="3"/>'
+      + '<path d="M18 30 Q26 26 30 34 Q24 40 18 36 Z" fill="#3B3B4F"/>'
+      + '<ellipse cx="29" cy="62" rx="17" ry="11" fill="#FFB3C7" stroke="#E68AA6" stroke-width="2.5"/>'
+      + '<circle cx="23" cy="62" r="2.5" fill="#B5576F"/><circle cx="35" cy="62" r="2.5" fill="#B5576F"/>'
+      + '<circle cx="22" cy="44" r="4" fill="#1E1E3F"/><circle cx="37" cy="44" r="4" fill="#1E1E3F"/>'
+      + '<circle cx="23" cy="43" r="1.4" fill="#fff"/><circle cx="38" cy="43" r="1.4" fill="#fff"/>'),
+  },
+  spider: {
+    home: 'web',
+    art: svg('0 0 120 120',
+      '<ellipse cx="60" cy="110" rx="40" ry="6" fill="#000" opacity=".1"/>'
+      + '<g stroke="#2A2370" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round">'
+      + '<path d="M40 60 L18 44 L8 56 M38 68 L14 66 L6 80 M40 76 L20 88 L16 104 M46 82 L36 100 L38 112"/>'
+      + '<path d="M80 60 L102 44 L112 56 M82 68 L106 66 L114 80 M80 76 L100 88 L104 104 M74 82 L84 100 L82 112"/></g>'
+      + '<ellipse cx="60" cy="76" rx="24" ry="20" fill="#5B4BC4" stroke="#3E2F9E" stroke-width="3"/>'
+      + '<circle cx="60" cy="50" r="22" fill="#6C5CE7" stroke="#3E2F9E" stroke-width="3"/>'
+      + '<circle cx="51" cy="46" r="7" fill="#fff"/><circle cx="69" cy="46" r="7" fill="#fff"/>'
+      + '<circle cx="52" cy="47" r="3.5" fill="#1E1E3F"/><circle cx="70" cy="47" r="3.5" fill="#1E1E3F"/>'
+      + '<circle cx="44" cy="58" r="4" fill="#FF9EC4" opacity=".8"/><circle cx="76" cy="58" r="4" fill="#FF9EC4" opacity=".8"/>'
+      + '<path d="M53 60 Q60 66 67 60" stroke="#1E1E3F" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
+      + '<ellipse cx="50" cy="38" rx="6" ry="3.5" fill="#fff" opacity=".35" transform="rotate(-30 50 38)"/>'),
+  },
+});
+
+Object.assign(HOMES, {
+  nest: objectArt('nest'),
+  bowl: svg('0 0 140 140',
+    '<ellipse cx="70" cy="132" rx="44" ry="6" fill="#000" opacity=".1"/>'
+    + '<path d="M40 128 H100 L94 118 H46 Z" fill="#B7814A" stroke="#8A5A2E" stroke-width="3" stroke-linejoin="round"/>'
+    + '<circle cx="70" cy="74" r="52" fill="#E3F6FF" stroke="#7FB8FF" stroke-width="4"/>'
+    + '<path d="M22 84 Q70 70 118 84 Q114 116 70 124 Q26 116 22 84 Z" fill="#7FB8FF"/>'
+    + '<path d="M38 116 q6 -6 12 0 M86 118 q6 -6 12 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>'
+    + '<g fill="#FFD43B" stroke="#E7B500" stroke-width="2"><circle cx="54" cy="116" r="5"/><circle cx="66" cy="119" r="5"/><circle cx="80" cy="117" r="5"/></g>'
+    + '<path d="M96 116 Q92 100 98 90 M102 116 Q106 104 100 94" stroke="#35C46A" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    + '<rect x="34" y="18" width="72" height="12" rx="6" fill="#BDE6FF" stroke="#7FB8FF" stroke-width="3"/>'
+    + '<ellipse cx="42" cy="56" rx="8" ry="14" fill="#fff" opacity=".6" transform="rotate(20 42 56)"/>'),
+  hutch: svg('0 0 140 140',
+    '<ellipse cx="70" cy="134" rx="58" ry="5" fill="#000" opacity=".1"/>'
+    + '<path d="M28 108 V130 M112 108 V130" stroke="#8A5A2E" stroke-width="8" stroke-linecap="round"/>'
+    + '<rect x="16" y="50" width="108" height="62" rx="6" fill="#E7A862" stroke="#B7814A" stroke-width="3"/>'
+    + '<path d="M8 54 L24 26 H116 L132 54 Z" fill="#35A853" stroke="#23994F" stroke-width="3" stroke-linejoin="round"/>'
+    + '<path d="M26 32 H114" stroke="#7FD9A0" stroke-width="4" stroke-linecap="round" opacity=".7"/>'
+    + '<rect x="26" y="60" width="54" height="42" rx="4" fill="#FFF6E5" stroke="#B7814A" stroke-width="3"/>'
+    + '<path d="M36 60 V102 M46 60 V102 M56 60 V102 M66 60 V102 M26 74 H80 M26 88 H80" stroke="#9AA6B5" stroke-width="2"/>'
+    + '<rect x="88" y="60" width="28" height="42" rx="4" fill="#C98544" stroke="#B7814A" stroke-width="3"/>'
+    + '<circle cx="110" cy="82" r="3" fill="#5B3A12"/>'
+    + '<ellipse cx="70" cy="118" rx="18" ry="5" fill="#FFD27A"/>'),
+  barn: svg('0 0 140 140',
+    '<ellipse cx="70" cy="134" rx="60" ry="5" fill="#000" opacity=".1"/>'
+    + '<path d="M16 60 L70 20 L124 60 V130 H16 Z" fill="#E8594F" stroke="#B83E36" stroke-width="3" stroke-linejoin="round"/>'
+    + '<path d="M6 64 L70 14 L134 64" stroke="#FFFFFF" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<path d="M16 80 H124" stroke="#B83E36" stroke-width="2" opacity=".5"/>'
+    + '<rect x="44" y="82" width="52" height="48" fill="#FFFFFF" stroke="#B83E36" stroke-width="3"/>'
+    + '<path d="M44 82 L96 130 M96 82 L44 130 M70 82 V130" stroke="#E8594F" stroke-width="5"/>'
+    + '<circle cx="70" cy="52" r="11" fill="#FFF6E5" stroke="#FFFFFF" stroke-width="4"/>'
+    + '<path d="M70 44 V60 M62 52 H78" stroke="#B83E36" stroke-width="2.5"/>'),
+  web: svg('0 0 140 140',
+    '<path d="M70 4 V18" stroke="#9AA6B5" stroke-width="2"/>'
+    + '<circle cx="70" cy="74" r="60" fill="#F1F7FF" stroke="#D6E6F5" stroke-width="3"/>'
+    + '<g stroke="#7C88A6" stroke-width="2.5" fill="none" stroke-linecap="round">'
+    + '<path d="M70 14 V134 M10 74 H130 M28 32 L112 116 M112 32 L28 116"/>'
+    + '<path d="M70 62 L78 66 L82 74 L78 82 L70 86 L62 82 L58 74 L62 66 Z"/>'
+    + '<path d="M70 46 L90 54 L98 74 L90 94 L70 102 L50 94 L42 74 L50 54 Z"/>'
+    + '<path d="M70 30 L101 43 L114 74 L101 105 L70 118 L39 105 L26 74 L39 43 Z"/></g>'
+    + '<g fill="#BDE6FF"><circle cx="90" cy="54" r="3"/><circle cx="39" cy="105" r="3"/><circle cx="114" cy="74" r="2.5"/></g>'),
+});
+
 // Three hand-designed road layouts. The board has five lanes, top to bottom;
 // the animals and homes sit on lanes 0, 2 and 4. A road is a list of knots
 // [t, lane]: t (0..1) of the way across it is on that lane, and it bends
@@ -199,10 +334,15 @@ export const MENU = {
 // Slice 5F: more match sets and the furniture path
 
 const inner = (art) => art.replace(/^<svg[^>]*>|<\/svg>$/g, '');
-const objectArt = (id) => OBJECTS.find((o) => o.id === id).art;
 
-// ---- letter to picture: one object per recorded letter, its word unambiguous ----
-export const LETTER_PICTURES = { E: 'egg', F: 'fork', H: 'hat', I: 'insect', L: 'lemon', T: 'tiger' };
+// ---- letter to picture: each letter's sound-first find words (Slice 5H) ----
+// Every letter with a find picture (all but X), and every one of its pictures
+// that find scenes use: a set picks one of them at random. Pictures kept out of
+// find scenes (finds: false: ice cream, eraser) are never used.
+export const LETTER_WORDS = OBJECTS.filter((o) => o.finds !== false).reduce((acc, o) => {
+  (acc[o.letter] ??= []).push(o.id);
+  return acc;
+}, {});
 export const LETTER_INK = '#1D2B8F'; // the tracing ink (src/render.js INK.core)
 
 // A recorded character (data/chars/<id>.json) drawn as one card: its strokes
@@ -217,8 +357,29 @@ export function letterArt(char, color = LETTER_INK) {
   return svg(`${-pad} ${-pad} ${w.toFixed(3)} ${(1 + 2 * pad).toFixed(3)}`, lines);
 }
 
-// ---- thing to its shadow: the same art, filled dark grey ----
-export const SHADOW_THINGS = ['elephant', 'fork', 'hat', 'lamp', 'flag', 'ice-cream', 'fan', 'honey'];
+// ---- thing to its shadow ----
+// Any find-library picture with an outline of its own (Slice 5H), ice cream and
+// eraser included. Left out: plain round fruit and balls, and plain oblongs
+// (a framed poster, a quilt, an envelope, a zip close-up), whose shadows are
+// just a circle or a box; and the toys, a heap rather than one thing.
+export const SHADOW_LEFT_OUT = ['tomato', 'orange', 'mango', 'nut', 'ball', 'tiger', 'quilt', 'envelope', 'zip', 'toys'];
+export const SHADOW_THINGS = OBJECTS.map((o) => o.id).filter((id) => !SHADOW_LEFT_OUT.includes(id));
+// Shadows that look alike: a set never holds two of one group. Checked by eye on
+// a sheet of every shadow side by side (horse and zebra share one outline).
+export const SHADOW_LOOKALIKES = [
+  ['horse', 'zebra', 'goat', 'yak'],     // four legs, a long head
+  ['apple', 'lemon', 'yoyo'],            // round, with a bit on top
+  ['hat', 'igloo', 'rainbow'],           // a dome
+  ['bus', 'van'],                        // a box on wheels
+  ['eraser', 'lunchbox', 'gift'],        // a box
+  ['honey', 'ink', 'milk', 'juice'],     // a jar or a carton
+  ['jellyfish', 'octopus'],              // a dome with legs
+  ['fish', 'whale'],                     // a body and a tail
+  ['frock', 'queen'],                    // a long dress
+  ['kettle', 'jug'],                     // a spout and a handle
+  ['grapes', 'olive'],                   // a bunch of small rounds
+  ['insect', 'ant'],                     // a bug with legs
+];
 export const SHADOW_GREY = '#4A4F5C';
 const SHADOW_FILTER = '<filter id="td-shadow" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" '
   + 'values="0 0 0 0 0.29  0 0 0 0 0.31  0 0 0 0 0.36  0 0 0 1 0"/></filter>';
@@ -236,10 +397,10 @@ export const shadowArt = (id) => {
 // Everything else sits inside that outline, so its proportions are the
 // shape's own (tests/games.test.js measures them).
 export const SHAPES = {
-  circle: { things: ['ball', 'clock'], paint: '#FF8FD6', edge: '#E066B3' },
-  square: { things: ['block', 'window'], paint: '#4D96FF', edge: '#2F74D9' },
-  triangle: { things: ['roof', 'slice'], paint: '#FFC21A', edge: '#E09A00' },
-  rectangle: { things: ['door', 'book'], paint: '#35C46A', edge: '#23994F' },
+  circle: { things: ['ball', 'clock', 'cookie', 'button'], paint: '#FF8FD6', edge: '#E066B3' },
+  square: { things: ['block', 'window', 'gift', 'dice'], paint: '#4D96FF', edge: '#2F74D9' },
+  triangle: { things: ['roof', 'slice', 'tent', 'party-hat'], paint: '#FFC21A', edge: '#E09A00' },
+  rectangle: { things: ['door', 'book', 'phone', 'fridge'], paint: '#35C46A', edge: '#23994F' },
 };
 const shine = (x, y, rx, ry, rot) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" opacity=".4" transform="rotate(${rot} ${x} ${y})"/>`;
 const SHAPE_BODY = {
@@ -285,6 +446,44 @@ export const SHAPE_THINGS = {
     + '<rect x="26" y="8" width="10" height="84" rx="3" fill="#2F74D9"/>'
     + '<rect x="70" y="12" width="4" height="76" fill="#fff" opacity=".8"/>'
     + '<polygon points="55,30 59,39 69,40 62,46 64,56 55,51 46,56 48,46 41,40 51,39" fill="#FFD43B"/>',
+  // Slice 5H: two more things for each shape, each drawn inside its outline.
+  cookie: '<circle class="outline" cx="50" cy="50" r="40" fill="#D9A066" stroke="#B7814A" stroke-width="4"/>'
+    + '<circle cx="50" cy="50" r="33" fill="none" stroke="#C0853F" stroke-width="2" opacity=".5"/>'
+    + '<g fill="#5B3A12"><circle cx="36" cy="38" r="5"/><circle cx="62" cy="34" r="4.5"/><circle cx="66" cy="60" r="5"/>'
+    + '<circle cx="42" cy="64" r="4.5"/><circle cx="52" cy="48" r="3.5"/><circle cx="28" cy="54" r="3"/></g>'
+    + shine(36, 28, 8, 4, -35),
+  button: '<circle class="outline" cx="50" cy="50" r="40" fill="#9B5DE5" stroke="#7B3FC4" stroke-width="4"/>'
+    + '<circle cx="50" cy="50" r="28" fill="none" stroke="#C9A6F2" stroke-width="4"/>'
+    + '<g fill="#5A2A99"><circle cx="41" cy="41" r="6"/><circle cx="59" cy="41" r="6"/><circle cx="41" cy="59" r="6"/><circle cx="59" cy="59" r="6"/></g>'
+    + shine(30, 26, 8, 4, -35),
+  gift: '<rect class="outline" x="12" y="12" width="76" height="76" rx="6" fill="#9B5DE5" stroke="#7B3FC4" stroke-width="3"/>'
+    + '<rect x="43" y="12" width="14" height="76" fill="#FFD43B"/><rect x="12" y="43" width="76" height="14" fill="#FFD43B"/>'
+    + '<circle cx="40" cy="30" r="9" fill="none" stroke="#FFD43B" stroke-width="5"/><circle cx="60" cy="30" r="9" fill="none" stroke="#FFD43B" stroke-width="5"/>'
+    + '<circle cx="50" cy="36" r="5" fill="#E7B500"/>'
+    + shine(24, 22, 6, 3, -20),
+  dice: '<rect class="outline" x="12" y="12" width="76" height="76" rx="12" fill="#FFFFFF" stroke="#4D6BFF" stroke-width="4"/>'
+    + '<g fill="#2A2370"><circle cx="30" cy="30" r="7"/><circle cx="70" cy="30" r="7"/><circle cx="50" cy="50" r="7"/>'
+    + '<circle cx="30" cy="70" r="7"/><circle cx="70" cy="70" r="7"/></g>',
+  tent: '<polygon class="outline" points="50,14 92,86 8,86" fill="#35C46A" stroke="#23994F" stroke-width="3" stroke-linejoin="round"/>'
+    + '<polygon points="50,38 66,86 34,86" fill="#1E6B3A"/>'
+    + '<polygon points="50,38 66,86 58,86" fill="#7FD9A0"/>'
+    + '<line x1="50" y1="16" x2="50" y2="38" stroke="#23994F" stroke-width="3"/>'
+    + '<line x1="30" y1="56" x2="40" y2="40" stroke="#fff" stroke-width="3" opacity=".4" stroke-linecap="round"/>',
+  'party-hat': '<polygon class="outline" points="50,14 92,86 8,86" fill="#4D96FF" stroke="#2F74D9" stroke-width="3" stroke-linejoin="round"/>'
+    + '<g fill="#FFD43B"><circle cx="50" cy="44" r="5"/><circle cx="38" cy="66" r="5"/><circle cx="62" cy="66" r="5"/><circle cx="26" cy="80" r="4"/><circle cx="74" cy="80" r="4"/></g>'
+    + '<polygon points="10,86 90,86 86,79 14,79" fill="#FF8FD6"/>'
+    + '<circle cx="50" cy="20" r="6" fill="#FF8FD6"/>',
+  phone: '<rect class="outline" x="26" y="8" width="48" height="84" rx="8" fill="#3B3B4F" stroke="#2A2370" stroke-width="3"/>'
+    + '<rect x="31" y="18" width="38" height="58" rx="3" fill="#BDE6FF"/>'
+    + '<rect x="35" y="24" width="12" height="12" rx="3" fill="#FFD43B"/><rect x="53" y="24" width="12" height="12" rx="3" fill="#35C46A"/>'
+    + '<rect x="35" y="42" width="12" height="12" rx="3" fill="#FF8FD6"/><rect x="53" y="42" width="12" height="12" rx="3" fill="#4D96FF"/>'
+    + '<rect x="44" y="11" width="12" height="3" rx="1.5" fill="#9AA6B5"/>'
+    + '<circle cx="50" cy="84" r="4" fill="#9AA6B5"/>',
+  fridge: '<rect class="outline" x="26" y="8" width="48" height="84" rx="6" fill="#E3F2FF" stroke="#7C88A6" stroke-width="3"/>'
+    + '<line x1="26" y1="38" x2="74" y2="38" stroke="#7C88A6" stroke-width="3"/>'
+    + '<rect x="32" y="16" width="5" height="16" rx="2.5" fill="#7C88A6"/><rect x="32" y="46" width="5" height="22" rx="2.5" fill="#7C88A6"/>'
+    + '<circle cx="58" cy="58" r="5" fill="#FF8FD6"/><circle cx="62" cy="72" r="4" fill="#FFD43B"/>'
+    + '<rect x="62" y="12" width="6" height="76" fill="#fff" opacity=".7"/>',
 };
 export const shapeThingArt = (thing) => svg('0 0 100 100', SHAPE_THINGS[thing]);
 

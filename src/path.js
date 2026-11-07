@@ -10,15 +10,17 @@
 // it once. Reaching the home, the animal hops in with a chime. Everything is in
 // board units (1280 x 640). Every arrival and every time off the road goes into
 // the attempt log as a "game" entry.
+// Slice 5H: set 1 picks 3 of 8 animals, never the same three as her last play;
+// a plain tap on a traveller makes it wiggle (not a try, not logged).
 
 import {
-  PATH, pathBoard, pathThings, startsAtAnimal, startTrace, stepTrace, startMisses, missRoad, boardDone, gameLogEntry,
-  firstMoveRoad, FIRST_MOVE_DELAY_MS,
+  PATH, pathBoard, pathPlay, pathKey, isPlainTap, startsAtAnimal, startTrace, stepTrace, startMisses, missRoad, boardDone,
+  gameLogEntry, firstMoveRoad, FIRST_MOVE_DELAY_MS,
 } from './games.js';
 import { ANIMALS, HOMES, FURNITURE, ROOM_HOME, roomArt } from '../data/games.js';
 import { mountBoard, svgEl, replay, JUGNU_IMG } from './match.js';
 import { trackSinglePointer } from './input.js';
-import { logAttempt } from './storage.js';
+import { logAttempt, readLastPlay, saveLastPlay } from './storage.js';
 import { chime, letterChime } from './audio.js';
 
 const ANIMAL_SIZE = 120;  // units
@@ -37,7 +39,8 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
   view.innerHTML = JUGNU_IMG;
   const buddy = view.querySelector('.buddy');
   const board = mountBoard(view);
-  const things = pathThings(game, rand);
+  const things = pathPlay(game, readLastPlay(game), rand);
+  saveLastPlay(game, [pathKey(things)]);
   const { roads } = pathBoard(rand, undefined, things);
   const rooms = game === 'path-rooms';
   const artOf = (t) => (rooms ? FURNITURE[t].art : ANIMALS[t].art);
@@ -200,7 +203,7 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
       const u = board.toUnits(p);
       const r = roads.find((road) => !home.includes(road.animal) && startsAtAnimal(u, road));
       if (!r) return;
-      trace = { road: r, state: startTrace(), pts: [u] };
+      trace = { road: r, state: startTrace(), pts: [u], moved: 0 };
       requestDraw();
     },
     onMove: (points) => {
@@ -208,6 +211,7 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
       for (const p of points) {
         const u = board.toUnits(p);
         const r = trace.road;
+        trace.moved = Math.max(trace.moved, Math.hypot(u[0] - trace.pts[0][0], u[1] - trace.pts[0][1]));
         const step = stepTrace(trace.state, u, r);
         if (!step.on) return leftRoad(r);
         trace.state = step.state;
@@ -216,7 +220,11 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
       }
       requestDraw();
     },
-    onEnd: () => fadeTrace(),
+    onEnd: () => {
+      // A tap on a traveller, not a trace: it wiggles. Not a try, not logged.
+      if (trace && isPlainTap(trace.moved, board.s)) replay(trace.road.el, 'wig');
+      fadeTrace();
+    },
   });
 
   // A trace she was drawing is dropped, not logged (the tablet turned upright).

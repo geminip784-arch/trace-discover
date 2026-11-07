@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { THINGS, ROOMS } from '../data/finds.js';
-import { COLORS, ANIMALS, HOMES, ROAD_LAYOUTS, LANES, MENU, blob, colorThing } from '../data/games.js';
+import { COLORS, ANIMALS, HOMES, ROAD_LAYOUTS, LANES, MENU, blob, colorThing, colorThingArt } from '../data/games.js';
 import {
   GAMES, PAIRS, BOARD, boardFit, CARDS, numbersSet, colorsSet, makeSet, cardsOf, hitCard, distToCard,
   marginUnits, RELEASE_MARGIN_PX, startMatch, dropCard, partnerCard, MATCH_HINT_AFTER,
@@ -27,21 +27,21 @@ const SCREENS = [[1280, 626], [1280, 800], [640, 626]];
 
 test('the Slice 5D games are still on the menu; every picture is inline SVG with nothing from the network', () => {
   for (const id of ['numbers', 'colors', 'path']) assert.ok(GAMES.includes(id), id);
-  const all = [...Object.values(MENU), ...Object.keys(COLORS).flatMap((c) => [blob(c), colorThing(c)]),
+  const all = [...Object.values(MENU), ...Object.keys(COLORS).flatMap((c) => [blob(c), colorThing(c), ...COLORS[c].things.map(colorThingArt)]),
     ...Object.values(ANIMALS).map((a) => a.art), ...Object.values(HOMES)];
   for (const s of all) {
     assert.ok(s.startsWith('<svg') && s.endsWith('</svg>'));
     assert.ok(!/https?:\/\/(?!www\.w3\.org)/.test(s));
   }
-  assert.deepEqual(Object.values(ANIMALS).map((a) => a.home), ['hive', 'pond', 'kennel']);
+  assert.deepEqual(Object.entries(ANIMALS).map(([a, x]) => `${a}:${x.home}`), [
+    'bee:hive', 'duck:pond', 'dog:kennel', 'bird:nest', 'fish:bowl', 'rabbit:hutch', 'cow:barn', 'spider:web']);
+  for (const a of Object.values(ANIMALS)) assert.ok(HOMES[a.home], a.home);
 });
 
-test('the colors use the existing red apple, yellow lemon and blue cup', () => {
-  assert.equal(COLORS.red.thing, 'apple');
-  assert.equal(COLORS.yellow.thing, 'lemon');
-  assert.equal(COLORS.blue.thing, 'cup');
+test('the colors still start from the red apple, yellow lemon and blue cup; each has 3 or 4 things', () => {
+  assert.deepEqual(['red', 'yellow', 'blue'].map((c) => COLORS[c].things[0]), ['apple', 'lemon', 'cup']);
   assert.ok(colorThing('red').includes(THINGS.apple.art));
-  assert.deepEqual(['green', 'orange', 'purple'].map((c) => COLORS[c].thing), ['leaf', 'orange', 'grapes']);
+  for (const c of Object.values(COLORS)) assert.ok(c.things.length >= 3 && c.things.length <= 4);
 });
 
 // ---- sizes on her screen ----
@@ -60,13 +60,13 @@ test('every card, animal and home is at least 88 px on her screens', () => {
 
 // ---- draw a line to match: the sets ----
 
-test('numbers to things: 4 different counts from 1 to 5, 4 different kinds from one room pool', () => {
+test('numbers to things: 4 different counts from 1 to 9, 4 different kinds from one room pool', () => {
   for (const seed of SEEDS) {
     const set = numbersSet(seeded(seed));
     const counts = set.pairs.map((p) => p.right.count);
     assert.equal(set.pairs.length, PAIRS);
     assert.equal(new Set(counts).size, 4);
-    assert.ok(counts.every((n) => n >= 1 && n <= 5));
+    assert.ok(counts.every((n) => n >= 1 && n <= 9));
     assert.ok(set.pairs.every((p) => p.left.digit === p.right.count));
     const kinds = set.pairs.map((p) => p.right.kind);
     assert.equal(new Set(kinds).size, 4, 'no kind twice');
@@ -80,7 +80,7 @@ test('colors to things: 4 different colors, one object of each, never two of one
     const colors = set.pairs.map((p) => p.left.color);
     assert.equal(new Set(colors).size, 4);
     assert.ok(colors.every((c) => COLORS[c]));
-    assert.ok(set.pairs.every((p) => p.right.color === p.left.color && p.right.thing === COLORS[p.left.color].thing));
+    assert.ok(set.pairs.every((p) => p.right.color === p.left.color && COLORS[p.left.color].things.includes(p.right.thing)));
     assert.equal(new Set(set.pairs.map((p) => p.right.thing)).size, 4);
   }
 });
@@ -312,8 +312,9 @@ test('hint: after she leaves the same road 3 times, Jugnu flies it once', () => 
 });
 
 test('the board is done when every animal is home', () => {
-  assert.equal(boardDone(['bee', 'dog']), false);
-  assert.equal(boardDone(['dog', 'bee', 'duck']), true);
+  const things = ['bee', 'duck', 'dog'];
+  assert.equal(boardDone(['bee', 'dog'], things), false);
+  assert.equal(boardDone(['dog', 'bee', 'duck'], things), true);
 });
 
 // ---- the log ----

@@ -4,13 +4,17 @@
 // completion and the attempt-log entry. match.js and path.js put them on screen.
 // Every random choice takes `rand` (Math.random by default) so tests can repeat it.
 //
+// Slice 5H: every game draws from pools, and a play never repeats the sets of
+// the play before it (freshPlay, below; the last play is saved per game).
+//
 // Layout units: every game is drawn on a board 1280 x 640 units. The board is
 // scaled to fit the screen right of the button column (boardFit), so cards,
 // lines and traces are all kept in units and stay put when the screen changes.
 
 import { ROOMS, THINGS } from '../data/finds.js';
 import {
-  COLORS, ROAD_LAYOUTS, LANES, LETTER_PICTURES, SHADOW_THINGS, SHAPES, FURNITURE, SORT_SETS, ODD_THINGS, PAINTS,
+  COLORS, ROAD_LAYOUTS, LANES, LETTER_WORDS, SHADOW_THINGS, SHADOW_LOOKALIKES, SHAPES, ANIMALS, FURNITURE, SORT_SETS,
+  ODD_THINGS, PAINTS,
 } from '../data/games.js';
 import { shuffle, groupWord } from './finds.js';
 
@@ -36,6 +40,32 @@ export const MATCH_HINT_AFTER = 3;   // wrong drops in a row, then the right par
 export const PATH_HINT_AFTER = 3;    // times off the same road, then Jugnu flies it
 
 const pick = (list, rand) => list[Math.floor(rand() * list.length)];
+
+// ---------------------------------------------------------------------------
+// Variety (Slice 5H)
+
+// n sets (or boards, or rows) for one play, made by make(i). None has the same
+// key as a set of the last play (`last`: their keys) or as an earlier set of
+// this play. A set is redrawn until it is new; every game's pool holds far
+// more sets than a play uses, so this ends at once.
+export function freshPlay(make, keyOf, n, last = [], tries = 200) {
+  const seen = new Set(last);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let item = make(i);
+    for (let t = 1; t < tries && seen.has(keyOf(item)); t++) item = make(i);
+    if (seen.has(keyOf(item))) throw new Error('no new set');
+    seen.add(keyOf(item));
+    out.push(item);
+  }
+  return out;
+}
+
+// A plain tap: her finger went down and came up without dragging. The card
+// wiggles and nothing else happens: it is not a try and it is not logged.
+// moved: the farthest her finger got from where it went down, in units.
+export const TAP_SLOP_PX = 12;
+export const isPlainTap = (moved, s, px = TAP_SLOP_PX) => moved * s <= px;
 
 // ---------------------------------------------------------------------------
 // The board on screen (CSS px)
@@ -70,12 +100,13 @@ function shuffledApart(n, other, rand) {
   return [...Array(n).keys()].reverse();
 }
 
-// Numbers to things: 4 different counts from 1 to 5, each with a different
+// Numbers to things: 4 different counts from 1 to 9, each with a different
 // kind of thing from one room's pool. pair: { key, left: { digit }, right: { kind, count } }.
+export const MAX_COUNT = 9;
 export function numbersSet(rand = Math.random) {
   const room = pick(Object.values(ROOMS).filter((r) => r.pool.length >= PAIRS), rand);
   const kinds = shuffle(room.pool, rand).slice(0, PAIRS);
-  const counts = shuffle([1, 2, 3, 4, 5], rand).slice(0, PAIRS);
+  const counts = shuffle([...Array(MAX_COUNT).keys()].map((i) => i + 1), rand).slice(0, PAIRS);
   const pairs = counts.map((n, i) => ({
     key: String(n),
     left: { digit: n, label: String(n) },
@@ -84,14 +115,23 @@ export function numbersSet(rand = Math.random) {
   return withOrder(pairs, rand);
 }
 
-// Colors to things: 4 of the 6 colors, each with its one object.
+// The placemats of a numbers set all share one scale, so 9 cups are drawn no
+// smaller than 1 cup: each mat's viewBox is the size of the set's biggest mat,
+// centred on its own. CARD_GAP: the room above a row (no counting numbers here).
+export const CARD_GAP = 16;
+export function matViewBoxes(sizes) {
+  const W = Math.max(...sizes.map((m) => m.W));
+  const H = Math.max(...sizes.map((m) => m.H));
+  return sizes.map((m) => `${(m.W - W) / 2} ${(m.H - H) / 2} ${W} ${H}`);
+}
+
+// Colors to things: 4 of the 7 colors, each with one object from its pool.
 export function colorsSet(rand = Math.random) {
   const colors = shuffle(Object.keys(COLORS), rand).slice(0, PAIRS);
-  const pairs = colors.map((c) => ({
-    key: c,
-    left: { color: c, label: c },
-    right: { color: c, thing: COLORS[c].thing, label: COLORS[c].thing },
-  }));
+  const pairs = colors.map((c) => {
+    const thing = pick(COLORS[c].things, rand);
+    return { key: c, left: { color: c, label: c }, right: { color: c, thing, label: thing } };
+  });
   return withOrder(pairs, rand);
 }
 
@@ -101,20 +141,26 @@ function withOrder(pairs, rand) {
   return { pairs, rows: { left, right: shuffledApart(pairs.length, left, rand) } };
 }
 
-// Letter to picture: 4 of the recorded letters, each with its one object.
+// Letter to picture: 4 letters, each with one of its sound-first find pictures.
 export function lettersSet(rand = Math.random) {
-  const letters = shuffle(Object.keys(LETTER_PICTURES), rand).slice(0, PAIRS);
-  const pairs = letters.map((l) => ({
-    key: l,
-    left: { letter: l, label: l },
-    right: { object: LETTER_PICTURES[l], label: LETTER_PICTURES[l] },
-  }));
+  const letters = shuffle(Object.keys(LETTER_WORDS), rand).slice(0, PAIRS);
+  const pairs = letters.map((l) => {
+    const object = pick(LETTER_WORDS[l], rand);
+    return { key: l, left: { letter: l, label: l }, right: { object, label: object } };
+  });
   return withOrder(pairs, rand);
 }
 
-// Thing to its shadow: 4 different things; the right column shows their shadows.
+// Two shadows that look alike (data/games.js SHADOW_LOOKALIKES).
+const lookalikeGroup = (id) => SHADOW_LOOKALIKES.findIndex((g) => g.includes(id));
+export const shadowsClash = (a, b) => a === b || (lookalikeGroup(a) >= 0 && lookalikeGroup(a) === lookalikeGroup(b));
+
+// Thing to its shadow: 4 different things, no two whose shadows look alike;
+// the right column shows their shadows.
 export function shadowsSet(rand = Math.random) {
-  const things = shuffle(SHADOW_THINGS, rand).slice(0, PAIRS);
+  let things;
+  do things = shuffle(SHADOW_THINGS, rand).slice(0, PAIRS);
+  while (things.some((a, i) => things.some((b, k) => k > i && shadowsClash(a, b))));
   const pairs = things.map((t) => ({
     key: t,
     left: { object: t, label: t },
@@ -134,6 +180,13 @@ export function shapesSet(rand = Math.random) {
 
 const SET_MAKERS = { numbers: numbersSet, colors: colorsSet, letters: lettersSet, shadows: shadowsSet, shapes: shapesSet };
 export const makeSet = (game, rand = Math.random) => SET_MAKERS[game](rand);
+
+// What a match set holds, whatever the order of its cards: two sets with the
+// same key are the same set.
+export const setKey = (set) => set.pairs.map((p) => `${p.left.label}=${p.right.label}`).sort().join('|');
+
+// A match play: SETS_PER_PLAY sets, none from the last play. last: its set keys.
+export const matchPlay = (game, last = [], rand = Math.random) => freshPlay(() => makeSet(game, rand), setKey, SETS_PER_PLAY, last);
 
 // The pair Jugnu matches when he shows the first move: the one on the top left card.
 export const firstMovePair = (set) => set.rows.left[0];
@@ -205,7 +258,7 @@ export const partnerCard = (cards, from) => cards.find((c) => c.pair === from.pa
 // Follow the path
 
 export const PATH = {
-  animals: ['bee', 'duck', 'dog'],
+  animals: Object.keys(ANIMALS), // set 1: three of these 8 on each board
   furniture: Object.keys(FURNITURE), // set 2: three of these on each board
   rows: [LANES[0], LANES[2], LANES[4]], // the animals' and homes' rows
   animalX: 150,
@@ -249,13 +302,17 @@ export function roadLine(knots, p = PATH) {
   return smooth(knots.map(([t, lane]) => [p.animalX + t * (p.homeX - p.animalX), LANES[lane]]));
 }
 
-// What travels the roads: the three animals ('path'), or three of the four
-// pieces of furniture in a shuffled order ('path-rooms').
-export const pathThings = (game, rand = Math.random) => (game === 'path-rooms' ? shuffle(PATH.furniture, rand).slice(0, 3) : PATH.animals);
+// What travels the roads: three of the eight animals ('path'), or three of the
+// four pieces of furniture ('path-rooms'), in a shuffled order.
+export const pathThings = (game, rand = Math.random) => shuffle(game === 'path-rooms' ? PATH.furniture : PATH.animals, rand).slice(0, 3);
+// A board's key: which three travel, whatever their order.
+export const pathKey = (things) => [...things].sort().join('|');
+// A play of follow the path: one board's three travellers, not the last play's three.
+export const pathPlay = (game, last = [], rand = Math.random) => freshPlay(() => pathThings(game, rand), pathKey, 1, last)[0];
 
 // A board: one of the hand-designed layouts, with the homes in a shuffled order.
 // road: { animal, from, to (rows), points, length }; animal is whatever travels it.
-export function pathBoard(rand = Math.random, layout = Math.floor(rand() * ROAD_LAYOUTS.length), things = PATH.animals) {
+export function pathBoard(rand = Math.random, layout = Math.floor(rand() * ROAD_LAYOUTS.length), things = PATH.animals.slice(0, 3)) {
   const homes = pick(HOME_ORDERS, rand);
   const roads = things.map((animal, from) => {
     const points = roadLine(ROAD_LAYOUTS[layout][homes.join('')][from]);
@@ -308,7 +365,7 @@ export function missRoad(misses, animal) {
 }
 
 // The board is done when every animal is home.
-export const boardDone = (home, things = PATH.animals) => things.every((a) => home.includes(a));
+export const boardDone = (home, things) => things.every((a) => home.includes(a));
 
 // The road Jugnu travels when he shows the first move: the top one.
 export const firstMoveRoad = (roads) => roads[0];
@@ -336,6 +393,11 @@ export function sortBoard(game, rand = Math.random) {
   const order = shuffle(picked, rand);
   return { game, baskets: baskets.map((b) => ({ id: b.id, sample: b.sample })), things: order.map((t, spot) => ({ ...t, spot })) };
 }
+
+// A board's key: the six things, whatever their places.
+export const sortKey = (b) => b.things.map((t) => t.id).sort().join('|');
+// A play of Sort it: SORT.boards boards, none from the last play.
+export const sortPlay = (game, last = [], rand = Math.random) => freshPlay(() => sortBoard(game, rand), sortKey, SORT.boards, last);
 
 // Where a thing waits (its centre), and each basket's box, in units.
 export const thingHome = (t) => [SORT.row.xs[t.spot], SORT.row.y];
@@ -450,9 +512,11 @@ function placed(by, alike, odd, rand) {
 }
 
 // A kind row. easy: three fruit and a toy (very different).
+// The row's kind is picked once, before any retry, so every kind turns up as
+// often as the others (Slice 5H).
 export function kindRow(rand = Math.random, easy = false) {
+  const kind = easy ? ODD.easy.kinds.alike : pick(ODD.kindRowKinds, rand);
   for (let tries = 0; tries < 200; tries++) {
-    const kind = easy ? ODD.easy.kinds.alike : pick(ODD.kindRowKinds, rand);
     const alike = distinctObjects(ALL_ODD.filter((t) => t.kind === kind), 3, rand);
     if (!alike) continue;
     const oddKinds = easy ? [ODD.easy.kinds.odd] : ODD.kindRowKinds.filter((k) => k !== kind);
@@ -466,10 +530,11 @@ export function kindRow(rand = Math.random, easy = false) {
 }
 
 // A color row. easy: three red things and a blue twin.
+// The row's color is picked once, before any retry (as in kindRow).
 export function colorRow(rand = Math.random, easy = false) {
   const colors = Object.keys(PAINTS);
+  const color = easy ? ODD.easy.colors.alike : pick(colors, rand);
   for (let tries = 0; tries < 200; tries++) {
-    const color = easy ? ODD.easy.colors.alike : pick(colors, rand);
     const kinds = shuffle(ODD.colorRowKinds, rand).slice(0, 3);
     const alike = kinds.map((k) => {
       const of = ALL_ODD.filter((t) => t.kind === k && t.color === color);
@@ -486,10 +551,13 @@ export function colorRow(rand = Math.random, easy = false) {
   throw new Error('no fair color row');
 }
 
-// A play: five rows, the first the easiest (Jugnu taps it).
-export function oddPlay(game, rand = Math.random) {
+// A row's key: its four pictures, whatever their places.
+export const oddKey = (row) => row.items.map((t) => t.id).sort().join('|');
+
+// A play: five rows, the first the easiest (Jugnu taps it), none from the last play.
+export function oddPlay(game, rand = Math.random, last = []) {
   const make = game === 'odd-colors' ? colorRow : kindRow;
-  return Array.from({ length: ODD.rows }, (_, i) => make(rand, i === 0));
+  return freshPlay((i) => make(rand, i === 0), oddKey, ODD.rows, last);
 }
 
 // One row being played. tapOdd: she tapped place `index` (0..3). Returns

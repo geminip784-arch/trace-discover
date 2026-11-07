@@ -2,6 +2,9 @@
 // colors, letters, shadows and shapes all share this one engine. On the first
 // set, Jugnu matches the top left card himself, then she carries on. games.js decides what is in a set and
 // whether a drop is right; this file draws it and plays it.
+// Slice 5H: the three sets of a play are drawn at the start, none the same as
+// a set of her last play of this game; a plain tap on a card makes it wiggle
+// (not a try, not logged).
 // Child-screen rules: no text but the digits, no failure sound, nothing red as
 // feedback, every card at least 88 px, Jugnu the only character. Every line and
 // card is kept in board units (1280 x 640), so a resize or a rotation only
@@ -9,15 +12,15 @@
 
 import { makeGroup } from './finds.js';
 import {
-  BOARD, boardFit, SETS_PER_PLAY, makeSet, cardsOf, hitCard, marginUnits, startMatch, dropCard,
-  partnerCard, gameLogEntry, showsFirstMove, firstMovePair, FIRST_MOVE_DELAY_MS,
+  BOARD, boardFit, SETS_PER_PLAY, matchPlay, setKey, cardsOf, hitCard, marginUnits, startMatch, dropCard,
+  partnerCard, gameLogEntry, showsFirstMove, firstMovePair, FIRST_MOVE_DELAY_MS, isPlainTap, CARD_GAP, matViewBoxes,
 } from './games.js';
 import {
-  blob, colorThing, letterArt, objectPicture, shadowArt, shapeArt, shapeThingArt, LETTER_PICTURES,
+  blob, colorThingArt, letterArt, objectPicture, shadowArt, shapeArt, shapeThingArt,
 } from '../data/games.js';
 import { trackSinglePointer } from './input.js';
 import { tileColorOf } from './session.js';
-import { logAttempt } from './storage.js';
+import { logAttempt, readLastPlay, saveLastPlay } from './storage.js';
 import { chime, letterChime } from './audio.js';
 import { STAR } from './art.js';
 
@@ -72,10 +75,11 @@ export function replay(el, cls) {
 
 const curve = ([ax, ay], [bx, by]) => `M${ax} ${ay} C${ax + CURVE} ${ay} ${bx - CURVE} ${by} ${bx} ${by}`;
 
-// The letters she recorded, for the letter cards (data/chars/<id>.json).
-async function loadLetters() {
+// The letters of a play, for the letter cards (data/chars/<id>.json: the
+// same files she traces).
+async function loadLetters(ids) {
   const out = {};
-  await Promise.all(Object.keys(LETTER_PICTURES).map(async (id) => {
+  await Promise.all(ids.map(async (id) => {
     const res = await fetch(`data/chars/${encodeURIComponent(id)}.json`);
     out[id] = await res.json();
   }));
@@ -94,6 +98,10 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
   layer.className = 'gm-cards';
   board.el.appendChild(layer);
 
+  // The whole play, drawn now so it can be saved: the next play avoids it.
+  const plan = matchPlay(game, readLastPlay(game), rand);
+  saveLastPlay(game, plan.map(setKey));
+
   const opened = performance.now();
   let alive = true;
   let paused = false;
@@ -104,6 +112,7 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
   let drag = null;        // { card, end, mine } (mine: hers, not Jugnu's)
   let busy = true;        // a set is glowing, or Jugnu is drawing: no new lines
   let letters = null;     // the letter cards' characters (letters only)
+  let mats = null;        // numbers: each pair's placemat, all at one scale
   let framePending = false;
   const timers = new Set();
   const later = (fn, ms) => {
@@ -136,16 +145,23 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
     if (game === 'shapes') return side === 'left' ? shapeArt(pair.left.shape) : shapeThingArt(pair.right.thing);
     if (game === 'numbers') {
       if (side === 'left') return `<span class="gm-digit" style="color:${tileColorOf(String(pair.left.digit))}">${pair.left.digit}</span>`;
-      // Only the placemat: the strip above it (for counting numbers) is cropped off.
-      const g = makeGroup(pair.right.kind, pair.right.count);
-      return g.svg.replace(`viewBox="0 0 ${g.W} ${g.H}"`, `viewBox="0 14 ${g.W} ${g.H - 14}"`);
+      return mats[set.pairs.indexOf(pair)];
     }
-    return side === 'left' ? blob(pair.left.color) : colorThing(pair.right.color);
+    return side === 'left' ? blob(pair.left.color) : colorThingArt(pair.right.thing);
+  }
+
+  // Numbers: every placemat in rows of five (up to 9: two rows), each in a
+  // viewBox the size of the set's biggest, so all four share one scale.
+  function makeMats() {
+    const groups = set.pairs.map((p) => makeGroup(p.right.kind, p.right.count, -1, CARD_GAP));
+    const boxes = matViewBoxes(groups);
+    return groups.map((g, i) => g.svg.replace(`viewBox="0 0 ${g.W} ${g.H}"`, `viewBox="${boxes[i]}"`));
   }
 
   function newSet() {
     setNo += 1;
-    set = makeSet(game, rand);
+    set = plan[setNo - 1];
+    if (game === 'numbers') mats = makeMats();
     state = startMatch();
     cards = cardsOf(set);
     lines.replaceChildren();
@@ -231,6 +247,14 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
   function release() {
     const d = drag;
     if (!d?.mine) return; // Jugnu's line is his own
+    if (isPlainTap(d.moved, board.s)) {
+      // A tap, not a drag: the card wiggles. Not a try, not logged.
+      d.card.el.classList.remove('gm-lift');
+      drag = null;
+      drawLive();
+      replay(d.card.el, 'wig');
+      return;
+    }
     const to = hitCard(d.end, cards, marginUnits(board.s));
     const r = dropCard(state, d.card, to);
     state = r.state;
@@ -273,12 +297,16 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
       const u = board.toUnits(p);
       const card = hitCard(u, cards, marginUnits(board.s));
       if (!card || state.matched.includes(card.pair)) return;
-      drag = { card, end: u, mine: true };
+      drag = { card, end: u, mine: true, down: u, moved: 0 };
       card.el.classList.add('gm-lift');
       requestDraw();
     },
     onMove: (points) => {
       if (!drag?.mine) return;
+      for (const p of points) {
+        const u = board.toUnits(p);
+        drag.moved = Math.max(drag.moved, Math.hypot(u[0] - drag.down[0], u[1] - drag.down[1]));
+      }
       drag.end = board.toUnits(points[points.length - 1]);
       requestDraw();
     },
@@ -295,7 +323,7 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
   board.onResize = dropDrag;
 
   if (game === 'letters') {
-    loadLetters().then((chars) => { if (!alive) return; letters = chars; newSet(); });
+    loadLetters([...new Set(plan.flatMap((st) => st.pairs.map((p) => p.left.letter)))]).then((chars) => { if (!alive) return; letters = chars; newSet(); });
   } else {
     newSet();
   }
