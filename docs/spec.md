@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3 · Nov 7, 2026 · describes the app as built through Slice 5G and the first part of 5H (game variety), and where it goes next.
+Version 3 · Nov 7, 2026 · describes the app as built through Slice 5H and the first part of 5I (the copy-it round), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -56,13 +56,23 @@ Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to
 | --- | --- | --- | --- |
 | 1 | Dots | The letter's track, numbered start dots, arrows. Jugnu flies each stroke first | Wide path |
 | 2 | Ghost | A faded track. Only the next start dot glows | Narrower path |
-| 3 | Alone | A very faint track on the four colored lines | Narrowest path. Judged when she lifts |
+| 3 | Copy it | Empty lines, and the finished letter on a small model card at their right end, with a numbered start dot and an arrow on every stroke. Jugnu draws it once on the card | None on the lines. Her whole letter is judged at the end |
 
 - Strokes must be drawn in order. Stroke k is always compared with reference stroke k. Some letters also accept known joined versions (for example, both strokes of 4 in one go).
 - **Never stuck.** After 3 misses in a row on one stroke, Jugnu demonstrates it. After 5, Jugnu draws it himself and the round starts again. The stage never drops inside a round.
 - **The star.** A round counts only when she drew every stroke herself. The gold star needs a whole practice with no help: no assist, and no demonstration after misses in rounds 2 or 3.
 - When the last round is done, the whole letter glows, then the find or count scene opens.
 - If she leaves mid-way, the next visit resumes at the round she left (`td.rounds`).
+
+**Copy it (round 3, Slice 5I).** She writes the whole letter herself, anywhere on the lines (`src/copy.js`).
+
+- **When it is judged:** as soon as she has drawn as many strokes as the letter has, or fewer that already make a good letter (a joined version, such as L in one go). Fewer strokes that read best as the whole letter joined are judged 2 seconds after her last lift. A new touch cancels the wait; turning the tablet upright pauses it.
+- **Stopped part way:** fewer strokes that read best as the start of the letter are not judged. After 5 seconds Jugnu draws the next stroke on the model card as a hint. Her strokes stay on the lines, and the hint is neither a failed copy nor logged. (To tell the two apart, her strokes are fitted to each way of reading them, "the first strokes" or "the whole letter, joined", and the closest reading wins.)
+- **How it is judged:** her letter's box is fitted to the model's box with one uniform scale, centre on centre, so where she writes does not matter. Her letter must be 75% to 125% of the model's height (sky line to grass line for every capital and digit). Then her strokes, in the order she drew them, are matched to the model's strokes in order (joined versions and T's either-order allowed), and each is checked for direction, shape and start at the Stage 3 tolerances. A stroke that copies a later one is in the wrong order; a stroke she left out is missing; a stroke after the letter is complete is extra.
+- **Pass:** a chime, sparkles along her strokes, and the round light comes on as for any round. When it is the last round, her own letter glows.
+- **Fail:** her letter fades (the one place the app fades her whole letter: it makes room for a fresh copy), and Jugnu draws on the card the stroke that went wrong, or the whole letter if the size was the problem. She tries again.
+- **Never stuck:** after 3 failed copies the round counts as done, with help: no gold star, as when Jugnu helps in the other rounds.
+- Her ink in the copy round never dims: nothing is judged until she has finished.
 
 **Feedback rules** (every round)
 
@@ -155,7 +165,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`).
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
-- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every find-scene tap and every game move.
+- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every judged copy (type `copy`: character, try 1 to 3, fitted scale, size and size check, each stroke's start, direction and shape, pass or fail, time), every find-scene tap and every game move.
 
 ### Voice, for now
 
@@ -265,7 +275,7 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 | --- | --- |
 | 5G | Sound-first find pictures for every letter, garden and sea backdrops, the finds review sheet |
 | 5H | More game variety, and the Missing piece game |
-| 5I | Practice and review: round 3 as a copy-it round judged on shape, reviews after 1, 3 and 7 days, a practice-more list, an optional "again?" |
+| 5I | Practice and review: round 3 as a copy-it round judged on shape (built), reviews after 1, 3, 7 and 21 days, a practice-more list |
 | 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
 | 9A, 9B, 9C | Lowercase; numbers 10 to 20; a words level |
 | 10 | Urdu: dot strokes, the Urdu font, recorder support, Dot Detective |
@@ -279,9 +289,9 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 
 Behind a gate (press and hold for 3 seconds, then a simple sum): daily limit, settings, a progress grid per book, a replay of her last attempt on any character, her wrong starts per week, the practice-more list, and a reset. There is no "struggling" label anywhere.
 
-### Planned: practice and review (Slice 5I)
+### Planned: reviews (Slice 5I, part 2)
 
-Round 3 becomes a copy-it round. She writes the letter beside a model, and it is judged on shape at 75 to 125% of the model's size. A character she has secured comes back for a review after 1, 3 and 7 days. Characters she often gets wrong go on a practice-more list. After the star, an optional "again?" lets her go round once more.
+The copy-it round is built (above). Still to come: a character that earns its star is due for review 1 day later, then 3, 7 and 21 days after each pass, and graduates after passing the 21-day review. A failed review, or a practice finished only with Jugnu's help, goes back to 1 day. A review is one copy-it round, then the find scene. Due letters glow gently on their board, and a book holding one glows on the shelf; at most 2 are due each day. Letters that needed help, failed a copy or had 3 or more wrong starts go on a practice-more list and come due after 1 day.
 
 ## UX rules for a 4-year-old
 

@@ -18,6 +18,12 @@ export const CONFIG = {
   trackGlowMs: 700,       // the track of a stroke glows once over this long
   goodEvery: 2,           // speak a "good" line at most once per this many good strokes
   roundPauseMs: 1100,     // after a round, its light comes on; the next round starts after this long
+  // The copy-it round (Slice 5I, src/copy.js).
+  copyWaitMs: 2000,       // judge her letter this long after her last lift (unless it is already complete)
+  copyHintMs: 5000,       // fewer strokes than the letter needs: after this long Jugnu shows the next one on the card
+  copyTries: 3,           // failed copies before the round counts as done with help
+  copyDemoMs: 1100,       // Jugnu draws one stroke of the model card this fast
+  copyFadeMs: 900,        // after a failed copy, her letter fades out over this long
 };
 
 const noneDone = (n) => new Array(n).fill(false);
@@ -123,3 +129,28 @@ export const starEarned = (rp) => !rp.helped;
 // What each round light shows: 'done', 'now' or 'next'.
 export const roundLights = (rp, rounds = ROUNDS) =>
   Array.from({ length: roundCount(rounds) }, (_, i) => (i < rp.round ? 'done' : i === rp.round ? 'now' : 'next'));
+
+// ---------------------------------------------------------------------------
+// The copy-it round (Slice 5I)
+//
+// The last round (Stage 3) is the copy-it round: she writes the whole letter on
+// empty lines beside a model card, and the whole letter is judged (src/copy.js).
+// A pass ends the round as any round does. A fail lets her try again; after
+// CONFIG.copyTries failed copies the round still counts as done, with help (no
+// gold star), so she is never stuck.
+
+export const isCopyRound = (r, rounds = ROUNDS) => stageForRound(r, rounds) === 3;
+
+// One judged copy. `fails` is the failed copies so far in this round.
+// Returns { state, fails, again, allDone, helpedOut }:
+//   again: she tries the copy once more; helpedOut: the round ended with help.
+export function finishCopy(rp, { ok, fails = 0 }, rounds = ROUNDS, cfg = CONFIG) {
+  if (ok) {
+    const r = finishRound(rp, { assisted: false }, rounds);
+    return { state: r.state, fails, again: false, allDone: r.allDone, helpedOut: false };
+  }
+  const n = fails + 1;
+  if (n < cfg.copyTries) return { state: rp, fails: n, again: true, allDone: false, helpedOut: false };
+  const round = rp.round + 1;
+  return { state: { ...rp, round, helped: true }, fails: n, again: false, allDone: round >= roundCount(rounds), helpedOut: true };
+}

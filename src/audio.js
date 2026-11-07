@@ -18,6 +18,8 @@ export const LINES = {
   good: ['Nice!', "That's it!", 'Good job, {name}!'],
   letterDone: 'Well done, {name}!',
   assist: "Let's do it together!",
+  copy: 'Watch Jugnu, then you write it, {name}!',
+  copyAgain: 'Watch again, then try once more!',
   picture: '{letter} is for {word}!',
   freeDraw: 'Now draw anything you like!',
   end: 'All done. See you soon, {name}!',

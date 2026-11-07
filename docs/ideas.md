@@ -12,8 +12,10 @@ Claude Code adds ideas here instead of building them mid-slice. Each idea is tag
 - ✅ **[5G]** Slice 5B's practice rounds replaced `CONFIG.lastStage`, `lettersPerStage`, `maxAssistedInRow`, `dropStage` and `completeLetter` in `src/progress.js`. Removed in 5G.
 - **[7]** The Android back button leaves the app; app pinning comes in Slice 7.
 - ✅ **[5G]** CLAUDE.md's module list now names every module, `screens.js`, `art.js` and `music.js` included.
-- **[5I]** Round 3's track (5% opacity) is very faint on the white board. Check on the tablet whether she can still see it, before changing anything (Slice 5I redesigns round 3 as a copy-it round).
+- ✅ **[5I]** Round 3's track (5% opacity) is very faint on the white board. Superseded: round 3 is now the copy-it round, with no track.
 - **[8]** mockup4 also lets a parent set the rounds from the address (`?rounds=5`). Slice 5B keeps the number in one setting (`ROUNDS` in `src/progress.js`); a parent-zone control could set it.
+- **[later]** An optional "again?" after the star, so she can go round a letter once more (planned for 5I, moved here). Tapping a starred tile already replays the whole practice, so this is only a shortcut.
+- **[later]** The copy-it round fits her letter by its height (the model's longer side). If she often writes letters much wider or narrower than the model, a fit that also allows a little stretching could be kinder; check her real `copy` log entries first.
 - **[later]** The headless ink-offset check (Playwright, both orientations, devicePixelRatio 1.5) could live in the repo as a script, so every slice can re-run it the same way.
 
 ## Slice 5C: objects each room still needs

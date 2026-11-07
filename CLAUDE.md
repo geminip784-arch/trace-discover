@@ -37,7 +37,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 ## Child-screen rules (every screen she sees)
 - No text. All prompts are audio. An ear button replays the last prompt.
 - At most 3 choices per question or prompt. Menus (the bookshelf and the character boards) are exempt. Child touch targets at least 88 CSS px.
-- Never red, never a buzzer, never erase her whole letter, never snap her ink onto the path.
+- Never red, never a buzzer, never erase her whole letter, never snap her ink onto the path. One exception: after a failed copy in the copy-it round, her letter fades so she can write a fresh copy.
 - Wrong direction: the glow stops and Jugnu flies the correct way once. Off path: the trail dims and she carries on. Wrong start: the start dot pulses.
 - Ink must follow her finger with no visible lag. Draw inside `requestAnimationFrame` and use `getCoalescedEvents()` when the browser offers it.
 - Kid-proofing: `touch-action: none` on the writing area; `overscroll-behavior: none` on `html` and `body` (stops pull-to-refresh); block the context menu and text selection.
@@ -53,7 +53,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - Before writing code: restate the slice goal, list the files you will create or change, and wait for my OK.
 - Keep one module per concern in `src/`. Pure-logic modules (no DOM, no storage, no audio) are marked *pure* and are tested in `tests/`.
   - Shell: `screens.js` (every screen and its animations), `session.js` (*pure*: boards, books, navigation), `art.js` (the shell's SVG pictures), `music.js` (background tunes), `storage.js` (localStorage), `audio.js` (chimes and speech).
-  - Tracing: `input.js` (single-pointer tracking), `render.js` (lines, tracks, ink), `game.js` (one character's rounds on screen), `progress.js` (*pure*: strokes, help and rounds), `variants.js` (*pure*: accepted joined versions), `geometry.js` (*pure*: scoring), `jugnu.js` (Jugnu on screen), `debug.js` (the `?debug=1` panel).
+  - Tracing: `input.js` (single-pointer tracking), `render.js` (lines, tracks, ink), `game.js` (one character's rounds on screen), `progress.js` (*pure*: strokes, help and rounds), `copy.js` (*pure*: the copy-it round's whole-letter judging), `variants.js` (*pure*: accepted joined versions), `geometry.js` (*pure*: scoring), `jugnu.js` (Jugnu on screen), `debug.js` (the `?debug=1` panel).
   - Find and count: `scene.js` (on screen), `finds.js` (*pure*: what a scene holds).
   - Games book: `games.js` (*pure*: every game's rules), `match.js`, `path.js`, `sort.js`, `odd.js`, `missing.js` (each game on screen).
   - Drawing book: `drawing.js` (*pure*: levels and dots), `dots.js` (dot to dot on screen), `paper.js` (free drawing), `strokes.js` (crayon and eraser ink), `hold.js` (press-and-hold buttons).

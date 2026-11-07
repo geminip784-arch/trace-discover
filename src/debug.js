@@ -42,6 +42,13 @@ export function createDebugPanel(strokeCount) {
       next = nextIndex;
       render();
     },
+    // The copy round's result (src/copy.js scoreCopy): the fit, the size and every stroke.
+    copy(r) {
+      const rows = r.strokes.map((s, i) => `  ${i + 1}. ref ${s.from === null ? '-' : s.from + 1}: ${s.ok ? 'ok' : 'not ok'}  reason=${s.reason ?? '-'}  variant=${s.variant}\n` +
+        `     startOk=${s.startOk} directionOk=${s.directionOk} shapeOk=${s.shapeOk} error=${fmt(s.error)}`);
+      panel.textContent = `${info}\ncopy: ${r.ok ? 'PASS' : 'not ok'}  reason=${r.reason ?? '-'}  show=${r.wrongStroke === null ? 'all' : r.wrongStroke + 1}\n` +
+        `  scale=${fmt(r.scale)}  size=${fmt(r.size)} (0.75-1.25)  sizeOk=${r.sizeOk}\n` + rows.join('\n');
+    },
     // A one-line note instead of the stroke rows (e.g. a missing character file).
     message(text) {
       panel.textContent = text;
