@@ -27,12 +27,30 @@ export const GAME_ROWS = [
   { kind: 'odd', games: ['odd-kinds', 'odd-colors'] },
   { kind: 'missing', games: ['missing-1', 'missing-2', 'missing-3', 'missing-4'] }, // Slice 5H: one tile per level
 ];
-// The menu's lines, top to bottom: each a list of kinds side by side. Follow
-// the path and Sort it share a line, so the tiles stay at least 88 px.
-export const GAME_LINES = [['match'], ['path', 'sort'], ['odd'], ['missing']];
+// The menu has two steps: a tile per kind of game (GAME_KINDS), then that
+// kind's sets. Both steps are one row of tiles, so they stay big.
+export const GAME_KINDS = GAME_ROWS.map((r) => r.kind);
+export const gamesOf = (kind) => GAME_ROWS.find((r) => r.kind === kind)?.games ?? [];
 export const GAMES = GAME_ROWS.flatMap((r) => r.games);
 export const MATCH_GAMES = GAME_ROWS.find((r) => r.kind === 'match').games;
 export const kindOf = (game) => GAME_ROWS.find((r) => r.games.includes(game))?.kind ?? null;
+
+// Step 1: how many of a kind's sets she has finished (stars: her saved game ids).
+export const kindStars = (kind, stars) => gamesOf(kind).filter((id) => stars.includes(id)).length;
+
+// Step 2: one set's tile. A Missing piece level is locked until she earns it
+// (missingLevelOpen, below); a locked tile wiggles when tapped.
+export function gameTile(id, stars, rounds) {
+  const locked = kindOf(id) === 'missing' && !missingLevelOpen(missingLevel(id), rounds);
+  return { id, locked, star: stars.includes(id) };
+}
+
+// A menu tile's side in CSS px, for n tiles in one row on a w x h screen. The
+// row sits right of the button column (136 px) with 24 px to spare on the
+// right and 28 px between tiles. index.html's .gm-tile --t is the same rule.
+export const MENU_TILE = { max: 200, min: 140, gap: 28, left: 136, right: 24, spare: 120 };
+export const menuTileSize = (w, h, n, m = MENU_TILE) =>
+  Math.min(m.max, (w - m.left - m.right - (n - 1) * m.gap) / n, h - m.spare);
 
 // Jugnu shows the first move on the first set of every game, then she carries on.
 export const FIRST_MOVE_DELAY_MS = 700;

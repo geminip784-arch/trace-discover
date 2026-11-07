@@ -126,7 +126,8 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   door   the house front (first visit of the day, or ?door=1)
 //   shelf  the bookshelf (home)
 //   board  a letter board: book is 'abc', 'num' or 'urdu'
-//   games  the games book: its menu, a row of tiles per kind of game
+//   games  the games book. Step 1 (no kind): a tile per kind of game. Step 2
+//          (kind is 'match', 'path', 'sort', 'odd' or 'missing'): that kind's sets
 //   play   one game from the games book: game is a tile's id ('numbers', 'path-rooms', ...)
 //   drawing the Drawing book: its menu of free drawing and dot-to-dot pictures
 //   dots   one dot-to-dot picture: level 1, 2 or 3 and picture ('house', 'car-building', ...)
@@ -143,11 +144,17 @@ export function startScreen({ lastVisit = null, today, forceDoor = false, char =
 }
 
 const SHELF = { screen: 'shelf' };
-// Every tile of the games menu (src/games.js GAME_ROWS; tests/session.test.js checks they agree).
-const GAME_IDS = [
-  'numbers', 'colors', 'letters', 'shadows', 'shapes', 'path', 'path-rooms', 'sort-colors', 'sort-kinds', 'odd-kinds', 'odd-colors',
-  'missing-1', 'missing-2', 'missing-3', 'missing-4',
-];
+// The games menu: each kind of game and its sets (src/games.js GAME_ROWS;
+// tests/games-menu.test.js checks they agree). The ids are her saved stars.
+export const GAME_KINDS = {
+  match: ['numbers', 'colors', 'letters', 'shadows', 'shapes'],
+  path: ['path', 'path-rooms'],
+  sort: ['sort-colors', 'sort-kinds'],
+  odd: ['odd-kinds', 'odd-colors'],
+  missing: ['missing-1', 'missing-2', 'missing-3', 'missing-4'],
+};
+const kindOfGame = (game) => Object.keys(GAME_KINDS).find((k) => GAME_KINDS[k].includes(game));
+const setsOf = (game) => ({ screen: 'games', kind: kindOfGame(game) });
 // The Drawing book's pictures, per level (data/drawings.js has their dots).
 const SIX = ['house', 'sun', 'fish', 'car', 'cat', 'tree'];
 const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-sun', 'cat-house'] };
@@ -160,13 +167,15 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //   { type: 'openScene' }                write -> find (the same char and book)
 //   { type: 'letterDone' }               write or find -> its board (or the shelf)
 //   { type: 'openToys' }                 shelf -> toys
-//   { type: 'openGame', game }           games -> play (only the menu's games)
-//   { type: 'gameDone' }                 play -> games
+//   { type: 'openKind', kind }           games step 1 -> step 2 (that kind's sets)
+//   { type: 'openGame', game }           games step 2 -> play (only that kind's sets)
+//   { type: 'gameDone' }                 play -> games step 2 (the game's kind)
 //   { type: 'openPicture', level, picture } drawing -> dots (only the book's pictures)
 //   { type: 'openPaper' }                drawing -> paper
 //   { type: 'pictureDone' }              dots -> drawing
-//   { type: 'back' }                     play -> games; dots or paper -> drawing;
-//                                        games, drawing or toys -> shelf
+//   { type: 'back' }                     play -> games step 2; games step 2 -> step 1;
+//                                        dots or paper -> drawing;
+//                                        games step 1, drawing or toys -> shelf
 //   { type: 'home' }                     any screen -> shelf
 export function navigate(state, event) {
   const { screen } = state;
@@ -194,10 +203,12 @@ export function navigate(state, event) {
       return state.book ? { screen: 'board', book: state.book } : SHELF;
     case 'openToys':
       return screen === 'shelf' ? { screen: 'toys' } : state;
+    case 'openKind':
+      return screen === 'games' && !state.kind && Object.hasOwn(GAME_KINDS, event.kind ?? '') ? { screen: 'games', kind: event.kind } : state;
     case 'openGame':
-      return screen === 'games' && GAME_IDS.includes(event.game) ? { screen: 'play', game: event.game } : state;
+      return screen === 'games' && (Object.hasOwn(GAME_KINDS, state.kind ?? '') && GAME_KINDS[state.kind].includes(event.game)) ? { screen: 'play', game: event.game } : state;
     case 'gameDone':
-      return screen === 'play' ? { screen: 'games' } : state;
+      return screen === 'play' ? setsOf(state.game) : state;
     case 'openPicture':
       return screen === 'drawing' && DRAW_PICTURES[event.level]?.includes(event.picture)
         ? { screen: 'dots', level: event.level, picture: event.picture } : state;
@@ -206,7 +217,8 @@ export function navigate(state, event) {
     case 'pictureDone':
       return screen === 'dots' ? { screen: 'drawing' } : state;
     case 'back':
-      if (screen === 'play') return { screen: 'games' };
+      if (screen === 'play') return setsOf(state.game);
+      if (screen === 'games' && state.kind) return { screen: 'games' };
       if (screen === 'dots' || screen === 'paper') return { screen: 'drawing' };
       return screen === 'games' || screen === 'drawing' || screen === 'toys' ? SHELF : state;
     default:

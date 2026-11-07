@@ -97,9 +97,14 @@ The toy box on the bookshelf opens her collection: the newest 24 finds stand on 
 
 ### Games book
 
-A menu of tiles in four rows, one row per kind of game. Each game ends after a few sets, and finishing one gives its tile a star.
+A two-step menu, so the tiles stay big as more games come:
 
-| Row | Games | How it plays |
+1. **Kinds.** Opening the book shows one row of 5 big picture tiles, one per kind of game: Match, Follow the path, Sort it, Odd one out, Missing piece. Each picture is a small fan of cards with that kind's first set on the front. Under it, a tiny gold star for each of that kind's sets she has finished (no numbers).
+2. **Sets.** Tapping a kind shows its sets (the rows below) as one row of big tiles. Each game ends after a few sets, and finishing one gives its tile a star. Missing piece levels 2 to 4 are faint and wiggle until earned.
+
+Back goes up one step: from a game to its kind's sets, from the sets to the kinds, from the kinds to the bookshelf. Finishing a game also returns to its kind's sets, where the new star appears. Home always goes to the bookshelf. Tiles are 200 px at 1280 x 626 (never under 140 px; `src/games.js` `menuTileSize`). Every game keeps its own id, so stars, last plays and log entries from the one-step menu carry over.
+
+| Kind | Sets | How it plays |
 | --- | --- | --- |
 | Match (draw a line) | Numbers to things, Colors to things, Letter to picture, Thing to its shadow, Shape to thing | Two columns of 4 cards. She draws a line from each card to its partner. 3 sets make a play |
 | Follow the path | Animals to homes, Furniture to rooms | Three crossing roads. She traces each traveller's road to its home |
@@ -120,7 +125,6 @@ In every game, Jugnu shows the first move himself. Repeated misses make the righ
 | Shape to thing | 4 things per shape: circle (ball, clock, cookie, button), square (block, window, gift, dice), triangle (roof, pizza slice, tent, party hat), tall rectangle (door, book, phone, fridge) |
 | Follow the path | 3 of 8 animals: bee and hive, duck and pond, dog and kennel, bird and nest, fish and bowl, rabbit and hutch, cow and barn, spider and web |
 
-The menu sits on four lines: Match; Follow the path and Sort it side by side; Odd one out; Missing piece.
 
 **Missing piece (Slice 5H).** Three shapes (circle, square, triangle, tall rectangle) each have a gap: a quarter, a half or a corner cut out, shown as a dashed hole. The pieces wait on a shelf below. The right piece snaps into its gap; a whole shape glows with a chime. A wrong piece bounces back silently; letting go away from every gap is not a try. Jugnu places the first piece in the first round. After 3 wrong tries in a row, the right piece for that gap wiggles. Every round is generated fresh (shapes, missing parts, colors and places), and a referee checks it: exactly one piece fits each gap, and, comparing outlines by shape and ignoring size, the only pieces with a gap's outline are its right piece and that piece's twin in another color.
 

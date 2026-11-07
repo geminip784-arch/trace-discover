@@ -230,7 +230,7 @@
     .star.new { animation: star-in 0.8s cubic-bezier(0.3, 1.6, 0.5, 1) 0.3s both; }
     @keyframes star-in { from { transform: scale(0) rotate(-90deg); } to { transform: scale(1) rotate(0); } }
 
-    /* The games book: a warm glow behind its three tiles. */
+    /* The games book: a warm glow behind its tiles. */
     .view-games { background: radial-gradient(circle at 50% 45%, #FFE0B2, #FFB74D); }
 
     /* ---- Slice 5C: the find and count scenes. The room covers the screen,
@@ -349,23 +349,29 @@
     .find svg { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
     .find.wide { grid-column: span 2; }
 
-    /* ---- Slices 5D and 5F: the games book. The menu: a row of picture tiles per kind of game. ---- */
+    /* ---- Slices 5D and 5F: the games book. A two-step menu: one row of big
+       tiles per step (a tile per kind of game, then that kind's sets). ---- */
     .view-games, .view-play { touch-action: none; }
     .gm-menu {
-      --rows: 2;
+      --n: 5;
       position: absolute; left: 136px; right: 24px; top: 0; bottom: 0;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+      display: flex; align-items: center; justify-content: center; gap: 28px;
     }
-    .gm-row { display: flex; gap: 22px; justify-content: center; }
-    .gm-line { display: flex; gap: 64px; justify-content: center; } /* Slice 5H: kinds side by side on one line */
     .gm-tile.locked { opacity: 0.35; box-shadow: none; }
     .gm-tile {
-      --t: min(210px, calc((100vw - 260px) / 5.6), calc((100vh - 40px) / var(--rows) - 40px));
-      position: relative; box-sizing: border-box; width: var(--t); height: var(--t); padding: 16px;
+      /* src/games.js menuTileSize: min(200, (width - 160 - (n - 1) x 28) / n, height - 120) */
+      --t: min(200px, calc((100vw - 160px - (var(--n) - 1) * 28px) / var(--n)), calc(100vh - 120px));
+      position: relative; flex: none; box-sizing: border-box; width: var(--t); height: var(--t); padding: 16px;
       display: flex; align-items: center; justify-content: center;
       background: #fff; border: 8px solid var(--c); border-radius: 32px;
       box-shadow: 0 8px 0 rgba(0, 0, 0, 0.12); touch-action: none; cursor: pointer;
     }
+    /* Step 1: a tiny gold star for each finished set of that kind, under the picture. */
+    .gm-stars {
+      position: absolute; left: 0; right: 0; bottom: -18px; display: flex; justify-content: center; gap: 2px;
+      pointer-events: none;
+    }
+    .gm-stars svg { width: 30px; height: 30px; display: block; filter: drop-shadow(0 0 4px rgba(255, 194, 26, 0.8)); }
     .gm-tile > svg { width: 100%; height: auto; display: block; overflow: visible; pointer-events: none; }
     .gm-tile.picked { animation: pick 0.22s ease-out; }
 
