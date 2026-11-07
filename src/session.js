@@ -50,17 +50,26 @@ export function bookOf(id) {
   return null;
 }
 
-// Every tile of a board with bright (tappable: it is in the manifest) and star.
-export function boardTiles(book, manifest, stars = []) {
+// Every tile of a board with bright (tappable: it is in the manifest), star, and
+// due (one of today's reviews, src/review.js; only a bright tile can be due).
+export function boardTiles(book, manifest, stars = [], due = []) {
   const recorded = new Set(manifest);
   const starred = new Set(stars);
+  const dueSet = new Set(due);
   return (BOARDS[book]?.tiles ?? []).map((t, i) => ({
     ...t,
     color: tileColor(i),
     bright: recorded.has(t.id),
     star: starred.has(t.id),
+    due: recorded.has(t.id) && dueSet.has(t.id),
   }));
 }
+
+// Every character on every board, ABC then 123 then Urdu: the order reviews break ties in.
+export const BOARD_ORDER = Object.values(BOARDS).flatMap((b) => b.tiles.map((t) => t.id));
+
+// The books that hold at least one of today's due letters (they glow on the shelf).
+export const booksWithDue = (due) => [...new Set(due.map(bookOf).filter(Boolean))];
 
 // The app only ever requests character files listed in the manifest.
 export const canLoad = (id, manifest) => typeof id === 'string' && manifest.includes(id);
@@ -132,7 +141,8 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   drawing the Drawing book: its menu of free drawing and dot-to-dot pictures
 //   dots   one dot-to-dot picture: level 1, 2 or 3 and picture ('house', 'car-building', ...)
 //   paper  the free-drawing page
-//   write  the tracing game for char; book is the board she returns to (or null)
+//   write  the tracing game for char; book is the board she returns to (or null);
+//          review: true for a review (one copy-it round, src/review.js)
 //   find   the find or count scene after the last round of char (same book)
 //   toys   her shelf of finds, from the toy box on the bookshelf
 
@@ -163,7 +173,8 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 // (the same state comes back). Events:
 //   { type: 'openDoor' }                 door  -> shelf
 //   { type: 'openBook', book }           shelf -> board or games (locked books: no change)
-//   { type: 'openChar', id, manifest }   board -> write (faint characters: no change)
+//   { type: 'openChar', id, manifest, review } board -> write (faint characters: no change);
+//                                        review: true when the tile is due for review
 //   { type: 'openScene' }                write -> find (the same char and book)
 //   { type: 'letterDone' }               write or find -> its board (or the shelf)
 //   { type: 'openToys' }                 shelf -> toys
@@ -194,7 +205,8 @@ export function navigate(state, event) {
       if (screen !== 'board') return state;
       const onBoard = BOARDS[state.book].tiles.some((t) => t.id === event.id);
       if (!onBoard || !canLoad(event.id, event.manifest ?? [])) return state;
-      return { screen: 'write', char: event.id, book: state.book };
+      const write = { screen: 'write', char: event.id, book: state.book };
+      return event.review === true ? { ...write, review: true } : write;
     }
     case 'openScene':
       return screen === 'write' ? { screen: 'find', char: state.char, book: state.book } : state;

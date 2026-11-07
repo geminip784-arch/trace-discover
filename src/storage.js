@@ -2,6 +2,7 @@
 // wrapped in try/catch: a full or blocked storage must never stop the game.
 
 import { addFind, cleanFinds } from './finds.js';
+import { cleanReviews, cleanPracticeMore } from './review.js';
 
 export const ATTEMPTS_KEY = 'td.attempts';
 export const MAX_ATTEMPTS = 2000;
@@ -282,6 +283,48 @@ export function addMissingRound(level, store = globalThis.localStorage) {
     const all = readMissingRounds(store);
     all[level] = (all[level] ?? 0) + 1;
     store.setItem(MISSING_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reviews (Slice 5I): each letter's place in the 1, 3, 7, 21-day schedule and
+// today's due letters (src/review.js), and the practice-more list that Slice 8's
+// parent zone will show. A damaged or blocked storage reads as empty.
+
+export const REVIEWS_KEY = 'td.reviews';
+export const PRACTICE_MORE_KEY = 'td.practiceMore';
+
+export function readReviews(store = globalThis.localStorage) {
+  try {
+    return cleanReviews(JSON.parse(store.getItem(REVIEWS_KEY) ?? 'null'));
+  } catch {
+    return cleanReviews(null);
+  }
+}
+
+export function saveReviews(reviews, store = globalThis.localStorage) {
+  try {
+    store.setItem(REVIEWS_KEY, JSON.stringify(cleanReviews(reviews)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function readPracticeMore(store = globalThis.localStorage) {
+  try {
+    return cleanPracticeMore(JSON.parse(store.getItem(PRACTICE_MORE_KEY) ?? '[]'));
+  } catch {
+    return [];
+  }
+}
+
+export function savePracticeMore(list, store = globalThis.localStorage) {
+  try {
+    store.setItem(PRACTICE_MORE_KEY, JSON.stringify(cleanPracticeMore(list)));
     return true;
   } catch {
     return false;

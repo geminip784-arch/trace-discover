@@ -201,3 +201,46 @@ test('Slice 5E: broken or blocked storage never stops the Drawing book', () => {
   assert.deepEqual(readDrawStars(blocked), []);
   assert.equal(saveDrawStar('L1:sun', blocked), false);
 });
+
+// ---- reviews and the practice-more list (Slice 5I) ----
+import { REVIEWS_KEY, PRACTICE_MORE_KEY, readReviews, saveReviews, readPracticeMore, savePracticeMore } from '../src/storage.js';
+import { emptyReviews } from '../src/review.js';
+
+test('reviews: saved to td.reviews and read back', () => {
+  const store = memoryStore();
+  assert.deepEqual(readReviews(store), emptyReviews());
+  const r = { enrolled: true, letters: { L: { step: 1, due: '2026-11-10' } }, graduated: ['H'], today: { day: '2026-11-07', ids: ['L'] } };
+  assert.equal(saveReviews(r, store), true);
+  assert.deepEqual(readReviews(store), r);
+  assert.equal(REVIEWS_KEY, 'td.reviews');
+});
+
+test('practice-more: saved to td.practiceMore and read back', () => {
+  const store = memoryStore();
+  assert.deepEqual(readPracticeMore(store), []);
+  const list = [{ id: 'S', reasons: ['copies', 'starts'], day: '2026-11-07' }];
+  assert.equal(savePracticeMore(list, store), true);
+  assert.deepEqual(readPracticeMore(store), list);
+  assert.equal(PRACTICE_MORE_KEY, 'td.practiceMore');
+});
+
+test('reviews and practice-more: damaged or blocked storage never stops the game', () => {
+  const broken = memoryStore();
+  broken.setItem(REVIEWS_KEY, '{not json');
+  broken.setItem(PRACTICE_MORE_KEY, '{not json');
+  assert.deepEqual(readReviews(broken), emptyReviews());
+  assert.deepEqual(readPracticeMore(broken), []);
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('full'); } };
+  assert.deepEqual(readReviews(blocked), emptyReviews());
+  assert.deepEqual(readPracticeMore(blocked), []);
+  assert.equal(saveReviews(emptyReviews(), blocked), false);
+  assert.equal(savePracticeMore([], blocked), false);
+});
+
+test('saving reviews leaves the stars alone', () => {
+  const store = memoryStore();
+  saveStar('L', store);
+  saveReviews({ enrolled: true, letters: { L: { step: 0, due: '2026-11-08' } }, graduated: [], today: null }, store);
+  savePracticeMore([{ id: 'L', reasons: ['help'], day: '2026-11-07' }], store);
+  assert.deepEqual(readStars(store), ['L']);
+});

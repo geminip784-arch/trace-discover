@@ -268,3 +268,33 @@ test('Slice 5E: shelf -> drawing -> a picture or the paper -> back to drawing; h
   assert.equal(navigate(SHELF, { type: 'openPaper' }), SHELF);
   for (const screen of ['drawing', 'dots', 'paper']) assert.equal(tuneFor(screen), 'board');
 });
+
+// ---- reviews (Slice 5I) ----
+import { booksWithDue, BOARD_ORDER } from '../src/session.js';
+
+test('a tile due for review is flagged; only a bright tile can be due', () => {
+  const tiles = boardTiles('abc', ['A', 'B'], ['A'], ['A', 'C']);
+  const by = Object.fromEntries(tiles.map((t) => [t.id, t]));
+  assert.equal(by.A.due, true);
+  assert.equal(by.A.star, true);
+  assert.equal(by.B.due, false);
+  assert.equal(by.C.due, false); // not in the manifest: faint, never due
+  assert.ok(boardTiles('abc', ['A']).every((t) => t.due === false));
+});
+
+test('books that hold a due letter glow; board order is ABC, 123, Urdu', () => {
+  assert.deepEqual(booksWithDue(['A', '3', 'B']).sort(), ['abc', 'num']);
+  assert.deepEqual(booksWithDue([]), []);
+  assert.deepEqual(BOARD_ORDER.slice(0, 3), ['A', 'B', 'C']);
+  assert.equal(BOARD_ORDER[26], '0');
+  assert.equal(BOARD_ORDER[36], 'ur-alif-madd');
+});
+
+test('tapping a due tile opens a review; any other tile, a practice', () => {
+  const board = { screen: 'board', book: 'abc' };
+  assert.deepEqual(navigate(board, { type: 'openChar', id: 'L', manifest: ['L'], review: true }), { screen: 'write', char: 'L', book: 'abc', review: true });
+  assert.deepEqual(navigate(board, { type: 'openChar', id: 'L', manifest: ['L'] }), { screen: 'write', char: 'L', book: 'abc' });
+  const review = navigate(board, { type: 'openChar', id: 'L', manifest: ['L'], review: true });
+  assert.deepEqual(navigate(review, { type: 'openScene' }), { screen: 'find', char: 'L', book: 'abc' });
+  assert.deepEqual(navigate(review, { type: 'letterDone' }), board);
+});

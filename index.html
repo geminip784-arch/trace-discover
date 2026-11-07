@@ -225,6 +225,23 @@
     .tile.shake { animation: shake 0.4s; }
     @keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
     .star { position: absolute; top: -10px; right: -10px; width: 38%; height: 38%; pointer-events: none; }
+    /* Due for review (Slice 5I): a slow, soft gold glow and a firefly light at the
+       top left (top right on Urdu boards, where the star swaps sides). Never red. */
+    .tile.due { animation: due-glow 2.8s ease-in-out infinite; }
+    .tile.due.picked { animation: pick 0.22s ease-out; }
+    @keyframes due-glow {
+      0%, 100% { box-shadow: 0 5px 0 rgba(0, 0, 0, 0.12), 0 0 0 0 rgba(255, 212, 59, 0); }
+      50% { box-shadow: 0 5px 0 rgba(0, 0, 0, 0.12), 0 0 0 6px rgba(255, 212, 59, 0.55), 0 0 28px 10px rgba(255, 212, 59, 0.55); }
+    }
+    .due-mark { position: absolute; top: -12px; left: -12px; width: 34%; height: 34%; pointer-events: none; animation: due-bob 2.8s ease-in-out infinite; }
+    [dir=rtl] .due-mark { left: auto; right: -12px; }
+    .due-mark svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 0 6px rgba(255, 212, 59, 0.9)); }
+    @keyframes due-bob { 50% { transform: translateY(-4px); } }
+    .book.due { animation: book-due 2.8s ease-in-out infinite; }
+    @keyframes book-due {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(255, 212, 59, 0.6)); }
+      50% { filter: drop-shadow(0 0 14px #FFD43B) drop-shadow(0 0 30px rgba(255, 212, 59, 0.85)); }
+    }
     [dir=rtl] .star { right: auto; left: -10px; }
     .star svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 0 6px rgba(255, 194, 26, 0.8)); }
     .star.new { animation: star-in 0.8s cubic-bezier(0.3, 1.6, 0.5, 1) 0.3s both; }

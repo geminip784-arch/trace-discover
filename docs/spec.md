@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3 · Nov 7, 2026 · describes the app as built through Slice 5H and the first part of 5I (the copy-it round), and where it goes next.
+Version 3 · Nov 7, 2026 · describes the app as built through Slice 5I (the copy-it round and reviews), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -46,6 +46,7 @@ Each board is a grid of large tiles, one per character, each in its own color. N
 - **ABC**: A to Z. **123**: 0 to 9. **Urdu**: the 39 letters in qaida order, filling from the top right.
 - A tile is bright (tappable) when its character file exists in `data/chars/index.json`. Today every capital and digit is bright. Urdu tiles stay faint until Slice 10.
 - A character she has finished with no help from Jugnu shows a gold star on its tile.
+- A character due for review today glows gently and carries a small firefly light (see **Reviews** below).
 - Tapping a bright tile pops it and opens the writing screen.
 
 ### Writing: three practice rounds
@@ -83,6 +84,33 @@ Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to
 | Wanders off the path | The trail dims. She carries on from where she left it | Snap her line onto the path |
 | Finishes a stroke well | The trail sparkles, one soft chime | A big celebration after every stroke |
 | Finishes the character | Her letter glows | Anything that interrupts with menus |
+
+### Reviews and the practice-more list (Slice 5I)
+
+Letters come back on later days, so what she has learned stays learned (`src/review.js`, saved in `td.reviews`).
+
+| What happened | When it is next due |
+| --- | --- |
+| She earned the letter's star | 1 day later |
+| A passed review | The next interval: 3 days, then 7, then 21. Passing the 21-day review graduates the letter: no more reviews |
+| A failed review (3 failed copies) | Back to 1 day |
+| A practice finished only with Jugnu's help | Back to 1 day, even for a graduated letter |
+| A sitting that puts it on the practice-more list | Back to 1 day |
+| A clean replay of a letter already on the schedule | No change, so replaying never undoes her progress |
+
+- **What she sees.** On a board, today's due letters glow gently, with a small firefly light at the corner opposite the star. On the bookshelf, a book holding one of them glows softly. No text.
+- **A review** is one copy-it round (one round light), then the letter's find scene, pass or fail. A review never adds or takes away a star, and never touches a practice she left part way.
+- **Never homework.** At most 2 letters are due each day: most overdue first, ties in board order (ABC, 123, Urdu). They are picked the first time she sees the shelf or a board that day, and stay fixed all day; a finished review is not replaced by another.
+- **Days** are the tablet's calendar days. An overdue letter waits for her, and its next interval counts from the day she does the review.
+- **Stars from before Slice 5I** were added to the schedule once, due from the day after the update.
+
+**The practice-more list** (`td.practiceMore`, for the Slice 8 parent zone). A letter goes on it, with its reasons, when one sitting (a practice or a review) has any of:
+
+- Jugnu's help (an assist, a demonstration after misses in round 2, or 3 failed copies)
+- 2 or more failed copies
+- 3 or more wrong starts
+
+It then comes due after 1 day. One clean passed review (no reason to be on the list) takes it off. A review that passes but earns a reason keeps it on, due the next day.
 
 ### Find scenes (letters) and count scenes (numbers)
 
@@ -165,7 +193,8 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`).
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
-- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every judged copy (type `copy`: character, try 1 to 3, fitted scale, size and size check, each stroke's start, direction and shape, pass or fail, time), every find-scene tap and every game move.
+- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every judged copy (type `copy`: character, try 1 to 3, fitted scale, size and size check, each stroke's start, direction and shape, pass or fail, time), every review (type `review`: character, the day it was due, its interval, pass or fail, the next due day or graduated, and any practice-more reasons), every find-scene tap and every game move.
+- `?debug=1&today=2026-11-08` pretends the tablet's date is that day, to check reviews without waiting (debug only).
 
 ### Voice, for now
 
@@ -275,7 +304,7 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 | --- | --- |
 | 5G | Sound-first find pictures for every letter, garden and sea backdrops, the finds review sheet |
 | 5H | More game variety, and the Missing piece game |
-| 5I | Practice and review: round 3 as a copy-it round judged on shape (built), reviews after 1, 3, 7 and 21 days, a practice-more list |
+| 5I | Practice and review: round 3 as a copy-it round judged on shape, reviews after 1, 3, 7 and 21 days, a practice-more list (built) |
 | 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
 | 9A, 9B, 9C | Lowercase; numbers 10 to 20; a words level |
 | 10 | Urdu: dot strokes, the Urdu font, recorder support, Dot Detective |
@@ -287,11 +316,7 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 
 ### Planned: parent zone (Slice 8)
 
-Behind a gate (press and hold for 3 seconds, then a simple sum): daily limit, settings, a progress grid per book, a replay of her last attempt on any character, her wrong starts per week, the practice-more list, and a reset. There is no "struggling" label anywhere.
-
-### Planned: reviews (Slice 5I, part 2)
-
-The copy-it round is built (above). Still to come: a character that earns its star is due for review 1 day later, then 3, 7 and 21 days after each pass, and graduates after passing the 21-day review. A failed review, or a practice finished only with Jugnu's help, goes back to 1 day. A review is one copy-it round, then the find scene. Due letters glow gently on their board, and a book holding one glows on the shelf; at most 2 are due each day. Letters that needed help, failed a copy or had 3 or more wrong starts go on a practice-more list and come due after 1 day.
+Behind a gate (press and hold for 3 seconds, then a simple sum): daily limit, settings, a progress grid per book, a replay of her last attempt on any character, her wrong starts per week, the practice-more list (`td.practiceMore`, kept since Slice 5I), and a reset. There is no "struggling" label anywhere.
 
 ## UX rules for a 4-year-old
 
