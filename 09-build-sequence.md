@@ -51,14 +51,14 @@ More sets for the existing games, so a play does not repeat, and a new **Missing
 - [ ] She can finish a Missing piece play on her own
 
 ### 5I — Practice and review
-- Round 3 becomes a copy-it round: she writes the letter beside a model, judged on shape at 75 to 125% of its size.
-- Reviews after 1, 3 and 7 days.
-- A practice-more list.
-- An optional "again?" after the star.
+1. **Copy it** (built): round 3 shows empty lines and a model card; Jugnu draws the letter once on the card, she writes it anywhere on the lines, and the whole letter is judged on shape, order, start and direction at 75 to 125% of the model's size. A fail fades her letter and Jugnu replays the stroke that went wrong; 3 failed copies end the round with help. Each copy is logged (type `copy`). Screenshots: `docs/screenshots/slice-5i/`.
+2. **Reviews**: after 1, 3, 7 and 21 days, then the letter graduates. A practice-more list. At most 2 due a day.
+
+The optional "again?" after the star moved to `docs/ideas.md`.
 
 **Done when:**
 - [ ] A letter written a little bigger or smaller than the model still passes round 3
-- [ ] A letter starred today comes back for review tomorrow, then 3 and 7 days later
+- [ ] A letter starred today comes back for review tomorrow, then 3, 7 and 21 days later
 - [ ] Letters she often gets wrong appear on the practice-more list
 
 ### 6 — Voice and phonics

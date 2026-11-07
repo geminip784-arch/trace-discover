@@ -16,18 +16,28 @@
 // size (rotation, the browser bar, split screen) redraws the guide, the track, her
 // ink, the effects and Jugnu from those units. pause() and resume() hold the game
 // while the tablet is upright; her place, round and strokes are kept.
+//
+// Slice 5I: the last round is the copy-it round. The lines are empty and the
+// finished letter sits on a small model card at their right end, with a numbered
+// start dot and an arrow on every stroke. Jugnu draws it once on the card, then
+// she writes the whole letter anywhere on the lines. It is judged as a whole
+// (src/copy.js) once she has drawn enough strokes, or CONFIG.copyWaitMs after her
+// last lift. A fail: her letter fades and Jugnu draws, on the card, the stroke
+// that went wrong (all of it when the size was wrong); she tries again. After
+// CONFIG.copyTries failed copies the round counts as done, with help (no star).
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
-  START_DOT_RADIUS, trackLook,
+  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import { variantLabel, candidatesFor, nextStrokes, pickCandidate } from './variants.js';
 import {
   CONFIG, ROUNDS, initialState, applyLift, roundCount, stageForRound,
-  startRounds, markHelp, isHelp, finishRound, starEarned, roundLights,
+  startRounds, markHelp, isHelp, finishRound, starEarned, roundLights, isCopyRound, finishCopy,
 } from './progress.js';
+import { scoreCopy, copyReady, copyLogEntry } from './copy.js';
 import { logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
@@ -41,6 +51,10 @@ const TRAIL_WIDTH = 0.16;
 // Width of the whole-letter glow at the end, in line units (its halo is 1.6 times this).
 // Like every drawn width, it never comes from the scoring tolerance.
 const LETTER_GLOW_WIDTH = 0.12;
+// Width of Jugnu's trail on the model card, in the card's own line units.
+const CARD_TRAIL_WIDTH = 0.2;
+// Her ink in the copy round: always full and glowing (nothing is judged until she has finished).
+const PLAIN_INK = { dim: false, glow: true };
 
 // Only ids in the manifest are ever requested.
 async function loadChar(id, manifest) {
@@ -104,6 +118,9 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   let attempt = null;  // the stroke her finger is drawing now
   let holding = null;  // while a finger holds a 'held' phase: how to resume
   let turned = null;   // while the tablet is upright (pause()): how to carry on
+  let card = null;     // the copy round's model card for this screen size (render.js modelCard), else null
+  let copy = null;     // the copy round: { strokes (her letter, letter units), ids (ink ids), fails }
+  const isCopy = () => isCopyRound(rp.round, rounds);
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
   // The stroke Jugnu demonstrates: the first unfinished one in the recorded order.
@@ -144,6 +161,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   function updateDebug() {
     if (!debug) return;
     const { stage, streak, assisted } = progress;
+    if (card) {
+      debug.status(`${char.id}  round ${rp.round + 1}/${rounds}  copy it  failed copies ${copy?.fails ?? 0}/${CONFIG.copyTries}  help ${rp.helped ? 'yes (no star)' : 'no'}`, -1);
+      return;
+    }
     debug.status(`${char.id}  round ${rp.round + 1}/${rounds}  stage ${stage}  streak ${streak}  assisted ${assisted ? 'yes' : 'no'}  help ${rp.helped ? 'yes (no star)' : 'no'}`, progress.current);
   }
 
@@ -160,6 +181,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
 
   function redraw() {
     drawLines(els.lines, layout);
+    if (card) return drawModelCard(els.lines, layout, card, char);
     drawStageTrack(els.lines, layout, char, offset, {
       stage: progress.stage,
       done: progress.done,
@@ -171,8 +193,17 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   function applyLayout() {
     const w = els.area.clientWidth || window.innerWidth;
     const h = els.area.clientHeight || window.innerHeight;
-    layout = computeLayout(w, h);
-    offset = letterOffset(layout, char.width);
+    const full = computeLayout(w, h);
+    if (isCopy()) {
+      // The writing lines stop short of the model card at their right end.
+      layout = { ...full, lineEnd: modelCard(full, 0, char).lineEnd };
+      offset = letterOffset(layout, char.width);
+      card = modelCard(full, offset, char);
+    } else {
+      layout = full;
+      offset = letterOffset(layout, char.width);
+      card = null;
+    }
     redraw();
     ink.resize(layout, offset);
     fx.resize(layout, offset);
@@ -183,6 +214,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   // Stage 1: Jugnu flies it once, then perches at its start dot. Stage 2: Jugnu just
   // perches. Stage 3: Jugnu waits at home, out of the way.
   function beginStroke() {
+    if (card) return beginCopy();
     redraw();
     updateDebug();
     if (progress.done.every((d) => !d)) speak('start');
@@ -233,19 +265,93 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     beginStroke();
   }
 
+  // ---- the copy-it round ----
+
+  // The round starts: Jugnu draws the whole letter on the model card, then she writes.
+  async function beginCopy() {
+    copy = { strokes: [], ids: [], fails: 0 };
+    redraw();
+    updateDebug();
+    speak('copy');
+    if (!(await showOnCard(strokes.map((_, i) => i)))) return;
+    phase = 'trace';
+  }
+
+  // Jugnu draws strokes `indices` on the model card, each leaving a glowing
+  // trail, then the trails fade and he flies home. Resolves false if stopped.
+  async function showOnCard(indices) {
+    phase = 'held';
+    const trails = [];
+    for (const i of indices) {
+      const pts = strokes[i].points.map(card.toMain);
+      const trail = fx.trail(pts.map(toPx), CARD_TRAIL_WIDTH * card.k);
+      trails.push(trail);
+      const flown = await jugnu.demo(pts, CONFIG.copyDemoMs, CONFIG.hopMs, (f) => trail.set(f));
+      if (!alive || !flown) return false;
+    }
+    for (const t of trails) t.fadeOut(CONFIG.trailFadeMs);
+    jugnu.hopTo(home(), CONFIG.hopMs);
+    await wait(Math.max(CONFIG.trailFadeMs, CONFIG.hopMs));
+    return alive;
+  }
+
+  // Her finger lifted in the copy round: judge now if the letter is complete,
+  // else wait (any new touch cancels the wait).
+  function endCopyStroke(a) {
+    const id = ink.end();
+    copy.strokes.push(a.points);
+    copy.ids.push(id);
+    if (copyReady(copy.strokes, char)) judgeCopy();
+    else later(judgeCopy, CONFIG.copyWaitMs);
+  }
+
+  async function judgeCopy() {
+    if (phase !== 'trace' || copy.strokes.length === 0) return;
+    phase = 'held';
+    const result = scoreCopy(copy.strokes, char);
+    const r = finishCopy(rp, { ok: result.ok, fails: copy.fails }, rounds);
+    logAttempt(copyLogEntry({ char: char.id, result, attempt: copy.fails + 1, helped: r.helpedOut }));
+    debug?.copy(result);
+    if (result.ok) {
+      chime();
+      for (const pts of copy.strokes) fx.sparkle(pts.map(toPx), CONFIG.sparkleMs);
+      await wait(CONFIG.sparkleMs);
+      if (!alive) return;
+      return afterRound(r, copy.strokes);
+    }
+    // Her letter fades, and Jugnu shows on the card the stroke that went wrong
+    // (the whole letter when its size was the problem). Then she tries again.
+    copy.fails = r.fails;
+    updateDebug();
+    for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
+    copy.strokes = [];
+    copy.ids = [];
+    speak('copyAgain');
+    const show = result.wrongStroke === null ? strokes.map((_, i) => i) : [result.wrongStroke];
+    if (!(await showOnCard(show))) return;
+    if (r.helpedOut) return afterRound(r, null);
+    phase = 'trace';
+  }
+
   // Every stroke of the round is done. If Jugnu drew one, the round starts
   // again; otherwise its light comes on and the next round starts. After the
   // last round the whole letter glows.
   async function endRound() {
     phase = 'held';
     redraw();
-    const r = finishRound(rp, { assisted: progress.assisted }, rounds);
+    return afterRound(finishRound(rp, { assisted: progress.assisted }, rounds));
+  }
+
+  // A round ended with `r` (finishRound or finishCopy). herLetter: her copied
+  // strokes, which glow at the end in place of the model.
+  async function afterRound(r, herLetter = null) {
+    phase = 'held';
     const finished = rp.round;
     rp = r.state;
     if (r.allDone) {
       clearRounds(char.id);
       drawLights(finished);
-      return finishLetter();
+      return finishLetter(herLetter);
     }
     saveRounds(char.id, rp);
     drawLights(r.repeat ? -1 : finished);
@@ -256,20 +362,29 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     ink.clear();
     fx.clear();
     progress = freshRound();
+    applyLayout(); // the copy round lays the screen out round its model card
     phase = 'trace';
     beginStroke();
   }
 
   // The last round is done: the whole letter glows and a chime plays, then the
   // shell takes her back to the board. star: no round needed Jugnu's help.
-  async function finishLetter() {
+  // In the copy round her own letter glows; if Jugnu helped her out, the model does.
+  async function finishLetter(herLetter = null) {
     phase = 'held';
     redraw();
     updateDebug();
     speak('letterDone');
     letterChime();
-    const lines = strokes.filter((s) => s.kind === 'line').map((s) => s.points.map(toPx));
-    fx.letterGlow(lines, LETTER_GLOW_WIDTH * layout.unit, CONFIG.letterGlowMs);
+    const model = strokes.filter((s) => s.kind === 'line').map((s) => s.points);
+    let lines = model.map((pts) => pts.map(toPx));
+    let width = LETTER_GLOW_WIDTH * layout.unit;
+    if (herLetter) lines = herLetter.map((pts) => pts.map(toPx));
+    else if (card) {
+      lines = model.map((pts) => pts.map(card.toMain).map(toPx));
+      width *= CARD.scale;
+    }
+    fx.letterGlow(lines, width, CONFIG.letterGlowMs);
     await wait(CONFIG.letterGlowMs);
     if (!alive) return;
     phase = 'done';
@@ -314,6 +429,12 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
     if (progress.stage === 3) jugnu.stop(); // stays out of the way, right where it is
     else jugnu.restAt(startDot());
     const { u, q } = toChar(p);
+    if (card) {
+      // Copy it: no track to follow, so her ink is always full.
+      attempt = { copy: true, points: [q] };
+      ink.begin(u, PLAIN_INK);
+      return;
+    }
     const candidates = candidatesFor(char, progress.done);
     attempt = {
       candidates,
@@ -329,6 +450,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
   function endStroke() {
     const a = attempt;
     attempt = null;
+    if (a.copy) return endCopyStroke(a);
     const id = ink.end();
     const stage = progress.stage;
     const current = progress.current;
@@ -396,7 +518,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, o
         const { u, q } = toChar(p);
         attempt.points.push(q);
         us.push(u);
-        styles.push(styleFor(q));
+        styles.push(attempt.copy ? PLAIN_INK : styleFor(q));
       }
       ink.add(us, styles);
     },

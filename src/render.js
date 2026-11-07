@@ -621,3 +621,141 @@ export function createFx(svg) {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// The model card (Slice 5I, the copy-it round). The finished letter, small, on
+// a card at the right end of the lines, with a numbered start dot and an arrow
+// on every stroke. The writing lines stop short of it. The card is part of the
+// guide layer, so it ignores touches and is redrawn on every change of size.
+// Sizes are in line units of the card's own letter (CARD.scale main units each).
+export const CARD = {
+  scale: 0.4,      // 1 card unit = this many main line units
+  pad: 0.16,       // card units round the letter's lines
+  gap: 0.14,       // main units between the end of the writing lines and the card
+  radius: 0.08,    // corner radius, main units
+  frame: 0.014,    // frame width, main units
+  fill: '#F6FAFF',
+  frameColor: '#C9DBF0',
+  letter: { color: '#1D2B8F', width: 0.075 },  // card units
+  lineWidth: 0.022,                             // card units, the four little lines
+  dot: { r: 0.1, ring: 0.02, color: '#35D07F', number: '#fff', size: 0.15 },
+  arrow: { size: 0.07, color: '#2F4BD6', after: 0.1 }, // arrow sits this far past its dot's edge
+  slide: { step: 0.02, upTo: 0.6, gap: 0.02 },  // a dot on top of another slides along its stroke
+};
+
+// Pure: where the card sits for this screen. `offset` is the main letter box's x.
+// Returns { x, y, w, h } in area px, the card letter's origin in area px, the
+// writing lines' new right end, and toMain(p): card letter units -> main letter
+// units (so Jugnu and the effects can draw on the card).
+export function modelCard(layout, offset, char) {
+  const { unit } = layout;
+  const k = CARD.scale * unit;
+  const w = (char.width + 2 * CARD.pad) * k;
+  const h = (1.3 + 2 * CARD.pad) * k;
+  const x = layout.lineEnd - w;
+  const y = layout.top + 0.65 * unit - h / 2;
+  const origin = [x + CARD.pad * k, y + CARD.pad * k];
+  const toMain = ([px, py]) => [
+    (origin[0] - layout.originX) / unit - offset + px * CARD.scale,
+    (origin[1] - layout.top) / unit + py * CARD.scale,
+  ];
+  return { x, y, w, h, origin, k, lineEnd: x - CARD.gap * unit, toMain };
+}
+
+// Pure: the card's markers, in card units. Every stroke gets a numbered start
+// dot; a dot that would sit on an earlier one (A's two legs start together)
+// slides along its own stroke until it is clear. Every line stroke gets an arrow
+// just past its dot, pointing the way to go.
+export function cardMarkers(char) {
+  const { dot, arrow, slide } = CARD;
+  const dots = [];
+  const arrows = [];
+  char.strokes.forEach((stroke, i) => {
+    const pts = stroke.points;
+    const len = stroke.kind === 'line' ? pathLength(pts) : 0;
+    // How far a dot here is from the nearest earlier dot, edge to edge, less the gap.
+    const clearance = (at) => Math.min(Infinity, ...dots.map((d) => Math.hypot(at[0] - d.at[0], at[1] - d.at[1]) - 2 * (dot.r + dot.ring) - slide.gap));
+    let along = 0;
+    let at = pts[0];
+    if (len > 0 && clearance(at) < 0) {
+      // Slide along until clear; if it never is, keep the clearest place.
+      let best = { along, at, c: clearance(at) };
+      for (let d = slide.step; d <= slide.upTo * len + 1e-9; d += slide.step) {
+        const p = pointAlong(pts, d).at;
+        const c = clearance(p);
+        if (c > best.c) best = { along: d, at: p, c };
+        if (c >= 0) break;
+      }
+      ({ along, at } = best);
+    }
+    dots.push({ stroke: i, at, along, r: dot.r, label: i + 1 });
+    if (len > 0) {
+      const d = Math.min(len, along + dot.r + dot.ring + arrow.after + arrow.size);
+      const p = pointAlong(pts, d);
+      arrows.push({ stroke: i, at: p.at, angle: p.angle, r: arrow.size });
+    }
+  });
+  return { dots, arrows };
+}
+
+// Draw the card on the guide layer (call after drawLines).
+export function drawModelCard(svg, layout, card, char) {
+  const { unit } = layout;
+  const make = (tag, attrs, parent = svg) => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [key, v] of Object.entries(attrs)) el.setAttribute(key, v);
+    parent.appendChild(el);
+    return el;
+  };
+  const g = make('g', { class: 'model-card' });
+  make('rect', {
+    x: card.x, y: card.y, width: card.w, height: card.h, rx: CARD.radius * unit,
+    fill: CARD.fill, stroke: CARD.frameColor, 'stroke-width': CARD.frame * unit,
+  }, g);
+  const px = ([x, y]) => [card.origin[0] + x * card.k, card.origin[1] + y * card.k];
+  // The four little lines across the card.
+  for (const line of LINES) {
+    const [x1, y] = px([-CARD.pad / 2, line.y]);
+    const [x2] = px([char.width + CARD.pad / 2, line.y]);
+    const el = make('line', {
+      x1, x2, y1: y, y2: y, stroke: line.color, 'stroke-width': CARD.lineWidth * card.k, 'stroke-linecap': 'round',
+    }, g);
+    if (line.dash) el.setAttribute('stroke-dasharray', line.dash.map((d) => d * card.k).join(' '));
+  }
+  // The letter itself.
+  for (const stroke of char.strokes) {
+    if (stroke.kind !== 'line') continue;
+    make('polyline', {
+      points: stroke.points.map(px).map((p) => p.join(',')).join(' '),
+      fill: 'none', stroke: CARD.letter.color, 'stroke-width': CARD.letter.width * card.k,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }, g);
+  }
+  for (const stroke of char.strokes) {
+    if (stroke.kind !== 'dot') continue;
+    const [cx, cy] = px(stroke.points[0]);
+    make('circle', { cx, cy, r: CARD.letter.width * card.k, fill: CARD.letter.color }, g);
+  }
+  const { dots, arrows } = cardMarkers(char);
+  for (const a of arrows) {
+    const [cx, cy] = px(a.at);
+    const s = a.r * card.k;
+    make('polygon', {
+      points: `${s},0 ${-s * 0.7},${-s * 0.8} ${-s * 0.7},${s * 0.8}`,
+      fill: CARD.arrow.color,
+      transform: `translate(${cx} ${cy}) rotate(${a.angle * 180 / Math.PI})`,
+    }, g);
+  }
+  for (const d of dots) {
+    const [cx, cy] = px(d.at);
+    make('circle', {
+      cx, cy, r: d.r * card.k, fill: CARD.dot.color, stroke: '#fff', 'stroke-width': CARD.dot.ring * card.k,
+    }, g);
+    const t = make('text', {
+      x: cx, y: cy, fill: CARD.dot.number, 'font-size': CARD.dot.size * card.k,
+      'font-family': 'Fredoka, sans-serif', 'font-weight': '600',
+      'text-anchor': 'middle', 'dominant-baseline': 'central',
+    }, g);
+    t.textContent = String(d.label);
+  }
+}
