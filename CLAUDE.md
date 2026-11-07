@@ -57,8 +57,8 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
   - Find and count: `scene.js` (on screen), `finds.js` (*pure*: what a scene holds).
   - Games book: `games.js` (*pure*: every game's rules), `match.js`, `path.js`, `sort.js`, `odd.js` (each game on screen).
   - Drawing book: `drawing.js` (*pure*: levels and dots), `dots.js` (dot to dot on screen), `paper.js` (free drawing), `strokes.js` (crayon and eraser ink), `hold.js` (press-and-hold buttons).
-  - Parent tools: `setup.js` (`?setup=1`), `recorder.js` and `recording.js` (*pure*) for `recorder.html`, `glyphs-page.js` and `glyph-points.js` (*pure*) for `glyphs.html`.
-  - Data lives in `data/`: `chars/`, `glyphs.js`, `stroke-order.js`, `finds.js`, `games.js`, `drawings.js`.
+  - Parent tools: `setup.js` (`?setup=1`), `recorder.js` and `recording.js` (*pure*) for `recorder.html`, `glyphs-page.js` and `glyph-points.js` (*pure*) for `glyphs.html`, `finds-page.js` for `finds.html`.
+  - Data lives in `data/`: `chars/`, `glyphs.js`, `stroke-order.js`, `finds.js` (the find library and places), `find-art.js` (Slice 5G pictures and outdoor backdrops), `games.js`, `drawings.js`.
 - When the slice is done: run `npm test`, then give me a numbered list of what to check on the tablet.
 - At the end of each slice, open a pull request. I merge it on GitHub.
 - If you think something outside the slice is needed, write it in `docs/ideas.md` instead of building it.

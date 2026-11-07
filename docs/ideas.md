@@ -18,7 +18,7 @@ Claude Code adds ideas here instead of building them mid-slice. Each idea is tag
 
 ## Slice 5C: objects each room still needs
 
-**[5G]** Superseded by Slice 5G's sound-first word list and its object-to-place table. Kept for reference: the table below was the 5C wish list.
+✅ **[5G]** Superseded by Slice 5G's sound-first word list and its object-to-place table (`finds.html`). Kept for reference: the table below was the 5C wish list, and several of its words (hot dog, ice cube, eclair) do not start with the letter's sound.
 
 So every room has 3 of its own objects for each recorded letter (E F H I L T),
 these are the words still missing. Each is one plain word (or two), always
@@ -41,13 +41,13 @@ counting thing), fairy (Jugnu is the only character).
 ## Slice 5C: other follow-ups
 
 - **[5H]** The number scene has no 10-second hint. If she waits a long time, the group of n could wiggle once, as the letter objects do.
-- **[5G]** Letter scenes for letters with fewer than 3 objects in the library (every letter except E F H I L T) are skipped: she goes straight back to the board. They need objects first.
+- ✅ **[5G]** Letter scenes for letters with fewer than 3 objects in the library were skipped. Slice 5G gives every letter but U and X a scene.
 - **[later]** The shelf of finds shows up to the newest 24. Older finds are kept (up to 500) but not shown; a second shelf could show them.
 - **[8]** `index.html?scene=E` opens a scene straight away. It was added for the headless checks; it could also serve a parent zone.
 
 ## Parked: how find scenes choose objects (after Slice 5C)
 
-**[5G]** Come back to how a letter scene picks its room, its right objects and its others, and where they stand. Slice 5G sets the scene rule.
+✅ **[5G]** Slice 5G set the scene rule: the place with the most of the letter's pictures, everything it can from that place, then portable things before animals.
 
 ## Slice 5D: follow-ups
 
@@ -73,3 +73,12 @@ counting thing), fairy (Jugnu is the only character).
 - **[9A]** **Lowercase letters.** Use the fence line (0.5) as the x-height: a, c, e, m, n, o, r, s, u, v, w, x, z sit between the fence and the grass line; b, d, f, h, k, l and t reach up to the sky line. Add a descender line below the grass line (the ground line at 1.3 is close; the descender may need its own line) for g, j, p, q and y. i and j get a `dot` stroke. Each needs a stroke list in `data/stroke-order.js` first, and its own board.
 - **[9B]** **Numbers 10 to 20.** Two digits side by side: the first digit's strokes, then the second digit's strokes moved right by the first digit's width. Stroke order stays left digit first. The board and the file ids (`10` ... `20`) are new.
 - **[10]** `recorder.html` stays for hand-recorded overrides: put an id in `OVERRIDES` in `data/glyphs.js` and the generator keeps that file. Urdu letters will use it.
+
+## Slice 5G: follow-ups
+
+- ✅ **[5G]** The room backdrops no longer paint any find-object shape: window suns became clouds, the living room's framed star a small landscape, the bedroom's wallpaper stars dots, the study's chalk circle a triangle. A test guards it.
+- **[later]** The lunchbox picture (5C art) has a small star printed on its front, and star is now a find picture. If she taps the lunchbox in an S scene, swap that star for a plain shape.
+- **[later]** X has no find pictures: no common word for a 4-year-old starts with its sound. A scene with the letter at the end (box, fox) would need its own rule.
+- **[later]** U has only umbrella. A second sound-first U picture (up, under) is hard to draw as one object.
+- **[later]** The zoo is only chosen on a tie (no letter has two of its pictures there). A second zoo animal for a letter would give the zoo its own scenes.
+- **[5H]** The zip picture is a close-up of a zip (blue fabric, metal teeth, a pull tab). If she does not recognise it on the tablet, give it `finds: false` and Z skips its scene like U and X.

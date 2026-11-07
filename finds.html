@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f4ec">
+  <title>Find pictures review</title>
+  <style>
+    html, body {
+      margin: 0;
+      background: #f7f4ec;
+      color: #2a2d3e;
+      font: 15px/1.35 system-ui, sans-serif;
+    }
+    header { padding: 14px 20px 4px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    header p { margin: 0 0 6px; color: #555a70; max-width: 70em; }
+    h2 { font-size: 16px; margin: 16px 20px 6px; color: #555a70; }
+    #sheet { display: flex; flex-wrap: wrap; align-items: flex-start; padding: 0 10px; }
+    #sheet > h2, #sheet > .places { flex: 0 0 100%; }
+    .letter { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; margin: 0 4px 8px; border: 1px solid #e6e1d4; border-radius: 12px; background: #fbf9f3; }
+    .cap { width: 64px; flex: none; text-align: center; }
+    .cap b { display: block; font-size: 40px; line-height: 1.1; color: #1D2B8F; }
+    .cap small { display: block; font-size: 11px; color: #555a70; }
+    .set { display: flex; flex-wrap: wrap; gap: 10px; }
+    figure { margin: 0; width: 132px; background: #FFF4E0; border-radius: 10px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); padding: 6px 6px 8px; }
+    figure svg { display: block; width: 120px; height: 144px; overflow: visible; }
+    figcaption { font-size: 12px; color: #555a70; text-align: center; margin-top: 2px; }
+    figcaption b { display: block; color: #2a2d3e; font-size: 15px; }
+    figcaption b::first-letter { color: #1D2B8F; }
+    .none { color: #555a70; font-style: italic; padding: 12px 0; }
+    .places { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 10px 20px; }
+    .places figure { width: auto; background: #fff; }
+    .places svg { width: 290px; height: 145px; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Find pictures (Slice 5G)</h1>
+    <p>Every picture in the find library, by letter, with its word and the places it belongs in. Each letter's scene uses the place that holds the most of its pictures (the place in bold; a tie is picked at random). Pictures kept out of find scenes are at the end.</p>
+  </header>
+  <main id="sheet"></main>
+  <script type="module" src="src/finds-page.js"></script>
+</body>
+</html>

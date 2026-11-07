@@ -63,7 +63,7 @@ test('menu tiles stay at least 88 px with four rows (room for Sort it and Odd on
 // ---- letter to picture ----
 
 test('letter to picture: one object per recorded letter, its word starts with that letter', () => {
-  assert.deepEqual(LETTER_PICTURES, { E: 'egg', F: 'fork', H: 'hat', I: 'ice-cream', L: 'lemon', T: 'tiger' });
+  assert.deepEqual(LETTER_PICTURES, { E: 'egg', F: 'fork', H: 'hat', I: 'insect', L: 'lemon', T: 'tiger' });
   for (const [letter, id] of Object.entries(LETTER_PICTURES)) {
     assert.ok(chars.includes(letter), `${letter} is a recorded character`);
     const o = OBJECTS.find((x) => x.id === id);

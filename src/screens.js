@@ -21,8 +21,8 @@ import { startGame } from './game.js';
 import { HOUSE, DOOR, ICONS, STAR, TURN, bookCover } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
-import { afterWriting, lastGroupKind, makeGroup, SHELF_SHOWS } from './finds.js';
-import { OBJECTS, TOYBOX } from '../data/finds.js';
+import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
+import { TOYBOX } from '../data/finds.js';
 import { GAME_ROWS, kindOf } from './games.js';
 import { MENU } from '../data/games.js';
 import { playMatch } from './match.js';
@@ -396,7 +396,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     let row = 0;
     let used = 0;
     for (const f of readFinds().slice(-SHELF_SHOWS).reverse()) {
-      const art = f.g ? makeGroup(f.g, f.n, f.gold ? 0 : -1).svg : OBJECTS.find((o) => o.id === f.o)?.art;
+      const art = findArt(f);
       if (!art) continue;
       const places = f.g && f.n >= 3 ? 2 : 1;
       if (used + places > 8) { row += 1; used = 0; }
