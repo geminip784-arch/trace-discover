@@ -96,10 +96,10 @@ export function startShell(els, { manifest, params, now = new Date() }) {
 
   // A practice or a review has finished: move the letter along its schedule,
   // update the practice-more list and, for a review, log it. Stars are never touched here.
-  function recordSitting({ id, helped, failedCopies, wrongStarts }, isReview) {
+  function recordSitting({ id, helped, failedCopies, wrongStarts, mirrored = 0 }, isReview) {
     const today = todayNow();
     const saved = { reviews: readReviews(), list: readPracticeMore() };
-    const outcome = { helped, failedCopies, wrongStarts };
+    const outcome = { helped, failedCopies, wrongStarts, mirrored };
     const out = isReview
       ? recordReview(saved, id, { ok: !helped, ...outcome }, today)
       : recordPractice(saved, id, outcome, today);

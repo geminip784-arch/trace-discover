@@ -8,6 +8,7 @@
   "strokes": [
     {
       "kind": "line",
+      "part": "hook",
       "points": [
         [0.58, 0],
         [0.58, 0.043],

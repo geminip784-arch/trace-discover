@@ -92,14 +92,22 @@ export function spacedPoints(pts) {
 
 const roundPoint = ([x, y]) => [round3(x), round3(y)];
 
-// The character file object for one glyph: the recorder's format, plus anyOrder
-// (before strokes, as in the T file) when the glyph has one.
+// One generated stroke: { kind, part, points } (part: its short name for the
+// parent-facing lines; recorded files have none).
+const strokeFile = (s) => ({ kind: 'line', part: s.part, points: spacedPoints(strokePath(s)).map(roundPoint) });
+
+// The character file object for one glyph: the recorder's format, with each
+// stroke's part name, plus anyOrder (before strokes) when the glyph has one,
+// and its other stroke plans (Slice 5J, after strokes) when it has any.
 export function glyphCharacter(id, glyph) {
-  const strokes = glyph.strokes.map((s) => ({ kind: 'line', points: spacedPoints(strokePath(s)).map(roundPoint) }));
+  const strokes = glyph.strokes.map(strokeFile);
   const built = buildCharacter(id, strokes);
-  if (!glyph.anyOrder) return built;
-  const { strokes: st, ...head } = built;
-  return { ...head, anyOrder: glyph.anyOrder, strokes: st };
+  const { strokes: plain, ...head } = built;
+  const out = { ...head };
+  if (glyph.anyOrder) out.anyOrder = glyph.anyOrder;
+  out.strokes = plain.map((st, k) => ({ kind: st.kind, part: strokes[k].part, points: st.points }));
+  if (glyph.plans?.length) out.plans = glyph.plans.map((plan) => ({ strokes: plan.map(strokeFile) }));
+  return out;
 }
 
 // The file text: 2-space JSON, each [x, y] point and the anyOrder groups on one line.

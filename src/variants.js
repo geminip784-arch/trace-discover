@@ -93,3 +93,54 @@ export function pickCandidate(child, candidates, stage = 1, score = scoreStroke,
   }
   return { ...(best ? best.r : pick), all: pick.all };
 }
+
+// ---- Stroke plans (Slice 5J) ----
+// A character file may list other allowed ways to draw it ("plans": [{ strokes }]),
+// beside its default `strokes` (plan 0). Every plan has the same shape. In the
+// tracing rounds she may follow any plan: each of her strokes is still checked
+// for start, direction and shape against the next stroke of a plan she is
+// still following. The default plan is shown until her strokes leave it.
+
+export const planCount = (char) => 1 + (char.plans?.length ?? 0);
+
+// The strokes of plan p (0: the default).
+export const planStrokes = (char, p = 0) => (p === 0 ? char.strokes : char.plans[p - 1].strokes);
+
+// Plan p as a character of its own (anyOrder belongs to the default plan only).
+export function planChar(char, p = 0) {
+  const { plans, anyOrder, ...rest } = char;
+  return p === 0 ? { ...rest, ...(anyOrder ? { anyOrder } : {}), strokes: char.strokes } : { ...rest, strokes: planStrokes(char, p) };
+}
+
+// Every plan, nothing drawn yet: [{ plan, done }] in plan order.
+export const startPlans = (char) => Array.from({ length: planCount(char) }, (_, plan) => ({
+  plan, done: new Array(planStrokes(char, plan).length).fill(false),
+}));
+
+// The plan to show: the first plan she is still following.
+export const shownPlan = (alive) => alive[0];
+
+// Every reference she may be drawing now, over the plans she is still following:
+// candidatesFor each plan, tagged with its plan. The shown plan's come first.
+export function planCandidates(char, alive, gap = JOIN_GAP) {
+  return alive.flatMap(({ plan, done }) => candidatesFor(planChar(char, plan), done, gap).map((v) => ({ ...v, plan })));
+}
+
+// After a stroke that passed: the plans her strokes still follow, each moved on
+// by its lowest-error passing reference. A plan none of whose next references
+// her stroke passes is dropped.
+export function advancePlans(child, char, alive, stage = 1, score = scoreStroke, gap = JOIN_GAP) {
+  const out = [];
+  for (const { plan, done } of alive) {
+    let best = null;
+    for (const v of candidatesFor(planChar(char, plan), done, gap)) {
+      const r = score(child, v.points, stage);
+      if (r.ok && (!best || r.error < best.error)) best = { v, error: r.error };
+    }
+    if (!best) continue;
+    const next = [...done];
+    for (let i = best.v.from; i <= best.v.to; i++) next[i] = true;
+    out.push({ plan, done: next });
+  }
+  return out;
+}

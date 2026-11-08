@@ -8,6 +8,7 @@
   "strokes": [
     {
       "kind": "line",
+      "part": "stem",
       "points": [
         [0.08, 0],
         [0.08, 0.043],
@@ -37,6 +38,7 @@
     },
     {
       "kind": "line",
+      "part": "bump",
       "points": [
         [0.08, 0],
         [0.122, 0],

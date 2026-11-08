@@ -500,6 +500,9 @@ const FX = {
   pulse: { color: '#35D07F', width: 0.025 },
   glow: { color: 'rgba(77, 107, 255, 0.5)' },
   letter: { color: '#FFD43B', glow: 'rgba(255, 212, 59, 0.45)' },
+  // Slice 5J: why a copy failed. Calm blue and gold, never red.
+  outline: { color: '#4D6BFF', width: 0.03, dash: 0.09, radius: 0.08 },
+  beside: { color: '#1D2B8F', back: '#FFFFFF', frame: '#C9DBF0' },
 };
 
 // Effects are drawn in area px. Each screen size gets its own group; when the
@@ -581,6 +584,32 @@ export function createFx(svg) {
         add('polyline', polyAttrs(pts, width * 0.5, FX.letter.color),
           [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0.9, offset: 0.8 }, { opacity: 0 }], { duration: ms });
       }
+    },
+    // Slice 5J: a dashed outline at the right size (a box in area px:
+    // { x, y, w, h }), shown for `ms` and faded in and out.
+    outline({ x, y, w, h }, ms) {
+      const u = layout.unit;
+      add('rect', {
+        x, y, width: w, height: h, rx: FX.outline.radius * u, fill: 'none',
+        stroke: FX.outline.color, 'stroke-width': FX.outline.width * u,
+        'stroke-dasharray': `${FX.outline.dash * u} ${FX.outline.dash * u * 0.7}`,
+      }, [{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }], { duration: ms });
+    },
+    // Slice 5J: her letter, small, on a little card of its own beside the
+    // model card (strokes and card box in area px), shown for `ms`.
+    beside(strokes, box, width, ms) {
+      const keys = [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.88 }, { opacity: 0 }];
+      add('rect', {
+        x: box.x, y: box.y, width: box.w, height: box.h, rx: FX.outline.radius * layout.unit,
+        fill: FX.beside.back, stroke: FX.beside.frame, 'stroke-width': FX.outline.width * layout.unit * 0.5,
+      }, keys, { duration: ms });
+      for (const pts of strokes) add('polyline', polyAttrs(pts, width, FX.beside.color), keys, { duration: ms });
+    },
+    // Slice 5J: a part of the model glows gold, softly, twice (pts in area px).
+    partGlow(pts, width, ms) {
+      const keys = [{ opacity: 0 }, { opacity: 1 }, { opacity: 0.35 }, { opacity: 1 }, { opacity: 0 }];
+      add('polyline', polyAttrs(pts, width * 2.2, FX.letter.glow), keys, { duration: ms, easing: 'ease-in-out' });
+      add('polyline', polyAttrs(pts, width, FX.letter.color), keys, { duration: ms, easing: 'ease-in-out' });
     },
     // Jugnu's glowing trail along a stroke (pts in area px). set(f) shows the first
     // f (0..1) of it; fadeOut(ms) fades it away. clear() removes it too.

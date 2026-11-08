@@ -61,6 +61,20 @@ The optional "again?" after the star moved to `docs/ideas.md`.
 - [ ] A letter starred today comes back for review tomorrow, then 3, 7 and 21 days later
 - [ ] Letters she often gets wrong appear on the practice-more list
 
+### 5J — Testing fixes
+**PR 1** (built): stroke plans, shape-based judging, habits coached, clear failure reasons.
+1. **Allowed stroke plans:** each character has a short list of ways to draw it, built from the same exact geometry (`data/glyphs.js`, shown on `glyphs.html`). B 2 or 3, R 3 or 2, K 3 or 2 (K's leg now starts at the stem), M 2 or 4, N 2 or 3, E with an L first, H stem-bar-stem, 4 slant and bar first, T and X either order, V, W, Y, Z, 2, 3 and 9 split or joined. Rounds 1 and 2 accept any plan, still checking start and direction per stroke.
+2. **Shape judging in round 3:** the $P recognizer compares her letter with the board (and look-alikes S/5, Z/2, O/0, I/1, B/8, G/6). O and 0 count as each other. Every part must have ink, size 75–125%. Scribbles fail.
+3. **Habits coach, never fail:** a different plan, start, direction or order passes, and Jugnu replays the usual way. A mirrored letter passes, Jugnu shows it the right way round, and it goes on the practice-more list ("mirrored").
+4. **Failure reasons:** her letter beside the model with the missed part glowing; a dashed outline at the right size; Jugnu drawing the missing part; or Jugnu tracing the whole model slowly. A short parent line for each, and for wrong start, wrong direction and off the track in rounds 1 and 2. Screenshots: `docs/screenshots/slice-5j/`.
+
+**PR 2:** game instruction lines and a "show me" button, a slower Odd one out demonstration, the U umpire.
+
+**Done when:**
+- [ ] B in 3 strokes and R in 2 strokes pass rounds 1 and 2
+- [ ] A copy drawn in another order or direction passes, and Jugnu shows the usual way
+- [ ] Every failed copy shows why before it fades
+
 ### 6 — Voice and phonics
 - A family voice recorder (clips stored in IndexedDB).
 - Jugnu greets her by name.

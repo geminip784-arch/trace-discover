@@ -33,6 +33,7 @@ for (const file of files) {
       }
     });
     if (char.anyOrder !== undefined) checkAnyOrder(char.anyOrder, char.strokes.length);
+    if (char.plans !== undefined) checkPlans(char.plans);
   });
 }
 
@@ -52,11 +53,22 @@ export function checkAnyOrder(anyOrder, strokeCount) {
   });
 }
 
-test('only T has an anyOrder group, and it is [[0, 1]]', () => {
+// Optional "plans" (Slice 5J): other allowed stroke plans, each { strokes } of line strokes.
+export function checkPlans(plans) {
+  assert.ok(Array.isArray(plans) && plans.length >= 1, 'plans is a list of at least one plan');
+  plans.forEach((plan, p) => {
+    assert.ok(Array.isArray(plan.strokes) && plan.strokes.length >= 1, `plan ${p + 2}: at least one stroke`);
+    for (const s of plan.strokes) {
+      assert.equal(s.kind, 'line', `plan ${p + 2}: line strokes`);
+      assert.ok(Array.isArray(s.points) && s.points.length >= 2, `plan ${p + 2}: a line needs at least 2 points`);
+    }
+  });
+}
+
+test('no character file uses anyOrder now: T in either order is two stroke plans (Slice 5J)', () => {
   for (const file of files) {
     const char = JSON.parse(readFileSync(new URL(file, dir), 'utf8'));
-    if (char.id === 'T') assert.deepEqual(char.anyOrder, [[0, 1]]);
-    else assert.equal(char.anyOrder, undefined, char.id);
+    assert.equal(char.anyOrder, undefined, char.id);
   }
 });
 

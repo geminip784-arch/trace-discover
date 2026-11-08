@@ -1,10 +1,12 @@
 // glyphs-page.js — the parent's review page (glyphs.html) for the generated
 // characters. Reads data/chars/index.json and every file it lists, and draws
 // each character on the guide lines with numbered start dots and direction arrows.
+// Slice 5J: each character's other allowed stroke plans follow it, one card each.
 
 import { pathLength, dist } from './geometry.js';
 import { joinGaps } from './glyph-points.js';
 import { CHAR_GROUPS } from './recording.js';
+import { planCount, planChar } from './variants.js';
 
 const UNIT = 120;              // px per line unit
 const TOP = -0.28;             // card spans y from TOP to BOTTOM (line units)
@@ -106,15 +108,18 @@ function card(char) {
   return svg;
 }
 
-function caption(char) {
+// plan: 0 for the default (what the model card and Jugnu show), else the other plan's number.
+function caption(char, plan = 0) {
   const n = char.strokes.length;
   const joins = joinGaps(char)
     .map((g, k) => (g.joins ? `${k + 1}+${k + 2} in one go` : null))
     .filter(Boolean);
   const cap = document.createElement('figcaption');
   const b = document.createElement('b');
-  b.textContent = char.id;
+  b.textContent = plan === 0 ? char.id : `${char.id} plan ${plan + 1}`;
+  const parts = char.strokes.map((s) => s.part).filter(Boolean);
   cap.append(b, ` · ${n} stroke${n > 1 ? 's' : ''}${joins.length ? ` · ${joins.join(', ')}` : ''}`);
+  if (parts.length) cap.append(document.createElement('br'), parts.join(' + '));
   return cap;
 }
 
@@ -135,11 +140,16 @@ async function main() {
     const row = document.createElement('section');
     row.className = 'set';
     for (const id of ids) {
-      const fig = document.createElement('figure');
-      const svg = card(chars.get(id));
-      fig.style.width = `${svg.getAttribute('width')}px`;
-      fig.append(svg, caption(chars.get(id)));
-      row.append(fig);
+      const char = chars.get(id);
+      for (let p = 0; p < planCount(char); p++) {
+        const shown = planChar(char, p);
+        const fig = document.createElement('figure');
+        if (p > 0) fig.className = 'plan';
+        const svg = card(shown);
+        fig.style.width = `${svg.getAttribute('width')}px`;
+        fig.append(svg, caption(shown, p));
+        row.append(fig);
+      }
     }
     sets.append(h, row);
   }
