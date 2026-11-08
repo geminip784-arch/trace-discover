@@ -7,6 +7,7 @@
   "strokes": [
     {
       "kind": "line",
+      "part": "stem and belly",
       "points": [
         [0.1, 0],
         [0.1, 0.043],
@@ -58,6 +59,7 @@
     },
     {
       "kind": "line",
+      "part": "flag",
       "points": [
         [0.1, 0],
         [0.121, 0],

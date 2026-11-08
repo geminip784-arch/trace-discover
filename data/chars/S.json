@@ -8,6 +8,7 @@
   "strokes": [
     {
       "kind": "line",
+      "part": "curve",
       "points": [
         [0.547, 0.125],
         [0.522, 0.09],

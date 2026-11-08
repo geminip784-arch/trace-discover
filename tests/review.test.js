@@ -19,7 +19,7 @@ const review = (s, id, day, ok = true, outcome = CLEAN) => recordReview(s, id, {
 test('the schedule is 1, 3, 7 and 21 days, at most 2 reviews a day', () => {
   assert.deepEqual(INTERVALS, [1, 3, 7, 21]);
   assert.equal(DAILY_CAP, 2);
-  assert.deepEqual(PRACTICE_MORE, { failedCopies: 2, wrongStarts: 3 });
+  assert.deepEqual(PRACTICE_MORE, { failedCopies: 2, wrongStarts: 3, mirrored: 1 });
 });
 
 test('calendar days: months, years, leap days and clock changes', () => {

@@ -92,3 +92,10 @@ counting thing), fairy (Jugnu is the only character).
 - **[later]** The find-library pictures (alligator, letter pictures, shadows) have room round them in their 200 x 240 box, so they look a little smaller on a card than the games' own pictures. A per-picture crop would fill the cards better.
 - **[5H]** Missing piece: rotated pieces, which she turns to fit (a quarter that only fits once turned). Today pieces are never turned, so a quarter at another place is another outline.
 - **[later]** Missing piece level 4: a few cuts are thin (the star's top quarters, the sock's bottom-left corner). If she cannot tell them apart, raise the 25% bar in `tools/missing-cuts.js` and run `npm run missing-cuts`.
+
+## Slice 5J: follow-ups
+
+- **[later]** Copy-it shape limits (`COPY_MATCH` in `src/copy.js`) were set on drawn test letters, not on her hand. Check her real `copy` log entries (`match.distance`, `reason`) after a week and tune them.
+- **[later]** Cross-board look-alikes written very wobbly (2 for Z, 8 for B, 5 for S) can occasionally pass, about 3 in 100 at a wobble of 3% of the letter's height. If she mixes them up, raise `closeKind` to make the target win less often in a close call.
+- **[later]** A page of parallel slanted lines can pass as W (W is itself a zigzag). Unlikely from her; noted in case it happens.
+- **[later]** In round 3, a letter with fewer strokes than the letter needs gets a hint after 5 seconds, not a failure reason (as built in 5I). So a C written for G is helped by Jugnu showing the bar, rather than "Almost! The bar is missing". Watch whether that is enough.

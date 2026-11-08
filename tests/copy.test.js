@@ -1,17 +1,27 @@
 // Run: node --test tests/copy.test.js
-// The copy-it round (Slice 5I): her whole letter is fitted to the model's box and
-// judged at Stage 3. Uses the real character files in data/chars/.
+// The copy-it round (Slice 5I; judged by shape since Slice 5J): her whole letter
+// is judged by its shape against the board's characters, every part must be
+// there, and its size must be 75% to 125% of the model. Start points, direction
+// and order are habits: logged and coached, never failed. Uses the real
+// character files in data/chars/. More shape tests: tests/shape.test.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  COPY_SIZE, COPY_STAGE, boxOf, refBox, fitLetter, scoreCopy, copyReady, copyStatus, copyLogEntry, usableStrokes,
+  COPY_SIZE, COPY_STAGE, boxOf, refBox, fitLetter, scoreCopy as judgeAlone, copyReady as readyAlone,
+  copyStatus as statusAlone, copyLogEntry, usableStrokes, compareIds, copyShow,
 } from '../src/copy.js';
 import { DEFAULTS } from '../src/geometry.js';
 import { CONFIG, finishCopy, isCopyRound } from '../src/progress.js';
 
 const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
 const MANIFEST = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url), 'utf8'));
+
+// As the game does: compared with the character's board and its look-alikes.
+const othersOf = (char) => compareIds(char.id).map(load);
+const scoreCopy = (strokes, char, opts = {}) => judgeAlone(strokes, char, { others: othersOf(char), ...opts });
+const copyReady = (strokes, char, opts = {}) => readyAlone(strokes, char, { others: othersOf(char), ...opts });
+const copyStatus = (strokes, char, opts = {}) => statusAlone(strokes, char, { others: othersOf(char), ...opts });
 
 // Her copy of a letter: every stroke's points, scaled by `k` about the letter's
 // top-left and moved by (dx, dy). That is "the same letter, smaller or bigger,
@@ -84,7 +94,7 @@ test('too small fails', () => {
     assert.equal(r.ok, false);
     assert.equal(r.reason, 'too-small', String(k));
     assert.equal(r.sizeOk, false);
-    assert.equal(r.wrongStroke, null); // the whole letter: Jugnu shows all of it
+    assert.equal(copyShow(r), 'size'); // a dashed outline at the right size round her letter
   }
 });
 
@@ -97,66 +107,46 @@ test('too big fails', () => {
   }
 });
 
-test('strokes in the wrong order fail, and name the stroke she should have drawn', () => {
-  const char = load('H');
-  const r = scoreCopy(copyOf(char, { order: [2, 0, 1] }), char); // the bar first
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'wrong-order');
-  assert.equal(r.wrongStroke, 0);
-  assert.equal(r.strokes[0].from, 2);
-  assert.equal(r.strokes[1].ok, true);
+test('habits never fail a copy: strokes out of order, backwards or started elsewhere still pass', () => {
   const e = load('E');
-  const r2 = scoreCopy(copyOf(e, { order: [0, 3, 1, 2] }), e);
-  assert.equal(r2.reason, 'wrong-order');
-  assert.equal(r2.wrongStroke, 1);
-});
-
-test('either order is fine where the character allows it (T)', () => {
-  const char = load('T');
-  assert.ok(scoreCopy(copyOf(char, { order: [0, 1] }), char).ok);
-  assert.ok(scoreCopy(copyOf(char, { order: [1, 0] }), char).ok);
-});
-
-test('a stroke drawn backwards fails on direction, and names that stroke', () => {
-  for (const [id, s] of [['L', 0], ['H', 2], ['E', 3], ['4', 1]]) {
-    const char = load(id);
-    const r = scoreCopy(copyOf(char, { reverse: [s], k: 0.9, dx: 0.5 }), char);
-    assert.equal(r.ok, false, id);
-    assert.equal(r.reason, 'wrong-direction', id);
-    assert.equal(r.wrongStroke, s, id);
-  }
-});
-
-test('a missing stroke fails, and names it', () => {
-  const e = load('E');
-  const r = scoreCopy(copyOf(e, { drop: [3] }), e);
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'missing-stroke');
-  assert.equal(r.wrongStroke, 3);
-  // A missing middle stroke: the letter is still full height, so the size is fine.
+  const order = scoreCopy(copyOf(e, { order: [0, 3, 1, 2] }), e);
+  assert.ok(order.ok, order.reason);
+  assert.equal(order.habits.order, 'different');
+  assert.equal(order.habits.usual, false);
   const h = load('H');
-  const r2 = scoreCopy(copyOf(h, { drop: [2] }), h);
-  assert.equal(r2.sizeOk, true);
-  assert.equal(r2.reason, 'missing-stroke');
-  assert.equal(r2.wrongStroke, 2);
+  const back = scoreCopy(copyOf(h, { reverse: [1] }), h);
+  assert.ok(back.ok, back.reason);
+  assert.deepEqual(back.habits.directions, [true, false, true]);
+  // A started-elsewhere stroke: the stem drawn from the middle down, then the rest up to the top.
+  const l = load('L');
+  const s = copyOf(l);
+  const mid = Math.floor(s[0].length / 2);
+  const start = scoreCopy([s[0].slice(mid), s[0].slice(0, mid + 1), s[1]], l);
+  assert.ok(start.ok, start.reason);
+  assert.equal(start.habits.usual, false);
 });
 
-test('an extra stroke after the letter is complete fails', () => {
-  const char = load('L');
-  const strokes = [...copyOf(char), char.strokes[0].points];
-  const r = scoreCopy(strokes, char);
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'extra-stroke');
+test('when habits differ from the default plan, Jugnu replays the usual way once; a usual copy needs nothing', () => {
+  const h = load('H');
+  assert.equal(copyShow(scoreCopy(copyOf(h), h)), 'none');
+  assert.equal(copyShow(scoreCopy(copyOf(h, { reverse: [0] }), h)), 'usual-way');
+  // Another allowed plan also passes, and is coached the same way.
+  const b = load('B');
+  const three = scoreCopy(b.plans[0].strokes.map((x) => x.points), b);
+  assert.ok(three.ok);
+  assert.equal(three.habits.plan, 1);
+  assert.equal(copyShow(three), 'usual-way');
 });
 
-test('a stroke far off its shape fails off-path', () => {
-  const char = load('L');
-  const strokes = copyOf(char);
-  strokes[1] = strokes[1].map(([x], i) => [x, 1 - 0.3 * Math.sin((i / 23) * Math.PI)]); // a big bump
-  const r = scoreCopy(strokes, char);
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'off-path');
-  assert.equal(r.wrongStroke, 1);
+test('a missing stroke fails and names the part: A with no crossbar, E with no middle bar, H with no bar', () => {
+  for (const [id, drop, part] of [['A', [2], 'bar'], ['E', [2], 'middle bar'], ['H', [2], 'bar']]) {
+    const char = load(id);
+    const r = scoreCopy(copyOf(char, { drop }), char);
+    assert.equal(r.ok, false, id);
+    assert.equal(r.reason, 'missing-stroke', id);
+    assert.equal(r.missing.part, part, id);
+    assert.equal(copyShow(r), 'part'); // Jugnu draws it on the model
+  }
 });
 
 test('joined versions are accepted: L in one go, 4 with strokes 2 and 3 in one go, 7 in one go', () => {
@@ -196,7 +186,7 @@ test('the fit is one uniform scale, centre on centre', () => {
   for (const key of ['x0', 'y0', 'x1', 'y1']) assert.ok(Math.abs(got[key] - ref[key]) < 1e-9, key);
 });
 
-test('judge now: once she has drawn as many strokes as the letter has, or a joined letter already passes', () => {
+test('judge now: once she has drawn as many strokes as the longest plan has, or fewer already pass', () => {
   const l = load('L');
   const strokes = copyOf(l);
   assert.equal(copyReady([], l), false);
@@ -207,6 +197,12 @@ test('judge now: once she has drawn as many strokes as the letter has, or a join
   assert.equal(copyReady(copyOf(l, { reverse: [0, 1] }), l), true);
   const e = load('E');
   assert.equal(copyReady(copyOf(e, { drop: [3] }), e), false); // unfinished: see copyStatus
+  // B: 2 strokes by default, 3 in its other plan. Stem and top bump only is not a B yet.
+  const b = load('B');
+  const b3 = b.plans[0].strokes.map((x) => x.points);
+  assert.equal(copyReady(b3.slice(0, 2), b), false);
+  assert.equal(copyReady(b3, b), true);
+  assert.equal(copyReady(copyOf(b), b), true); // the default 2 strokes already pass
 });
 
 test('the wait after her last lift is 2 seconds for a whole letter, 5 for an unfinished one, and she gets 3 tries', () => {
@@ -242,7 +238,7 @@ test('finishCopy: a fail lets her try again, and the third fail ends the round w
   assert.deepEqual(c.state, { round: 3, helped: true });
 });
 
-test('the copy log entry is a new "copy" type with the fit, the size and every stroke', () => {
+test('the copy log entry is a "copy" type with the shape match, the size, the habits and every stroke', () => {
   const char = load('H');
   const result = scoreCopy(copyOf(char, { k: 0.8, reverse: [1] }), char);
   const e = copyLogEntry({ char: 'H', result, attempt: 2, now: new Date('2026-11-07T10:00:00Z') });
@@ -250,8 +246,20 @@ test('the copy log entry is a new "copy" type with the fit, the size and every s
   assert.equal(e.time, '2026-11-07T10:00:00.000Z');
   assert.equal(e.char, 'H');
   assert.equal(e.attempt, 2);
-  assert.equal(e.ok, false);
-  assert.equal(e.reason, 'wrong-direction');
+  assert.equal(e.ok, true); // a stroke drawn backwards is a habit, not a fail
+  assert.equal(e.reason, null);
+  assert.equal(e.match.char, 'H');
+  assert.equal(e.match.mirrored, false);
+  assert.ok(e.match.distance < 0.3, String(e.match.distance)); // small: only the resampling moved
+  assert.equal(e.lookalike, null);
+  assert.equal(e.missing, null);
+  assert.equal(e.mirrored, false);
+  // Habits: plan used, starts, directions, order.
+  assert.equal(e.plan, 0);
+  assert.deepEqual(e.starts, [true, false, true]);
+  assert.deepEqual(e.directions, [true, false, true]);
+  assert.equal(e.order, 'usual');
+  assert.equal(e.usual, false);
   assert.equal(e.scale, 1.25);
   assert.equal(e.size, 0.8);
   assert.equal(e.sizeOk, true);
@@ -267,7 +275,7 @@ test('the copy log entry is a new "copy" type with the fit, the size and every s
 test('a complete letter (as many strokes as the model) is judged at once, right or wrong', () => {
   for (const id of ['L', 'H', 'E', '4']) {
     const char = load(id);
-    assert.deepEqual(copyStatus(copyOf(char, { k: 0.9, dx: -1 }), char), { action: 'judge-now', next: null }, id);
+    assert.deepEqual(copyStatus(copyOf(char, { k: 0.9, dx: -1 }), char), { action: 'judge-now', next: null, plan: 0 }, id);
     assert.equal(copyStatus(copyOf(char, { reverse: [0] }), char).action, 'judge-now', id);
   }
 });
@@ -283,10 +291,11 @@ test('a joined letter that does not pass is judged after the 2-second wait, not 
   // L in one go, but far too big: whole, yet it fails.
   const one = [[...l.strokes[0].points, ...l.strokes[1].points].map(([x, y]) => [x * 1.6, y * 1.6])];
   assert.equal(scoreCopy(one, l).reason, 'too-big');
-  assert.deepEqual(copyStatus(one, l), { action: 'judge-soon', next: null });
-  // L in one go, drawn backwards.
+  assert.equal(copyStatus(one, l).action, 'judge-soon');
+  // L in one go, drawn backwards, is a whole L: it passes (direction is a habit) and is judged at once.
   const back = [[...l.strokes[0].points, ...l.strokes[1].points].reverse()];
-  assert.equal(copyStatus(back, l).action, 'judge-soon');
+  assert.equal(copyStatus(back, l).action, 'judge-now');
+  assert.ok(scoreCopy(back, l).ok);
 });
 
 test('fewer strokes than the letter needs: wait for the hint, which shows the next stroke', () => {
@@ -304,33 +313,36 @@ test('fewer strokes than the letter needs: wait for the hint, which shows the ne
     const drop = char.strokes.map((_, i) => i).filter((i) => !keep.includes(i));
     for (const [k, dx] of [[1, 0], [0.8, -1.2], [1.2, 0.9]]) {
       const got = copyStatus(copyOf(char, { drop, k, dx }), char);
-      assert.deepEqual(got, { action: 'hint', next }, `${id} with strokes ${keep.map((i) => i + 1)} at ${k}`);
+      assert.deepEqual(got, { action: 'hint', next, plan: 0 }, `${id} with strokes ${keep.map((i) => i + 1)} at ${k}`);
     }
   }
 });
 
 test('the hint still finds the next stroke when a stroke so far was drawn backwards', () => {
   const h = load('H');
-  assert.deepEqual(copyStatus(copyOf(h, { drop: [2], reverse: [1] }), h), { action: 'hint', next: 2 });
+  assert.deepEqual(copyStatus(copyOf(h, { drop: [2], reverse: [1] }), h), { action: 'hint', next: 2, plan: 0 });
 });
 
 test('4: stroke 1 alone reads as unfinished, though strokes 2 and 3 may be joined', () => {
   const four = load('4');
   const s = four.strokes.map((x) => x.points);
-  assert.deepEqual(copyStatus([s[0]], four), { action: 'hint', next: 1 });
+  assert.deepEqual(copyStatus([s[0]], four), { action: 'hint', next: 1, plan: 0 });
   assert.equal(copyStatus([s[0], [...s[1], ...s[2]]], four).action, 'judge-now');
-  assert.deepEqual(copyStatus([s[0], s[1]], four), { action: 'hint', next: 2 });
+  assert.deepEqual(copyStatus([s[0], s[1]], four), { action: 'hint', next: 2, plan: 0 });
 });
 
-test('either order (T): the hint shows whichever stroke she has not drawn', () => {
+test('T in either order (two plans): the hint shows whichever stroke she has not drawn', () => {
   const t = load('T');
-  assert.deepEqual(copyStatus(copyOf(t, { drop: [1] }), t), { action: 'hint', next: 1 });
-  assert.deepEqual(copyStatus(copyOf(t, { drop: [0] }), t), { action: 'hint', next: 0 });
+  assert.deepEqual(copyStatus(copyOf(t, { drop: [1] }), t), { action: 'hint', next: 1, plan: 0 });
+  // The bar first is T's second plan (bar, stem): next is its stroke 2, the stem.
+  const got = copyStatus(copyOf(t, { drop: [0] }), t);
+  assert.deepEqual(got, { action: 'hint', next: 1, plan: 1 });
+  assert.equal(t.plans[0].strokes[1].part, 'stem');
 });
 
 test('only stray taps: the hint shows stroke 1', () => {
   const l = load('L');
-  assert.deepEqual(copyStatus([[[1, 0.5]]], l), { action: 'hint', next: 0 });
+  assert.deepEqual(copyStatus([[[1, 0.5]]], l), { action: 'hint', next: 0, plan: 0 });
 });
 
 test('a hint is not a failed copy: only a judged copy moves the count (finishCopy)', () => {

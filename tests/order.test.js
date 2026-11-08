@@ -1,5 +1,8 @@
 // Run: node --test tests/order.test.js
-// Strokes that may be drawn in any order ("anyOrder"), using the real T.json.
+// Strokes that may be drawn in any order ("anyOrder" in a character file). Since
+// Slice 5J no generated character uses it (T's either order is two stroke plans,
+// tests/plans.test.js), but character files may (later Urdu letters), so it is
+// tested on T's default strokes with an anyOrder group added.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -7,7 +10,8 @@ import { groupOf, nextStrokes, candidatesFor, pickCandidate, variantLabel } from
 import { initialState, applyLift } from '../src/progress.js';
 
 const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
-const T = load('T');
+const { plans, ...tFile } = load('T');
+const T = { ...tFile, anyOrder: [[0, 1]] };
 const L = load('L');
 const shift = (pts, dx, dy) => pts.map(([x, y]) => [x + dx, y + dy]);
 

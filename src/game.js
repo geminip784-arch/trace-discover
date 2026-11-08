@@ -31,7 +31,21 @@
 // Slice 5I part 2: a review (`review: true`) is the copy-it round alone. It shows
 // one round light, and never reads, saves or clears her saved practice rounds.
 // onDone also reports the sitting, for the review schedule and the practice-more
-// list (src/review.js): { id, star, helped, failedCopies, wrongStarts, review }.
+// list (src/review.js): { id, star, helped, failedCopies, wrongStarts, mirrored, review }.
+//
+// Slice 5J: stroke plans and shape judging.
+// - Rounds 1 and 2 accept any allowed stroke plan (src/variants.js): the
+//   default plan is shown until her strokes leave it, then her plan's track,
+//   start dots and help follow. Each stroke is still checked for start,
+//   direction and shape.
+// - The copy-it round is judged by shape (src/copy.js). Start points, direction
+//   and order never fail a copy: when they differ from the default plan Jugnu
+//   replays the usual way once on the card; a mirrored letter passes and Jugnu
+//   shows it the right way round once.
+// - A failed copy shows why before her letter fades: her letter beside the model
+//   with the part she missed glowing, a dashed outline at the right size, Jugnu
+//   drawing the missing part, or Jugnu tracing the whole model slowly.
+// - A short parent-facing line (src/notes.js) at the top says what the app saw.
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
@@ -39,12 +53,15 @@ import {
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
-import { variantLabel, candidatesFor, nextStrokes, pickCandidate } from './variants.js';
 import {
-  CONFIG, ROUNDS, initialState, applyLift, roundCount, stageForRound,
+  variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar,
+} from './variants.js';
+import {
+  CONFIG, ROUNDS, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
   startRounds, markHelp, isHelp, finishRound, starEarned, roundLights, isCopyRound, finishCopy,
 } from './progress.js';
-import { scoreCopy, copyStatus, copyLogEntry } from './copy.js';
+import { scoreCopy, copyStatus, copyLogEntry, copyShow, compareIds, boxOf, refBox } from './copy.js';
+import { traceNote, copyNote } from './notes.js';
 import { logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
@@ -100,7 +117,9 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     return { stop: () => panel?.remove() };
   }
 
-  const strokes = char.strokes;
+  const strokes = char.strokes; // the default plan: the model card and Jugnu's first demonstrations
+  // The copy round compares her letter with the board's other characters (and look-alikes).
+  const others = (await Promise.all(compareIds(char.id).filter((id) => id !== char.id).map((id) => loadChar(id, manifest)))).filter(Boolean);
   const ink = createInk(els.ink);
   const fx = createFx(els.fx);
   let layout = null;
@@ -116,9 +135,13 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   let rp = review ? { round: rounds - 1, helped: false } : startRounds(readRounds(char.id), rounds); // { round, helped }
   const keepRounds = (fn) => { if (!review) fn(); };
   // This sitting, for the practice-more list: judged copies that failed, and wrong starts.
-  const sitting = { failedCopies: 0, wrongStarts: 0 };
+  const sitting = { failedCopies: 0, wrongStarts: 0, mirrored: 0 };
   const freshRound = () => ({ ...initialState(strokes.length), stage: stageForRound(rp.round, rounds) });
   let progress = freshRound();
+  // The stroke plans her strokes still follow this round ([{ plan, done }]); the first is shown.
+  let following = startPlans(char);
+  const shown = () => following[0];
+  const planNow = () => planStrokes(char, shown().plan);
   let goodStrokes = 0; // passed strokes so far: a "good" line is said once per CONFIG.goodEvery
   // What a touch does now:
   // 'trace'  she draws a stroke and it is scored
@@ -134,8 +157,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   const isCopy = () => isCopyRound(rp.round, rounds);
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
-  // The stroke Jugnu demonstrates: the first unfinished one in the recorded order.
-  const ref = () => strokes[progress.current].points;
+  // The stroke Jugnu demonstrates: the first unfinished one of the shown plan.
+  const ref = () => planNow()[progress.current].points;
   const startDot = () => ref()[0];
   const home = () => [HOME.x - offset, HOME.y];
   const bandWidth = () => trackLook(progress.stage).band * layout.unit;
@@ -197,10 +220,25 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   function redraw() {
     drawLines(els.lines, layout);
     if (card) return drawModelCard(els.lines, layout, card, char);
-    drawStageTrack(els.lines, layout, char, offset, {
+    drawStageTrack(els.lines, layout, planChar(char, shown().plan), offset, {
       stage: progress.stage,
       done: progress.done,
     });
+  }
+
+  // ---- the parent-facing line (src/notes.js), small, at the top ----
+  let noteTimer = 0;
+  function showNote(text) {
+    if (!els.note) return;
+    clearTimeout(noteTimer);
+    if (!text) {
+      els.note.classList.remove('on');
+      return;
+    }
+    els.note.textContent = text;
+    els.note.hidden = false;
+    els.note.classList.add('on');
+    noteTimer = setTimeout(() => els.note.classList.remove('on'), CONFIG.noteMs);
   }
 
   // The writing area's own size (it fills the screen), so the browser bar
@@ -241,10 +279,11 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // What happens after a stroke that did not count. The reward waits; she tries again.
   // `tried` is the stroke she was scored against (with anyOrder, maybe not the current one).
   function react(reason, demo, tried) {
+    showNote(traceNote(demo ? 'wrong-direction' : reason));
     if (reason === 'wrong-start') {
-      for (const i of nextStrokes(char, progress.done)) {
-        fx.pulse(toPx(strokes[i].points[0]), START_DOT_RADIUS * layout.unit, CONFIG.pulseMs);
-      }
+      const starts = new Map();
+      for (const v of planCandidates(char, following)) starts.set(v.points[0].join(','), v.points[0]);
+      for (const p of starts.values()) fx.pulse(toPx(p), START_DOT_RADIUS * layout.unit, CONFIG.pulseMs);
     }
     if (demo) {
       // Demonstrations use the recorded order.
@@ -267,7 +306,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   async function assist(k, letterDone) {
     phase = 'held';
     speak('assist');
-    const pts = strokes[k].points;
+    const pts = planNow()[k].points;
     const trail = fx.trail(pts.map(toPx), TRAIL_WIDTH * layout.unit);
     await jugnu.demo(pts, CONFIG.assistMs, CONFIG.hopMs, (f) => trail.set(f));
     if (!alive) return;
@@ -288,20 +327,24 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     redraw();
     updateDebug();
     speak('copy');
-    if (!(await showOnCard(strokes.map((_, i) => i)))) return;
+    if (!(await showOnCard(modelPaths()))) return;
     phase = 'trace';
   }
 
-  // Jugnu draws strokes `indices` on the model card, each leaving a glowing
-  // trail, then the trails fade and he flies home. Resolves false if stopped.
-  async function showOnCard(indices) {
+  // The default plan's lines: the model letter, the usual way.
+  const modelPaths = () => strokes.filter((s) => s.kind === 'line').map((s) => s.points);
+
+  // Jugnu draws `paths` (letter units of the card's letter) on the model card,
+  // each leaving a glowing trail, then the trails fade and he flies home.
+  // `ms` is how long each path takes. Resolves false if stopped.
+  async function showOnCard(paths, ms = CONFIG.copyDemoMs) {
     phase = 'held';
     const trails = [];
-    for (const i of indices) {
-      const pts = strokes[i].points.map(card.toMain);
+    for (const path of paths) {
+      const pts = path.map(card.toMain);
       const trail = fx.trail(pts.map(toPx), CARD_TRAIL_WIDTH * card.k);
       trails.push(trail);
-      const flown = await jugnu.demo(pts, CONFIG.copyDemoMs, CONFIG.hopMs, (f) => trail.set(f));
+      const flown = await jugnu.demo(pts, ms, CONFIG.hopMs, (f) => trail.set(f));
       if (!alive || !flown) return false;
     }
     for (const t of trails) t.fadeOut(CONFIG.trailFadeMs);
@@ -318,46 +361,82 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     const id = ink.end();
     copy.strokes.push(a.points);
     copy.ids.push(id);
-    const { action, next } = copyStatus(copy.strokes, char);
+    const { action, next, plan } = copyStatus(copy.strokes, char, { others });
     if (action === 'judge-now') judgeCopy();
     else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
-    else later(() => hintCopy(next), CONFIG.copyHintMs);
+    else later(() => hintCopy(planStrokes(char, plan)[next].points), CONFIG.copyHintMs);
   }
 
   // She stopped part way: Jugnu draws the next stroke on the card. Her strokes
   // stay on the lines, nothing is judged or logged, and it is not a failed copy.
-  async function hintCopy(k) {
+  async function hintCopy(path) {
     if (phase !== 'trace') return;
-    if (!(await showOnCard([k]))) return;
+    if (!(await showOnCard([path]))) return;
     phase = 'trace';
+  }
+
+  // Why the copy failed, shown while her letter is still there (src/copy.js copyShow).
+  // Resolves false if stopped.
+  async function showWhy(result) {
+    const how = copyShow(result);
+    if (how === 'part') return showOnCard([result.missing.points]);
+    if (how === 'slow') return showOnCard(modelPaths(), CONFIG.copySlowMs);
+    phase = 'held';
+    const hers = boxOf(copy.strokes);
+    if (how === 'size' && hers) {
+      // A dashed outline the model's size, standing on the lines (sky line to
+      // grass line, where a letter this size belongs), lined up with her letter.
+      const model = refBox(char);
+      const [x0, y0] = toPx([hers.cx - model.w / 2 - 0.08, model.y0 - 0.08]);
+      const [x1, y1] = toPx([hers.cx + model.w / 2 + 0.08, model.y1 + 0.08]);
+      fx.outline({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, CONFIG.copyReasonMs);
+    }
+    if (how === 'beside' && hers) {
+      // Her letter, as small as the model's, on a card of its own just left of the model card.
+      const k = card.k * 0.95;
+      const scale = (1 / Math.max(hers.h, 0.01)) * k;
+      const w = hers.w * scale;
+      const h = hers.h * scale;
+      const box = { w: w + 0.3 * card.k, h: card.h, x: card.x - w - 0.3 * card.k - 0.08 * layout.unit, y: card.y };
+      const ox = box.x + 0.15 * card.k;
+      const oy = box.y + (box.h - h) / 2;
+      const lines = copy.strokes.map((pts) => pts.map(([x, y]) => [ox + (x - hers.x0) * scale, oy + (y - hers.y0) * scale]));
+      fx.beside(lines, box, CARD.letter.width * card.k, CONFIG.copyReasonMs);
+      if (result.missing) fx.partGlow(result.missing.points.map(card.toMain).map(toPx), CARD.letter.width * card.k, CONFIG.copyReasonMs);
+    }
+    await wait(CONFIG.copyReasonMs);
+    return alive;
   }
 
   async function judgeCopy() {
     if (phase !== 'trace' || copy.strokes.length === 0) return;
     phase = 'held';
-    const result = scoreCopy(copy.strokes, char);
+    const result = scoreCopy(copy.strokes, char, { others });
     const r = finishCopy(rp, { ok: result.ok, fails: copy.fails }, rounds);
     logAttempt(copyLogEntry({ char: char.id, result, attempt: copy.fails + 1, helped: r.helpedOut }));
     if (!result.ok) sitting.failedCopies += 1;
+    if (result.ok && result.mirrored) sitting.mirrored += 1;
     sitting.wrongStarts += result.strokes.filter((x) => x.startOk === false && x.reason !== 'extra-stroke').length;
     debug?.copy(result);
+    showNote(copyNote(result));
     if (result.ok) {
       chime();
       for (const pts of copy.strokes) fx.sparkle(pts.map(toPx), CONFIG.sparkleMs);
       await wait(CONFIG.sparkleMs);
       if (!alive) return;
+      // Habits are coached, never failed: a mirrored letter, or one drawn another
+      // way than the default plan, passes, and Jugnu shows the usual way once.
+      if (copyShow(result) !== 'none' && !(await showOnCard(modelPaths()))) return;
       return afterRound(r, copy.strokes);
     }
-    // Her letter fades, and Jugnu shows on the card the stroke that went wrong
-    // (the whole letter when its size was the problem). Then she tries again.
+    // Why it failed, while her letter is still there. Then her letter fades and she tries again.
     copy.fails = r.fails;
     updateDebug();
+    speak('copyAgain');
+    if (!(await showWhy(result))) return;
     for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
     copy.strokes = [];
     copy.ids = [];
-    speak('copyAgain');
-    const show = result.wrongStroke === null ? strokes.map((_, i) => i) : [result.wrongStroke];
-    if (!(await showOnCard(show))) return;
     if (r.helpedOut) return afterRound(r, null);
     phase = 'trace';
   }
@@ -391,6 +470,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     ink.clear();
     fx.clear();
     progress = freshRound();
+    following = startPlans(char);
     applyLayout(); // the copy round lays the screen out round its model card
     phase = 'trace';
     beginStroke();
@@ -464,7 +544,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
       ink.begin(u, PLAIN_INK);
       return;
     }
-    const candidates = candidatesFor(char, progress.done);
+    const candidates = planCandidates(char, following);
     attempt = {
       candidates,
       trackers: candidates.map((v) => createLiveTracker(v.points, progress.stage)),
@@ -490,12 +570,23 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     if (counted && !a.startOk) result = { ...result, ok: false, reason: 'wrong-start', startOk: false };
     if (counted && result.reason === 'wrong-start') sitting.wrongStarts += 1;
     const variant = result.ok ? variantLabel(pick.variant) : 'none';
-    const lift = applyLift(progress, { ok: result.ok, from: pick.variant.from, to: pick.variant.to, counted });
+    let lift;
+    if (result.ok) {
+      // A passed stroke: keep the plans it fits, and show the first of them.
+      following = advancePlans(a.points, char, following, stage);
+      if (following.length === 0) following = [{ plan: pick.variant.plan, done: progress.done }]; // cannot happen: the pick passed
+      lift = applyPlanPass(progress, shown().done);
+    } else {
+      lift = applyLift(progress, { ok: false, counted });
+      // Never stuck: Jugnu draws the shown plan's stroke, so from now on she follows that plan.
+      if (lift.assist) following = [{ plan: shown().plan, done: lift.state.done }];
+    }
 
     logAttempt({
       time: new Date().toISOString(),
       char: char.id,
       stage,
+      plan: pick.variant.plan, // Slice 5J: which stroke plan the stroke was scored in (0: the default)
       stroke: pick.variant.from,
       variant,
       ok: result.ok,
@@ -530,7 +621,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     }
     ink.fade(id, CONFIG.fadeMs);
     if (lift.assist) return assist(current, lift.letterDone);
-    react(result.reason, lift.demo, strokes[pick.variant.from].points);
+    react(result.reason, lift.demo, pick.variant.points);
   }
 
   const stopTracking = trackSinglePointer(els.area, {
@@ -625,6 +716,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
       jugnu.stop();
       fx.clear();
       ink.clear();
+      clearTimeout(noteTimer);
+      if (els.note) { els.note.classList.remove('on'); els.note.hidden = true; }
       els.lines.replaceChildren();
       els.jugnu.hidden = true;
       if (els.rounds) {

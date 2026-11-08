@@ -24,6 +24,10 @@ export const CONFIG = {
   copyTries: 3,           // failed copies before the round counts as done with help
   copyDemoMs: 1100,       // Jugnu draws one stroke of the model card this fast
   copyFadeMs: 900,        // after a failed copy, her letter fades out over this long
+  // Slice 5J: why a copy failed is shown before her letter fades.
+  copySlowMs: 2200,       // not recognizable: Jugnu traces each stroke of the model this slowly
+  copyReasonMs: 2600,     // her letter beside the model, or the size outline, shows this long
+  noteMs: 4000,           // a parent-facing line stays this long, then fades
 };
 
 const noneDone = (n) => new Array(n).fill(false);
@@ -75,6 +79,17 @@ export function applyLift(state, { ok, from = state.current, to = from, counted 
   }
   // 3 or 4 fails in a row: Jugnu demonstrates.
   return { state: { ...state, streak }, letterDone: false, demo: streak >= cfg.failsForDemo, assist: false };
+}
+
+// Stroke plans (Slice 5J, src/variants.js): a passed stroke, as the plan now
+// shown sees it. `done` is that plan's finished strokes after the stroke (the
+// plan may have more or fewer strokes than the one shown before). The streak
+// starts again, as after any passed stroke.
+// Returns { state, letterDone, demo, assist }, like applyLift.
+export function applyPlanPass(state, done) {
+  if (isLetterDone(state)) return nothing(state);
+  const next = { ...state, strokeCount: done.length, done: [...done], current: firstUnfinished(done), streak: 0 };
+  return { state: next, letterDone: isLetterDone(next), demo: false, assist: false };
 }
 
 // ---------------------------------------------------------------------------

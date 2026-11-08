@@ -15,9 +15,19 @@
 //                                     from > to goes anticlockwise.
 // and says which guide line it starts and ends on (`from` and `to`: 'sky',
 // 'fence', 'grass', or null for a point between lines). tests/glyphs.test.js
-// checks them.
+// checks them. Each stroke also has a short `part` name ('bar', 'tail'...)
+// for the parent-facing lines (src/notes.js: "Almost! The bar is missing").
 //
 // Stroke count, order, direction and start follow data/stroke-order.js.
+//
+// Stroke plans (Slice 5J). `strokes` is the default plan: the one the model
+// card and Jugnu show. `plans` lists the other ways she may draw the same
+// letter: a split (B's bumps one at a time), a merge (K's "<" in one go) or
+// another order (H: stem, bar, stem). Every plan is built from the same exact
+// lines and arcs, so every plan has the same shape (tests/glyphs.test.js
+// checks it), and no plan runs any part the other way. Joins the one-stroke
+// rule already accepts (src/variants.js, L in one go) are listed too, so the
+// whole list is visible on glyphs.html.
 
 export const MARGIN = 0.08; // left edge of every character (x of a left stem)
 
@@ -39,7 +49,7 @@ export const MIRROR_SYMMETRIC = ['A', 'H', 'I', 'M', 'O', 'T', 'U', 'V', 'W', 'X
 
 const line = (...points) => ({ type: 'line', points });
 const arc = (cx, cy, rx, ry, from, to) => ({ type: 'arc', cx, cy, rx, ry, from, to });
-const stroke = (from, to, ...pieces) => ({ from, to, pieces });
+const stroke = (part, from, to, ...pieces) => ({ part, from, to, pieces });
 
 // The point at `angle` on an ellipse, as arc() measures angles.
 export function arcPoint(cx, cy, rx, ry, angle) {
@@ -82,164 +92,234 @@ const fiveTop = arcPoint(fiveCx, five.cy, five.r, five.r, five.start);
 const eight = { cx: m + 0.27, ru: 0.23, rl: 0.27 };
 const eightWaist = 2 * eight.ru; // 0.46
 
+
+// Shared pieces, so every plan is drawn from exactly the same geometry.
+const bTop = std - 0.06 - bump;   // centre x of B's upper bump
+const bLow = std - bump;          // centre x of B's lower bump (and P's and R's bump)
+const kArm = line([std, 0], [m, 0.5]);         // K: the arm, in to the stem at the fence
+const kLeg = line([m, 0.5], [std, 1]);         // K: the leg, out from the same point
+const rLegX = m + 0.22;                        // R: where the leg leaves the bump's return line
+const mMid = (m + wid) / 2;
+const wQ1 = m + (wid - m) / 4;
+const wQ3 = wid - (wid - m) / 4;
+const uR = (std - m) / 2;
+const twoTop = arcPoint(two.cx, two.cy, two.r, two.r, twoLeave);
+
+// Strokes used by more than one plan.
+const S = {
+  stem: stroke('stem', 'sky', 'grass', line([m, 0], [m, 1])),
+  aLeft: stroke('left slant', 'sky', 'grass', line([mid, 0], [m, 1])),
+  aRight: stroke('right slant', 'sky', 'grass', line([mid, 0], [std, 1])),
+  bTopBump: stroke('top bump', 'sky', 'fence', line([m, 0], [bTop, 0]), arc(bTop, 0.25, bump, bump, -90, 90), line([bTop, 0.5], [m, 0.5])),
+  bLowBump: stroke('bottom bump', 'fence', 'grass', line([m, 0.5], [bLow, 0.5]), arc(bLow, 0.75, bump, bump, -90, 90), line([bLow, 1], [m, 1])),
+  eTop: stroke('top bar', 'sky', 'sky', line([m, 0], [nar, 0])),
+  eMid: stroke('middle bar', 'fence', 'fence', line([m, 0.5], [nar - 0.08, 0.5])),
+  eLow: stroke('bottom bar', 'grass', 'grass', line([m, 1], [nar, 1])),
+  gCurve: stroke('curve', null, 'fence', arc(oc, 0.5, R, R, -45, -360)),
+  gBar: stroke('bar', 'fence', 'fence', line([oc + R, 0.5], [oc + 0.2, 0.5])),
+  hRight: stroke('right stem', 'sky', 'grass', line([std, 0], [std, 1])),
+  hBar: stroke('bar', 'fence', 'fence', line([m, 0.5], [std, 0.5])),
+  kArm: stroke('arm', 'sky', 'fence', kArm),
+  kLeg: stroke('leg', 'fence', 'grass', kLeg),
+  lFoot: stroke('foot', 'grass', 'grass', line([m, 1], [nar, 1])),
+  rBump: stroke('bump', 'sky', 'fence', line([m, 0], [bLow, 0]), arc(bLow, 0.25, bump, bump, -90, 90), line([bLow, 0.5], [m, 0.5])),
+  tStem: stroke('stem', 'sky', 'grass', line([mid, 0], [mid, 1])),
+  tBar: stroke('top bar', 'sky', 'sky', line([m, 0], [std, 0])),
+  xDown: stroke('first slant', 'sky', 'grass', line([m, 0], [std, 1])),
+  xUp: stroke('second slant', 'sky', 'grass', line([std, 0], [m, 1])),
+  yLeft: stroke('left arm', 'sky', 'fence', line([m, 0], [mid, 0.5])),
+  oneFlag: stroke('flag', null, 'sky', line([m, 0.2], [m + 0.22, 0])),
+  oneStem: stroke('stem', 'sky', 'grass', line([m + 0.22, 0], [m + 0.22, 1])),
+  fourStem: stroke('stem', 'sky', 'grass', line([nar - 0.12, 0], [nar - 0.12, 1])),
+  fourSlant: stroke('slant', 'sky', null, line([nar - 0.12, 0], [m, 0.7])),
+  fourBar: stroke('bar', null, null, line([m, 0.7], [nar, 0.7])),
+  sevenTop: stroke('top bar', 'sky', 'sky', line([m, 0], [nar, 0])),
+  sevenSlant: stroke('slant', 'sky', 'grass', line([nar, 0], [m + 0.16, 1])),
+  nineCircle: stroke('circle', null, null, arc(m + 0.25, 0.25, 0.25, 0.25, 0, -360)),
+  nineStem: stroke('stem', 'sky', 'grass', line([nar, 0], [nar, 1])),
+};
+// The pieces of two strokes drawn as one (the second starts where the first ends).
+const merge = (part, a, b) => stroke(part, a.from, b.to, ...a.pieces, ...b.pieces);
+
 export const GLYPHS = {
   A: { strokes: [
-    stroke('sky', 'grass', line([mid, 0], [m, 1])),
-    stroke('sky', 'grass', line([mid, 0], [std, 1])),
+    S.aLeft,
+    S.aRight,
     // Crossbar on the fence, from slant to slant.
-    stroke('fence', 'fence', line([(mid + m) / 2, 0.5], [(mid + std) / 2, 0.5])),
+    stroke('bar', 'fence', 'fence', line([(mid + m) / 2, 0.5], [(mid + std) / 2, 0.5])),
   ] },
   B: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'grass',
-      line([m, 0], [std - 0.06 - bump, 0]),
-      arc(std - 0.06 - bump, 0.25, bump, bump, -90, 90),
-      line([std - 0.06 - bump, 0.5], [m, 0.5], [std - bump, 0.5]),
-      arc(std - bump, 0.75, bump, bump, -90, 90),
-      line([std - bump, 1], [m, 1])),
+    S.stem,
+    stroke('bumps', 'sky', 'grass',
+      line([m, 0], [bTop, 0]),
+      arc(bTop, 0.25, bump, bump, -90, 90),
+      line([bTop, 0.5], [m, 0.5], [bLow, 0.5]),
+      arc(bLow, 0.75, bump, bump, -90, 90),
+      line([bLow, 1], [m, 1])),
+  ], plans: [
+    // The bumps one at a time: the top bump comes back to the stem, the bottom one starts there.
+    [S.stem, S.bTopBump, S.bLowBump],
   ] },
   C: { strokes: [
-    stroke(null, null, arc(oc, 0.5, R, R, -45, -315)),
+    stroke('curve', null, null, arc(oc, 0.5, R, R, -45, -315)),
   ] },
   D: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'grass', line([m, 0], [std - 0.5, 0]), arc(std - 0.5, 0.5, 0.5, 0.5, -90, 90), line([std - 0.5, 1], [m, 1])),
+    S.stem,
+    stroke('curve', 'sky', 'grass', line([m, 0], [std - 0.5, 0]), arc(std - 0.5, 0.5, 0.5, 0.5, -90, 90), line([std - 0.5, 1], [m, 1])),
   ] },
-  E: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'sky', line([m, 0], [nar, 0])),
-    stroke('fence', 'fence', line([m, 0.5], [nar - 0.08, 0.5])),
-    stroke('grass', 'grass', line([m, 1], [nar, 1])),
+  E: { strokes: [S.stem, S.eTop, S.eMid, S.eLow], plans: [
+    // An L in one go first, then the top and middle bars.
+    [merge('stem and bottom bar', S.stem, S.eLow), S.eTop, S.eMid],
   ] },
-  F: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'sky', line([m, 0], [nar, 0])),
-    stroke('fence', 'fence', line([m, 0.5], [nar - 0.08, 0.5])),
-  ] },
+  F: { strokes: [S.stem, S.eTop, S.eMid] },
   G: { strokes: [
-    // Round like C, carrying on up to the fence on the right.
-    stroke(null, 'fence', arc(oc, 0.5, R, R, -45, -360)),
-    stroke('fence', 'fence', line([oc + R, 0.5], [oc + 0.2, 0.5])),
+    // Round like C, carrying on up to the fence on the right, then the bar.
+    S.gCurve,
+    S.gBar,
+  ], plans: [
+    [merge('curve and bar', S.gCurve, S.gBar)], // join
   ] },
-  H: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'grass', line([std, 0], [std, 1])),
-    stroke('fence', 'fence', line([m, 0.5], [std, 0.5])),
+  H: { strokes: [S.stem, S.hRight, S.hBar], plans: [
+    [S.stem, S.hBar, S.hRight],
   ] },
-  I: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-  ] },
+  I: { strokes: [S.stem] },
   J: { strokes: [
-    stroke('sky', null, line([nar, 0], [nar, 0.75]), arc(nar - 0.25, 0.75, 0.25, 0.25, 0, 180)),
+    stroke('hook', 'sky', null, line([nar, 0], [nar, 0.75]), arc(nar - 0.25, 0.75, 0.25, 0.25, 0, 180)),
   ] },
   K: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'fence', line([std, 0], [m, 0.5])),
-    // The leg kicks off the arm, a quarter of the way out from the stem.
-    stroke(null, 'grass', line([m + 0.25 * (std - m), 0.375], [std, 1])),
+    S.stem,
+    // The arm comes in to the stem at the fence, and the leg goes out from the same point.
+    S.kArm,
+    S.kLeg,
+  ], plans: [
+    [S.stem, merge('arm and leg', S.kArm, S.kLeg)], // the "<" in one go (join)
   ] },
-  L: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('grass', 'grass', line([m, 1], [nar, 1])),
+  L: { strokes: [S.stem, S.lFoot], plans: [
+    [merge('stem and foot', S.stem, S.lFoot)], // join
   ] },
   M: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'grass', line([m, 0], [(m + wid) / 2, 1], [wid, 0], [wid, 1])),
+    S.stem,
+    stroke('slants and right stem', 'sky', 'grass', line([m, 0], [mMid, 1], [wid, 0], [wid, 1])),
+  ], plans: [
+    [S.stem,
+      stroke('first slant', 'sky', 'grass', line([m, 0], [mMid, 1])),
+      stroke('second slant', 'grass', 'sky', line([mMid, 1], [wid, 0])),
+      stroke('right stem', 'sky', 'grass', line([wid, 0], [wid, 1]))],
   ] },
   N: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'sky', line([m, 0], [std, 1], [std, 0])),
+    S.stem,
+    stroke('slant and right side', 'sky', 'sky', line([m, 0], [std, 1], [std, 0])),
+  ], plans: [
+    [S.stem,
+      stroke('slant', 'sky', 'grass', line([m, 0], [std, 1])),
+      stroke('right side', 'grass', 'sky', line([std, 1], [std, 0]))],
   ] },
   O: { strokes: [
-    stroke('sky', 'sky', arc(oc, 0.5, R, R, -90, -450)),
+    stroke('circle', 'sky', 'sky', arc(oc, 0.5, R, R, -90, -450)),
   ] },
-  P: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'fence', line([m, 0], [std - bump, 0]), arc(std - bump, 0.25, bump, bump, -90, 90), line([std - bump, 0.5], [m, 0.5])),
-  ] },
+  P: { strokes: [S.stem, S.rBump] },
   Q: { strokes: [
-    stroke('sky', 'sky', arc(oc, 0.5, R, R, -90, -450)),
+    stroke('circle', 'sky', 'sky', arc(oc, 0.5, R, R, -90, -450)),
     // Tail along the 45 degree line from the centre, from inside the circle out to the grass line.
-    stroke(null, 'grass', line([oc + 0.21, 0.5 + 0.21], [oc + R, 1])),
+    stroke('tail', null, 'grass', line([oc + 0.21, 0.5 + 0.21], [oc + R, 1])),
   ] },
   R: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [m, 1])),
-    stroke('sky', 'fence', line([m, 0], [std - bump, 0]), arc(std - bump, 0.25, bump, bump, -90, 90), line([std - bump, 0.5], [m, 0.5])),
-    stroke('fence', 'grass', line([m + 0.22, 0.5], [std, 1])),
+    S.stem,
+    S.rBump,
+    stroke('leg', 'fence', 'grass', line([rLegX, 0.5], [std, 1])),
+  ], plans: [
+    // The bump runs straight into the leg: its way back stops where the leg leaves.
+    [S.stem, stroke('bump and leg', 'sky', 'grass',
+      line([m, 0], [bLow, 0]), arc(bLow, 0.25, bump, bump, -90, 90), line([bLow, 0.5], [rLegX, 0.5], [std, 1]))],
   ] },
   S: { strokes: [
     // Two half-height ovals, the lower one the upper turned round.
-    stroke(null, null, arc(m + 0.25, 0.25, 0.25, 0.25, -30, -270), arc(m + 0.25, 0.75, 0.25, 0.25, -90, 150)),
+    stroke('curve', null, null, arc(m + 0.25, 0.25, 0.25, 0.25, -30, -270), arc(m + 0.25, 0.75, 0.25, 0.25, -90, 150)),
   ] },
-  T: { anyOrder: [[0, 1]], strokes: [
-    stroke('sky', 'grass', line([mid, 0], [mid, 1])),
-    stroke('sky', 'sky', line([m, 0], [std, 0])),
+  T: { strokes: [S.tStem, S.tBar], plans: [
+    [S.tBar, S.tStem],
   ] },
   U: { strokes: [
-    stroke('sky', 'sky', line([m, 0], [m, 1 - (std - m) / 2]), arc(mid, 1 - (std - m) / 2, (std - m) / 2, (std - m) / 2, 180, 0), line([std, 1 - (std - m) / 2], [std, 0])),
+    stroke('curve', 'sky', 'sky', line([m, 0], [m, 1 - uR]), arc(mid, 1 - uR, uR, uR, 180, 0), line([std, 1 - uR], [std, 0])),
   ] },
   V: { strokes: [
-    stroke('sky', 'sky', line([m, 0], [mid, 1], [std, 0])),
+    stroke('slants', 'sky', 'sky', line([m, 0], [mid, 1], [std, 0])),
+  ], plans: [
+    [stroke('first slant', 'sky', 'grass', line([m, 0], [mid, 1])), stroke('second slant', 'grass', 'sky', line([mid, 1], [std, 0]))],
   ] },
   W: { strokes: [
     // The middle goes all the way up to the sky line.
-    stroke('sky', 'sky', line([m, 0], [m + (wid - m) / 4, 1], [(m + wid) / 2, 0], [wid - (wid - m) / 4, 1], [wid, 0])),
+    stroke('zigzag', 'sky', 'sky', line([m, 0], [wQ1, 1], [mMid, 0], [wQ3, 1], [wid, 0])),
+  ], plans: [
+    // Two V's.
+    [stroke('first V', 'sky', 'sky', line([m, 0], [wQ1, 1], [mMid, 0])), stroke('second V', 'sky', 'sky', line([mMid, 0], [wQ3, 1], [wid, 0]))],
   ] },
-  X: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [std, 1])),
-    stroke('sky', 'grass', line([std, 0], [m, 1])),
+  X: { strokes: [S.xDown, S.xUp], plans: [
+    [S.xUp, S.xDown],
   ] },
   Y: { strokes: [
-    stroke('sky', 'fence', line([m, 0], [mid, 0.5])),
-    stroke('sky', 'grass', line([std, 0], [mid, 0.5], [mid, 1])),
+    S.yLeft,
+    stroke('right arm and stem', 'sky', 'grass', line([std, 0], [mid, 0.5], [mid, 1])),
+  ], plans: [
+    [S.yLeft, stroke('right arm', 'sky', 'fence', line([std, 0], [mid, 0.5])), stroke('stem', 'fence', 'grass', line([mid, 0.5], [mid, 1]))],
   ] },
   Z: { strokes: [
-    stroke('sky', 'grass', line([m, 0], [std, 0], [m, 1], [std, 1])),
+    stroke('zigzag', 'sky', 'grass', line([m, 0], [std, 0], [m, 1], [std, 1])),
+  ], plans: [
+    [stroke('top bar', 'sky', 'sky', line([m, 0], [std, 0])),
+      stroke('slant', 'sky', 'grass', line([std, 0], [m, 1])),
+      stroke('bottom bar', 'grass', 'grass', line([m, 1], [std, 1]))],
   ] },
 
   // Digits: all narrow.
   0: { strokes: [
     // A narrow oval, so it is clearly not O.
-    stroke('sky', 'sky', arc(m + 0.25, 0.5, 0.25, 0.5, -90, -450)),
+    stroke('oval', 'sky', 'sky', arc(m + 0.25, 0.5, 0.25, 0.5, -90, -450)),
   ] },
-  1: { strokes: [
-    stroke(null, 'sky', line([m, 0.2], [m + 0.22, 0])),
-    stroke('sky', 'grass', line([m + 0.22, 0], [m + 0.22, 1])),
+  1: { strokes: [S.oneFlag, S.oneStem], plans: [
+    [merge('flag and stem', S.oneFlag, S.oneStem)], // join
   ] },
   2: { strokes: [
-    stroke(null, 'grass', arc(two.cx, two.cy, two.r, two.r, 200, twoLeave), line(arcPoint(two.cx, two.cy, two.r, two.r, twoLeave), two.foot, [nar, 1])),
+    stroke('curve and foot', null, 'grass', arc(two.cx, two.cy, two.r, two.r, 200, twoLeave), line(twoTop, two.foot, [nar, 1])),
+  ], plans: [
+    [stroke('curve', null, 'grass', arc(two.cx, two.cy, two.r, two.r, 200, twoLeave), line(twoTop, two.foot)),
+      stroke('foot', 'grass', 'grass', line(two.foot, [nar, 1]))],
   ] },
   3: { strokes: [
-    stroke(null, null, arc(m + 0.25, 0.25, 0.25, 0.25, 200, 450), arc(m + 0.25, 0.75, 0.25, 0.25, -90, 160)),
+    stroke('bumps', null, null, arc(m + 0.25, 0.25, 0.25, 0.25, 200, 450), arc(m + 0.25, 0.75, 0.25, 0.25, -90, 160)),
+  ], plans: [
+    [stroke('top bump', null, 'fence', arc(m + 0.25, 0.25, 0.25, 0.25, 200, 450)),
+      stroke('bottom bump', 'fence', null, arc(m + 0.25, 0.75, 0.25, 0.25, -90, 160))],
   ] },
-  4: { strokes: [
-    stroke('sky', 'grass', line([nar - 0.12, 0], [nar - 0.12, 1])),
-    stroke('sky', null, line([nar - 0.12, 0], [m, 0.7])),
-    stroke(null, null, line([m, 0.7], [nar, 0.7])),
+  4: { strokes: [S.fourStem, S.fourSlant, S.fourBar], plans: [
+    // The slant and the bar first (in one go too, by the join), then the stem.
+    [S.fourSlant, S.fourBar, S.fourStem],
   ] },
   5: { strokes: [
-    stroke('sky', null, line([fiveTop[0], 0], fiveTop), arc(fiveCx, five.cy, five.r, five.r, five.start, five.end)),
-    stroke('sky', 'sky', line([fiveTop[0], 0], [nar, 0])),
+    stroke('stem and belly', 'sky', null, line([fiveTop[0], 0], fiveTop), arc(fiveCx, five.cy, five.r, five.r, five.start, five.end)),
+    stroke('flag', 'sky', 'sky', line([fiveTop[0], 0], [nar, 0])),
   ] },
   6: { strokes: [
     // Down the left side of a tall oval, then round a circle at the bottom.
-    stroke(null, null, arc(m + 0.25, 0.75, 0.25, 0.75, -70, -180), arc(m + 0.25, 0.75, 0.25, 0.25, 180, -180)),
+    stroke('curve', null, null, arc(m + 0.25, 0.75, 0.25, 0.75, -70, -180), arc(m + 0.25, 0.75, 0.25, 0.25, 180, -180)),
   ] },
-  7: { strokes: [
-    stroke('sky', 'sky', line([m, 0], [nar, 0])),
-    stroke('sky', 'grass', line([nar, 0], [m + 0.16, 1])),
+  7: { strokes: [S.sevenTop, S.sevenSlant], plans: [
+    [merge('top bar and slant', S.sevenTop, S.sevenSlant)], // join
   ] },
   8: { strokes: [
     // Over the small top circle to the waist, all round the bigger bottom
     // circle, then up the right side of the top circle back to the start.
-    stroke(null, null,
+    stroke('loops', null, null,
       arc(eight.cx, eight.ru, eight.ru, eight.ru, -30, -270),
       arc(eight.cx, eightWaist + eight.rl, eight.rl, eight.rl, -90, 270),
       arc(eight.cx, eight.ru, eight.ru, eight.ru, 90, -30)),
   ] },
-  9: { strokes: [
-    stroke(null, null, arc(m + 0.25, 0.25, 0.25, 0.25, 0, -360)),
-    stroke('sky', 'grass', line([nar, 0], [nar, 1])),
+  9: { strokes: [S.nineCircle, S.nineStem], plans: [
+    // The circle running straight into the stem: down from where the circle
+    // closes (its right side), so the stem's short top above that is left out.
+    [stroke('circle and stem', null, 'grass', arc(m + 0.25, 0.25, 0.25, 0.25, 0, -360), line([nar, 0.25], [nar, 1]))],
   ] },
 };
 
+// Every plan of a character: the default first, then the others.
+export const plansOf = (glyph) => [glyph.strokes, ...(glyph.plans ?? [])];

@@ -7,6 +7,7 @@
   "strokes": [
     {
       "kind": "line",
+      "part": "loops",
       "points": [
         [0.549, 0.115],
         [0.524, 0.08],

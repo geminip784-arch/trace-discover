@@ -86,8 +86,8 @@ export const STROKE_ORDER = {
   ] },
   K: { family: 'straight', width: 0.8, strokes: [
     s('stem down', [[0.08, 0], [0.08, 1]]),
-    s('slant from the top right in to the middle of the stem', [[0.72, 0], [0.08, 0.5]]),
-    s('slant from the middle out to the bottom right', [[0.24, 0.375], [0.72, 1]]),
+    s('arm from the top right in to the middle of the stem', [[0.72, 0], [0.08, 0.5]]),
+    s('leg from the same point on the stem out to the bottom right', [[0.08, 0.5], [0.72, 1]]),
   ] },
   L: { family: 'straight', width: 0.66, strokes: [
     s('stem down', [[0.08, 0], [0.08, 1]]),
@@ -127,7 +127,7 @@ export const STROKE_ORDER = {
       arc(0.33, 0.25, 0.25, 0.25, -30, -270, 14), arc(0.33, 0.75, 0.25, 0.25, -90, 150, 14)),
   ] },
   T: { family: 'straight', width: 0.8, strokes: [
-    s('stem down from the top middle (either order is accepted)', [[0.4, 0], [0.4, 1]]),
+    s('stem down from the top middle (the bar first is also accepted)', [[0.4, 0], [0.4, 1]]),
     s('top bar left to right', [[0.08, 0], [0.72, 0]]),
   ] },
   U: { family: 'mixed', width: 0.8, strokes: [

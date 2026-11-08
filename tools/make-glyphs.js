@@ -1,7 +1,7 @@
 // tools/make-glyphs.js — run with: npm run glyphs
 // Writes data/chars/<id>.json for every character in data/glyphs.js (except
 // the ids in OVERRIDES, which keep their hand recording) and data/chars/index.json.
-// Prints each character's join gaps.
+// Prints each character's join gaps and its stroke plans.
 import { writeFileSync, existsSync } from 'node:fs';
 import { GLYPHS, OVERRIDES } from '../data/glyphs.js';
 import { glyphCharacter, characterText, joinGaps } from '../src/glyph-points.js';
@@ -21,6 +21,8 @@ for (const id of CHAR_IDS) {
   const gaps = joinGaps(char).map((g, k) => `${k + 1}-${k + 2}: ${g.gap}${g.joins ? ' joins' : ''}`);
   const points = char.strokes.map((s) => s.points.length).join(' ');
   console.log(`${id}  width ${char.width}  points ${points}${gaps.length ? `  gaps ${gaps.join(', ')}` : ''}`);
+  const plans = [char.strokes, ...(char.plans ?? []).map((p) => p.strokes)];
+  if (plans.length > 1) console.log(`   plans: ${plans.map((p) => p.map((s) => s.part).join(' + ')).join('  |  ')}`);
 }
 
 writeFileSync(new URL('index.json', dir), `[${CHAR_IDS.map((id) => JSON.stringify(id)).join(', ')}]\n`);

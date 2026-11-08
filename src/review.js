@@ -18,7 +18,7 @@
 export const INTERVALS = [1, 3, 7, 21];
 export const DAILY_CAP = 2;
 // What puts a letter on the practice-more list, per sitting (one practice or review).
-export const PRACTICE_MORE = { failedCopies: 2, wrongStarts: 3 };
+export const PRACTICE_MORE = { failedCopies: 2, wrongStarts: 3, mirrored: 1 };
 
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 export const isDay = (s) => typeof s === 'string' && DAY.test(s) && addDays(s, 0) === s;
@@ -57,7 +57,7 @@ export function cleanReviews(raw) {
 }
 
 // Pure: a clean practice-more list from anything storage gave back.
-const REASONS = ['help', 'copies', 'starts'];
+const REASONS = ['help', 'copies', 'starts', 'mirrored'];
 export function cleanPracticeMore(raw) {
   if (!Array.isArray(raw)) return [];
   const seen = new Set();
@@ -91,12 +91,14 @@ export function enrolStars(state, stars, today) {
 }
 
 // Why a sitting puts a letter on the practice-more list (none: []).
-// outcome: { helped, failedCopies, wrongStarts } for one practice or review.
-export function practiceReasons({ helped = false, failedCopies = 0, wrongStarts = 0 } = {}, rules = PRACTICE_MORE) {
+// outcome: { helped, failedCopies, wrongStarts, mirrored } for one practice or review.
+// mirrored (Slice 5J): copies that passed written the other way round.
+export function practiceReasons({ helped = false, failedCopies = 0, wrongStarts = 0, mirrored = 0 } = {}, rules = PRACTICE_MORE) {
   const reasons = [];
   if (helped) reasons.push('help');
   if (failedCopies >= rules.failedCopies) reasons.push('copies');
   if (wrongStarts >= rules.wrongStarts) reasons.push('starts');
+  if (mirrored >= rules.mirrored) reasons.push('mirrored');
   return reasons;
 }
 
@@ -111,7 +113,7 @@ export function addPracticeMore(list, id, reasons, today) {
 
 export const removePracticeMore = (list, id) => list.filter((e) => e.id !== id);
 
-// A whole practice (all its rounds) finished. outcome: { helped, failedCopies, wrongStarts }.
+// A whole practice (all its rounds) finished. outcome: { helped, failedCopies, wrongStarts, mirrored }.
 // Help, or any practice-more reason: due tomorrow (a graduated letter comes back).
 // A clean practice schedules a letter that is not scheduled yet (it just earned
 // its star) and leaves any other schedule alone, so replaying never undoes progress.

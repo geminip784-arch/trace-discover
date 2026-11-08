@@ -42,12 +42,17 @@ export function createDebugPanel(strokeCount) {
       next = nextIndex;
       render();
     },
-    // The copy round's result (src/copy.js scoreCopy): the fit, the size and every stroke.
+    // The copy round's result (src/copy.js scoreCopy): the shape match, the
+    // size, and her habits (plan, and every stroke's start and direction).
     copy(r) {
       const rows = r.strokes.map((s, i) => `  ${i + 1}. ref ${s.from === null ? '-' : s.from + 1}: ${s.ok ? 'ok' : 'not ok'}  reason=${s.reason ?? '-'}  variant=${s.variant}\n` +
         `     startOk=${s.startOk} directionOk=${s.directionOk} shapeOk=${s.shapeOk} error=${fmt(s.error)}`);
-      panel.textContent = `${info}\ncopy: ${r.ok ? 'PASS' : 'not ok'}  reason=${r.reason ?? '-'}  show=${r.wrongStroke === null ? 'all' : r.wrongStroke + 1}\n` +
-        `  scale=${fmt(r.scale)}  size=${fmt(r.size)} (0.75-1.25)  sizeOk=${r.sizeOk}\n` + rows.join('\n');
+      const m = r.match;
+      panel.textContent = `${info}\ncopy: ${r.ok ? 'PASS' : 'not ok'}  reason=${r.reason ?? '-'}` +
+        `${r.lookalike ? `  looks like ${r.lookalike}` : ''}${r.missing ? `  missing ${r.missing.part ?? r.missing.stroke + 1}` : ''}${r.mirrored ? '  mirrored' : ''}\n` +
+        `  match=${m ? `${m.id}${m.mirrored ? ' (mirror)' : ''} plan ${m.plan + 1} distance ${fmt(m.distance)}` : '-'}\n` +
+        `  scale=${fmt(r.scale)}  size=${fmt(r.size)} (0.75-1.25)  sizeOk=${r.sizeOk}\n` +
+        `  habits: plan ${r.habits.plan + 1}  order ${r.habits.order}  ${r.habits.usual ? 'usual' : 'Jugnu shows the usual way'}\n` + rows.join('\n');
     },
     // A one-line note instead of the stroke rows (e.g. a missing character file).
     message(text) {

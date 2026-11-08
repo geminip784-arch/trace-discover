@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { GLYPHS, OVERRIDES, MIRROR_SYMMETRIC, MARGIN } from '../data/glyphs.js';
+import { GLYPHS, OVERRIDES, MIRROR_SYMMETRIC, MARGIN, plansOf } from '../data/glyphs.js';
 import { STROKE_ORDER } from '../data/stroke-order.js';
 import { CHAR_IDS } from '../src/recording.js';
 import { scoreStroke, resample, meanPairDistance, nearestOnPath, dist, pathLength } from '../src/geometry.js';
@@ -146,10 +146,139 @@ test('family and width match stroke-order.js', () => {
   }
 });
 
-test('only T may be drawn in either order', () => {
+test('no glyph uses anyOrder: T and X in either order are two stroke plans', () => {
+  for (const id of CHAR_IDS) assert.equal(GLYPHS[id].anyOrder, undefined, id);
+  const order = (id, p) => plansOf(GLYPHS[id])[p].map((s) => s.part);
+  assert.deepEqual(order('T', 0), ['stem', 'top bar']);
+  assert.deepEqual(order('T', 1), ['top bar', 'stem']);
+  assert.deepEqual(order('X', 1), ['second slant', 'first slant']);
+});
+
+// ---- stroke plans (Slice 5J) ----
+
+// The plans agreed for Slice 5J: each character's plans, as part names.
+const AGREED_PLANS = {
+  B: [['stem', 'bumps'], ['stem', 'top bump', 'bottom bump']],
+  E: [['stem', 'top bar', 'middle bar', 'bottom bar'], ['stem and bottom bar', 'top bar', 'middle bar']],
+  G: [['curve', 'bar'], ['curve and bar']],
+  H: [['stem', 'right stem', 'bar'], ['stem', 'bar', 'right stem']],
+  K: [['stem', 'arm', 'leg'], ['stem', 'arm and leg']],
+  L: [['stem', 'foot'], ['stem and foot']],
+  M: [['stem', 'slants and right stem'], ['stem', 'first slant', 'second slant', 'right stem']],
+  N: [['stem', 'slant and right side'], ['stem', 'slant', 'right side']],
+  R: [['stem', 'bump', 'leg'], ['stem', 'bump and leg']],
+  T: [['stem', 'top bar'], ['top bar', 'stem']],
+  V: [['slants'], ['first slant', 'second slant']],
+  W: [['zigzag'], ['first V', 'second V']],
+  X: [['first slant', 'second slant'], ['second slant', 'first slant']],
+  Y: [['left arm', 'right arm and stem'], ['left arm', 'right arm', 'stem']],
+  Z: [['zigzag'], ['top bar', 'slant', 'bottom bar']],
+  1: [['flag', 'stem'], ['flag and stem']],
+  2: [['curve and foot'], ['curve', 'foot']],
+  3: [['bumps'], ['top bump', 'bottom bump']],
+  4: [['stem', 'slant', 'bar'], ['slant', 'bar', 'stem']],
+  7: [['top bar', 'slant'], ['top bar and slant']],
+  9: [['circle', 'stem'], ['circle and stem']],
+};
+
+test('the stroke plans are the agreed ones, and every other character has only its default', () => {
   for (const id of CHAR_IDS) {
-    if (id === 'T') assert.deepEqual(GLYPHS[id].anyOrder, [[0, 1]]);
-    else assert.equal(GLYPHS[id].anyOrder, undefined, id);
+    const plans = plansOf(GLYPHS[id]).map((p) => p.map((s) => s.part));
+    if (AGREED_PLANS[id]) assert.deepEqual(plans, AGREED_PLANS[id], id);
+    else assert.equal(plans.length, 1, `${id} has only its default plan`);
+  }
+});
+
+test('every stroke of every plan has a short part name', () => {
+  for (const id of CHAR_IDS) {
+    for (const plan of plansOf(GLYPHS[id])) {
+      for (const s of plan) assert.ok(typeof s.part === 'string' && s.part.length > 0 && s.part.length <= 24, `${id}: ${s.part}`);
+    }
+  }
+});
+
+// Every point of one drawing lies on the other's ink, both ways, within `tol`.
+const sameShape = (a, b, tol) => {
+  let worst = 0;
+  for (const [from, to] of [[a, b], [b, a]]) {
+    for (const pts of from) for (const p of pts) worst = Math.max(worst, Math.min(...to.map((l) => nearestOnPath(p, l).distance)));
+  }
+  return worst <= tol ? true : worst;
+};
+
+test('every plan has the same shape as the default (within 0.01), except the two noted', () => {
+  // R's bump-and-leg stops its way back where the leg leaves (0.14 short of the stem),
+  // and 9's circle-and-stem leaves out the stem's short top above the circle.
+  const NOTED = { R: 0.15, 9: 0.26 };
+  for (const id of CHAR_IDS) {
+    const plans = plansOf(GLYPHS[id]).map((p) => p.map(strokePath));
+    for (let p = 1; p < plans.length; p++) {
+      const got = sameShape(plans[0], plans[p], NOTED[id] ?? 0.01);
+      assert.equal(got, true, `${id} plan ${p + 1} differs by ${got}`);
+    }
+  }
+});
+
+test('no plan runs a part the other way: each plan stroke follows the default ink forwards', () => {
+  // B's default stroke runs back along the middle to the stem and out again, so
+  // its middle line is in it both ways; its 3-stroke plan is checked by hand below.
+  for (const id of CHAR_IDS.filter((c) => c !== 'B')) {
+    const plans = plansOf(GLYPHS[id]).map((p) => p.map(strokePath));
+    const ink = plans[0];
+    for (let p = 1; p < plans.length; p++) {
+      for (const [k, pts] of plans[p].entries()) {
+        // Walk along the plan stroke: the nearest default stroke's progress must not run backwards.
+        const sample = resample(pts, 24);
+        let last = null;
+        for (const q of sample) {
+          let best = null;
+          ink.forEach((l, i) => {
+            const n = nearestOnPath(q, l);
+            if (!best || n.distance < best.distance) best = { ...n, i };
+          });
+          if (last && best.i === last.i && best.distance < 0.02 && last.distance < 0.02) {
+            assert.ok(best.progress >= last.progress - 0.02, `${id} plan ${p + 1} stroke ${k + 1} runs backwards along default stroke ${best.i + 1}`);
+          }
+          last = best;
+        }
+      }
+    }
+  }
+});
+
+test("B's 3-stroke plan: the top bump comes back to the stem, the bottom bump starts there, both clockwise", () => {
+  const [, top, low] = plansOf(GLYPHS.B)[1].map(strokePath);
+  assert.ok(dist(top[0], [MARGIN, 0]) < 1e-9 && dist(top.at(-1), [MARGIN, 0.5]) < 1e-9);
+  assert.ok(dist(low[0], [MARGIN, 0.5]) < 1e-9 && dist(low.at(-1), [MARGIN, 1]) < 1e-9);
+  for (const bump of [top, low]) {
+    const right = bump.reduce((a, b) => (b[0] > a[0] ? b : a));
+    const iRight = bump.indexOf(right);
+    // Out along the top of the bump first, then down round its right side: clockwise on screen.
+    assert.ok(bump.slice(0, iRight).every((p) => p[1] <= right[1] + 1e-9));
+  }
+});
+
+test("K's leg starts at the stem, where the arm ends, in every plan", () => {
+  const k = load('K');
+  assert.deepEqual(k.strokes[1].points.at(-1), [0.08, 0.5]);
+  assert.deepEqual(k.strokes[2].points[0], [0.08, 0.5]);
+  assert.deepEqual(k.plans[0].strokes[1].points.at(-1), [0.72, 1]);
+});
+
+test('the character files carry the plans: same format, each stroke with its part name', () => {
+  for (const id of GENERATED) {
+    const file = load(id);
+    const plans = plansOf(GLYPHS[id]);
+    assert.equal((file.plans ?? []).length, plans.length - 1, id);
+    file.strokes.forEach((s, k) => assert.equal(s.part, plans[0][k].part, id));
+    (file.plans ?? []).forEach((plan, p) => {
+      assert.deepEqual(Object.keys(plan), ['strokes'], id);
+      plan.strokes.forEach((s, k) => {
+        assert.deepEqual(Object.keys(s), ['kind', 'part', 'points'], id);
+        assert.equal(s.part, plans[p + 1][k].part, id);
+        assert.equal(s.points.length, pointCount(pathLength(strokePath(plans[p + 1][k]))), `${id} plan ${p + 2} stroke ${k + 1}`);
+      });
+    });
   }
 });
 
@@ -164,13 +293,15 @@ test('data/chars/index.json lists all 36 characters in board order', () => {
 });
 
 test('the file format is the recorder\'s: same fields in the same order', () => {
+  // Plus, since Slice 5J, each stroke's part name and the other stroke plans after the strokes.
   const letter = ['id', 'script', 'case', 'family', 'direction', 'width', 'strokes'];
   const digit = ['id', 'script', 'family', 'direction', 'width', 'strokes'];
   for (const id of GENERATED) {
-    const keys = Object.keys(load(id)).filter((k) => k !== 'anyOrder');
+    const keys = Object.keys(load(id)).filter((k) => k !== 'plans');
     assert.deepEqual(keys, /\d/.test(id) ? digit : letter, id);
+    for (const s of load(id).strokes) assert.deepEqual(Object.keys(s), ['kind', 'part', 'points'], id);
   }
-  assert.deepEqual(Object.keys(load('T')), ['id', 'script', 'case', 'family', 'direction', 'width', 'anyOrder', 'strokes']);
+  assert.deepEqual(Object.keys(load('T')), ['id', 'script', 'case', 'family', 'direction', 'width', 'strokes', 'plans']);
   assert.equal(load('A').script, 'latin');
   assert.equal(load('7').script, 'digit');
 });
@@ -261,6 +392,7 @@ test('join gaps: where she may draw two strokes in one go', (t) => {
     const j = gaps.flatMap((g, k) => (g.joins ? [`${k + 1}-${k + 2}`] : []));
     if (j.length) joined[id] = j;
   }
-  // The joins are on purpose: a corner (L, 7, 1, 4) or a curve running into its bar (G).
-  assert.deepEqual(joined, { G: ['1-2'], L: ['1-2'], 1: ['1-2'], 4: ['2-3'], 7: ['1-2'] });
+  // The joins are on purpose: a corner (L, 7, 1, 4), a curve running into its bar (G),
+  // or K's arm and leg meeting at the stem (Slice 5J).
+  assert.deepEqual(joined, { G: ['1-2'], K: ['2-3'], L: ['1-2'], 1: ['1-2'], 4: ['2-3'], 7: ['1-2'] });
 });

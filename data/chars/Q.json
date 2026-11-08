@@ -8,6 +8,7 @@
   "strokes": [
     {
       "kind": "line",
+      "part": "circle",
       "points": [
         [0.58, 0],
         [0.537, 0.002],
@@ -87,6 +88,7 @@
     },
     {
       "kind": "line",
+      "part": "tail",
       "points": [
         [0.79, 0.71],
         [0.803, 0.723],
