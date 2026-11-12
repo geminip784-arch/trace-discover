@@ -130,3 +130,48 @@ export function crudeLetters(ids = Object.keys(SHAPES), hands = HANDS) {
   }
   return out;
 }
+
+// Crude WRONG letters: a child writing another letter on a tile. Each must
+// still fail as the target. { written, target, shapes: [strokes...] }.
+export const WRONG = [
+  { written: 'F', targets: ['E'], shapes: [
+    [poly([m, 0], [m, 1]), poly([m, 0], [nar, 0]), poly([m, 0.5], [nar - 0.08, 0.5])],
+    [poly([m, 0], [m, 1]), poly([m, 0], [0.5, 0.03]), poly([m, 0.45], [0.4, 0.47])],
+  ] },
+  { written: 'P', targets: ['R', 'B'], shapes: [
+    [poly([m, 0], [m, 1]), join(poly([m, 0], [0.47, 0]), bow(0.47, 0.25, 0.25, 0.25, -90, 90), poly([0.47, 0.5], [m, 0.5]))],
+    [poly([m, 0], [m, 1]), join(poly([m, 0], [0.4, 0]), bow(0.4, 0.3, 0.3, 0.3, -90, 90), poly([0.4, 0.6], [m, 0.6]))],
+  ] },
+  { written: 'C', targets: ['G'], shapes: [[bow(0.58, 0.5, 0.5, 0.5, -45, -315)], [bow(0.55, 0.5, 0.45, 0.5, -50, -310)]] },
+  { written: 'H', targets: ['M', 'N'], shapes: [
+    [poly([m, 0], [m, 1]), poly([wid, 0], [wid, 1]), poly([m, 0.5], [wid, 0.5])],
+    [poly([m, 0], [m, 1]), poly([std, 0], [std, 1]), poly([m, 0.55], [std, 0.5])],
+  ] },
+  { written: 'V', targets: ['W'], shapes: [[poly([m, 0], [0.4, 1], [std, 0])], [poly([m, 0], [0.5, 1], [wid, 0])]] },
+  { written: 'N', targets: ['M'], shapes: [[poly([m, 1], [m, 0], [std, 1], [std, 0])], [poly([m, 1], [m, 0], [wid, 1], [wid, 0])]] },
+  { written: '8', targets: ['B'], shapes: [[join(bow(0.33, 0.23, 0.23, 0.23, -30, -270), bow(0.33, 0.73, 0.27, 0.27, -90, 270), bow(0.33, 0.23, 0.23, 0.23, 90, -30))]] },
+  { written: 'D', targets: ['B'], shapes: [[poly([m, 0], [m, 1]), join(poly([m, 0], [0.22, 0]), bow(0.22, 0.5, 0.5, 0.5, -90, 90), poly([0.22, 1], [m, 1]))]] },
+  { written: 'U', targets: ['W', 'N'], shapes: [[join(poly([m, 0], [m, 0.7]), bow(0.4, 0.7, 0.32, 0.3, 180, 0), poly([std, 0.7], [std, 0]))]] },
+  { written: 'A', targets: ['M'], shapes: [[poly([0.4, 0], [m, 1]), poly([0.4, 0], [std, 1]), poly([0.24, 0.5], [0.56, 0.5])]] },
+];
+
+// Every crude wrong letter in every hand: { written, target, hand, strokes }.
+// Then the crude M, N and B shapes written on the N, M and 8 tiles.
+export function crudeWrong(hands = HANDS) {
+  const out = [];
+  let seed = 3;
+  for (const { written, targets, shapes } of WRONG) {
+    for (const target of targets) {
+      for (const shape of shapes) {
+        for (const hand of hands) {
+          const strokes = sized(slant(wobble(shape, hand.amp, seeded((seed += 17))), hand.slant), hand.size);
+          out.push({ written, target, hand: hand.name, strokes });
+        }
+      }
+    }
+  }
+  for (const [written, target] of [['M', 'N'], ['N', 'M'], ['B', '8']]) {
+    for (const c of crudeLetters([written], hands)) out.push({ written, target, hand: c.hand, name: c.name, strokes: c.strokes });
+  }
+  return out;
+}

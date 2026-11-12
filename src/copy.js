@@ -26,6 +26,7 @@ import { DEFAULTS, pathLength, scoreStroke, scoreDot, resample, meanPairDistance
 import { candidatesFor, nextStrokes, pickCandidate, variantLabel, planCount, planChar, planStrokes } from './variants.js';
 import { cloudOf, mirrorStrokes, matchDistance } from './pdollar.js';
 import { BOARDS } from './session.js';
+import { CHILD_SHAPES } from '../data/child-shapes.js';
 
 // Her letter's size, as a share of the model's height.
 export const COPY_SIZE = { min: 0.75, max: 1.25 };
@@ -130,15 +131,26 @@ const aspectOf = (strokes) => {
   return b && b.h > 0 ? b.w / b.h : 1;
 };
 
+// Child shapes (Slice 5J part 2, data/child-shapes.js): a letter as a
+// 4-year-old writes it (M's middle point stopping short, uneven bumps...), as a
+// character of its own for judging: same id and box, its own named parts.
+export const childShapes = (char) => CHILD_SHAPES[char.id] ?? [];
+export function childChar(char, k) {
+  const shape = childShapes(char)[k];
+  return { id: char.id, width: char.width, strokes: shape.strokes.map((s) => ({ kind: 'line', part: s.part, points: s.points })) };
+}
+
 // A character's templates: one cloud per allowed plan (plans differ a little,
 // for example where a stroke goes back over itself), each with its width over
-// height. Cached per character object.
+// height, then one per child shape (`child`: its index, else null). Cached per
+// character object.
 const templateCache = new WeakMap();
 function templatesOf(char) {
   if (!templateCache.has(char)) {
-    const make = (strokes, p, mirrored) => ({ id: char.id, plan: p, mirrored, aspect: aspectOf(strokes), cloud: cloudOf(strokes) });
+    const make = (strokes, p, mirrored, child = null) => ({ id: char.id, plan: p, child, mirrored, aspect: aspectOf(strokes), cloud: cloudOf(strokes) });
     const list = [];
     for (let p = 0; p < planCount(char); p++) list.push(make(linePoints(planStrokes(char, p)), p, false));
+    childShapes(char).forEach((_, k) => list.push(make(linePoints(childChar(char, k).strokes), 0, false, k)));
     // The target turned round, unless it looks the same in a mirror.
     const flipped = cloudOf(mirrorStrokes(linePoints(char.strokes)));
     const symmetric = matchDistance(flipped, list[0].cloud) < 0.6;
@@ -171,7 +183,7 @@ export function recognize(strokes, char, others = [], match = COPY_MATCH) {
     return clouds.get(key);
   };
   const ranked = pool
-    .map((t) => ({ id: t.id, plan: t.plan, mirrored: t.mirrored, distance: matchDistance(cloudFor(t), t.cloud) }))
+    .map((t) => ({ id: t.id, plan: t.plan, child: t.child ?? null, mirrored: t.mirrored, distance: matchDistance(cloudFor(t), t.cloud) }))
     .sort((a, b) => a.distance - b.distance);
   return { best: ranked[0], ranked };
 }
@@ -452,6 +464,13 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
   out.match = best;
   if (!(best.distance <= match.maxDistance)) return { ...out, reason: 'unrecognized' };
   const charOf = (id) => (id === char.id ? char : others.find((o) => o.id === id));
+  // The shape a template stands for: the character, one of its child shapes, or the character turned round.
+  const shapeOf = (t) => {
+    const c = charOf(t.id);
+    if (!c) return null;
+    if (t.child !== null && t.child !== undefined) return childChar(c, t.child);
+    return t.mirrored ? mirrorChar(c) : c;
+  };
   // A close call: another character is only a little nearer. Then the one
   // whose lines and her ink lie closer together, both ways, wins (a slanted O is
   // not a G: nothing of hers lies along the G's bar), and the target gets the
@@ -460,14 +479,15 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
     const own = ranked.find((t) => sameShape(t.id, char.id));
     const otherChar = charOf(best.id);
     if (own && otherChar && own.distance - best.distance <= match.closeCall) {
-      const ownChar = own.mirrored ? mirrorChar(charOf(own.id)) : charOf(own.id);
-      if (chamfer(used, ownChar, cfg, match) <= match.closeKind * chamfer(used, otherChar, cfg, match)) best = own;
+      if (chamfer(used, shapeOf(own), cfg, match) <= match.closeKind * chamfer(used, shapeOf(best) ?? otherChar, cfg, match)) best = own;
     }
   }
   out.match = best;
-  const target = best.mirrored ? mirrorChar(char) : char;
+  // Her letter is judged part by part against the shape it is nearest: the
+  // character (turned round if mirrored) or one of its child shapes.
+  const target = best.id === char.id ? shapeOf(best) : char;
   const parts = partCoverage(used, target, cfg, match);
-  const looks = sameShape(best.id, char.id) ? target : charOf(best.id) ?? target;
+  const looks = sameShape(best.id, char.id) ? target : shapeOf(best) ?? target;
   // A scribble: much of her ink is nowhere near the letter it is nearest, or
   // there is far more ink than the letter has.
   if (inkExplained(used, looks, cfg, match) < match.inkMin || inkRatio(used, looks, cfg, match) > match.maxInk) return { ...out, reason: 'unrecognized' };
@@ -483,7 +503,7 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
   }
   out.mirrored = best.mirrored && best.id === char.id;
   const gone = parts.find((p) => p.coverage < match.coverMin);
-  if (gone) return { ...out, reason: 'missing-stroke', missing: strip(gone, out.mirrored, char) };
+  if (gone) return { ...out, reason: 'missing-stroke', missing: best.child !== null && best.child !== undefined ? modelPart(gone, char) : strip(gone, out.mirrored, char) };
   if (!fit.sizeOk) return { ...out, reason: fit.size < size.min ? 'too-small' : 'too-big' };
   return { ...out, ok: true };
 }
@@ -491,6 +511,16 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
 // A part to show on the model card: always the model's own way round.
 function strip({ plan, stroke, part, coverage: c }, mirrored, char) {
   return { plan, stroke, part, points: planStrokes(char, plan)[stroke].points, coverage: Math.round(c * 1000) / 1000 };
+}
+
+// A child shape's missing part, shown on the model card as the model's part of
+// the same name (child shapes name their parts as a plan does: M's "right stem").
+function modelPart(gone, char) {
+  for (let p = 0; p < planCount(char); p++) {
+    const k = planStrokes(char, p).findIndex((s) => s.part === gone.part);
+    if (k >= 0) return strip({ ...gone, plan: p, stroke: k }, false, char);
+  }
+  return { plan: null, stroke: null, part: gone.part, points: gone.points, coverage: Math.round(gone.coverage * 1000) / 1000 };
 }
 
 // What Jugnu does on the model card after a judged copy:
@@ -594,6 +624,8 @@ export function copyStatus(strokes, char, opts = {}) {
   return { action: 'hint', next: nextStrokes(best.pc, best.done)[0], plan: best.plan, done: best.done };
 }
 
+const childName = (t) => (t.child !== null && t.child !== undefined ? CHILD_SHAPES[t.id]?.[t.child]?.name ?? null : null);
+
 const round4 = (v) => (Number.isFinite(v) ? Number(v.toFixed(4)) : null);
 
 // One attempt-log entry for a judged copy (type 'copy'). Existing entry types are unchanged.
@@ -609,7 +641,8 @@ export function copyLogEntry({ char, result, attempt, helped = false, helper = n
     scale: round4(result.scale),
     size: round4(result.size),
     sizeOk: result.sizeOk,
-    match: result.match ? { char: result.match.id, plan: result.match.plan, mirrored: result.match.mirrored, distance: round4(result.match.distance) } : null,
+    // child: the child shape it matched (data/child-shapes.js, Slice 5J part 2), else null.
+    match: result.match ? { char: result.match.id, plan: result.match.plan, child: childName(result.match), mirrored: result.match.mirrored, distance: round4(result.match.distance) } : null,
     lookalike: result.lookalike,
     missing: result.missing ? { plan: result.missing.plan, stroke: result.missing.stroke, part: result.missing.part } : null,
     mirrored: result.mirrored,
