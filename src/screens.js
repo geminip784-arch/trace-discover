@@ -28,6 +28,7 @@ import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
 import { GAME_KINDS, gamesOf, kindStars, gameTile, kindOf } from './games.js';
+import { gameNote } from './notes.js';
 import { MENU, KIND_MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
@@ -111,6 +112,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   // ---- buttons ----
   els.home.innerHTML = ICONS.home;
   els.back.innerHTML = ICONS.back;
+  if (els.showme) els.showme.innerHTML = ICONS.showMe;
   const showMusicIcon = () => {
     els.music.innerHTML = musicOn ? ICONS.musicOn : ICONS.musicOff;
     els.music.classList.toggle('off', !musicOn);
@@ -120,6 +122,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
 
   els.home.addEventListener('click', () => go(navigate(state, { type: 'home' })));
   els.back.addEventListener('click', () => go(navigate(state, { type: 'back' })));
+  // Slice 5J part 2: Jugnu shows the current set again; the game decides what, and never moves for her.
+  els.showme?.addEventListener('click', () => { if (state.screen === 'play') game?.showMe?.(); });
   els.music.addEventListener('click', () => {
     musicOn = !musicOn;
     saveMusic(musicOn);
@@ -132,6 +136,16 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     unlock();
     resumeMusic();
   }, { capture: true });
+
+  // The game's instruction line (Slice 5J part 2): small and grey at the top,
+  // for a grown-up, the whole time she plays. null clears it.
+  function showGameNote(text) {
+    if (!els.note) return;
+    els.note.classList.toggle('game', !!text);
+    els.note.classList.toggle('on', !!text);
+    if (text) els.note.textContent = text;
+    els.note.hidden = !text;
+  }
 
   // ---- moving between screens ----
   function go(next, extra = {}) {
@@ -150,6 +164,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     els.home.hidden = screen === 'door' || screen === 'shelf';
     els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper'].includes(screen);
     els.music.hidden = screen === 'door';
+    if (els.showme) els.showme.hidden = screen !== 'play';
+    showGameNote(screen === 'play' ? gameNote(kindOf(state.game)) : null);
     setTune(tuneFor(screen));
 
     const writing = screen === 'write';

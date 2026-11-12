@@ -375,7 +375,7 @@ export const SHADOW_LOOKALIKES = [
   ['honey', 'ink', 'milk', 'juice'],     // a jar or a carton
   ['jellyfish', 'octopus'],              // a dome with legs
   ['fish', 'whale'],                     // a body and a tail
-  ['frock', 'queen'],                    // a long dress
+  ['frock', 'queen', 'umpire'],          // a long dress or coat (the queen and the umpire are dolls drawn alike)
   ['kettle', 'jug'],                     // a spout and a handle
   ['grapes', 'olive'],                   // a bunch of small rounds
   ['insect', 'ant'],                     // a bug with legs

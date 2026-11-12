@@ -43,3 +43,15 @@ export function copyNote(result) {
   if (result.reason === 'missing-stroke') return part ? missingLine(part) : 'Almost! A line is missing.';
   return COPY_NOTES[result.reason] ?? "Let's watch Jugnu write it.";
 }
+
+// The games book (Slice 5J part 2): one short instruction line per kind of
+// game, in small grey type at the top while she plays. For a grown-up watching.
+export const GAME_NOTES = {
+  match: 'Draw a line to its partner',
+  path: 'Trace each road home',
+  sort: 'Drag each thing into its basket',
+  odd: 'Tap the one that is different',
+  missing: 'Drag each piece into its gap',
+};
+
+export const gameNote = (kind) => GAME_NOTES[kind] ?? null;

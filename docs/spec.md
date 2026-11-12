@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.2 · Nov 12, 2026 · describes the app as built through Slice 5J part 2A (the fading helper, M and N from the bottom, direction coached, child-style templates), and where it goes next.
+Version 3.3 · Nov 12, 2026 · describes the app as built through Slice 5J part 2 (the fading helper, M and N from the bottom, direction coached, child-style templates; game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -159,14 +159,14 @@ It then comes due after 1 day. One clean passed review (no reason to be on the l
 
 ### Find scenes (letters) and count scenes (numbers)
 
-After a letter's last round, a place appears with 7 objects standing in it. The places are the living room, kitchen, study, bedroom, farm-garden, zoo and sea. Three of the objects start with her letter (two for Q and Z, which have only two pictures), and the rest do not.
+After a letter's last round, a place appears with 7 objects standing in it. The places are the living room, kitchen, study, bedroom, farm-garden, zoo and sea. Three of the objects start with her letter (two for Q, U and Z, which have only two pictures), and the rest do not.
 
 - She taps the ones that start with her letter. Each found object glows, plays a small animation and flies into a basket.
 - A wrong tap shows that object's own word for 2 seconds, with no sound.
 - After 10 seconds with no find, the objects still to find wiggle once.
 - **Which place.** The scene uses the place that holds the most of that letter's pictures (a tie is picked at random). It takes as many objects as it can from that place. When it has to borrow from another place, it takes portable things (food, toys, small objects) before animals, so a horse never turns up in the kitchen.
 - **Sound-first words.** Every find word starts with the letter's sound, not its name (Slice 5G). The full list and the object-to-place table are on `finds.html`.
-- **No scene.** U and X have fewer than 2 pictures, so they skip the scene and go straight back to the board and the star.
+- **No scene.** X has no pictures, so it skips the scene and goes straight back to the board and the star. U has two since Slice 5J part 2 (umbrella and umpire): its scene opens in the living room, where both are.
 - **Kept pictures.** Ice cream and eraser are kept out of find scenes and the Letter to picture game, but their pictures stay: her saved finds of them still show on her shelf, and ice cream stays in the Shadow game.
 - Count scenes keep the four rooms.
 
@@ -194,6 +194,12 @@ Back goes up one step: from a game to its kind's sets, from the sets to the kind
 | Sort it | By color, By kind | Six things along the top. She drags each into the right one of two baskets. 2 boards make a play |
 | Odd one out | By kind, By color | A row of four cards. She taps the one that is different. 5 rows make a play |
 | Missing piece | Levels 1 to 4 | Three shapes, each with a gap; she drags the piece that fits from a row below. 3 rounds make a play |
+
+**Help in every game (Slice 5J part 2).**
+
+- **Instruction line.** Each game shows one short parent-facing line in small grey type at the top, the whole time she plays (`GAME_NOTES` in `src/notes.js`): Match "Draw a line to its partner", Follow the path "Trace each road home", Sort it "Drag each thing into its basket", Odd one out "Tap the one that is different", Missing piece "Drag each piece into its gap".
+- **Show me.** A picture-only button in the left column (Jugnu with a play mark, 96 px, under back) replays Jugnu's demonstration on the current set without making the move for her. Match: he draws the line for a pair she has not matched, and it fades. Follow the path: he flies a road whose traveller is not home, and his trail fades. Sort it and Missing piece: he carries a thing (or the right piece) to its basket (or gap), and it slides back. Odd one out: he looks along the row and points at the different card; she still taps it. Taps wait while he shows. A replay goes in the log as help (type `game-help`), never as her move: no answer, never a try, never towards a hint.
+- **Odd one out's demonstration** is slow enough to follow, about 5 seconds (`ODD_DEMO` in `src/games.js`): Jugnu hops onto each of the four cards in turn, each lifting a little while he looks, pauses, then flies to the different one and taps it.
 
 In every game, Jugnu shows the first move himself. Repeated misses make the right answer wiggle (or, in Follow the path, make Jugnu fly the road). Wrong moves make no sound. In the drag games (Match, Sort it, Follow the path), a plain tap on a card, without dragging, makes it wiggle; it is not a try and is not logged. In Odd one out a tap is her answer.
 
@@ -238,7 +244,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`), with each allowed stroke plan as a dashed card.
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
-- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, plan, stroke, ok, reason, start, direction, shape error, assisted, and since Slice 5J part 2 `reversed` and `habit: 'direction'` for a stroke traced the other way), every judged copy (type `copy`: character, try 1 to 3, the helper level, pass or fail and the reason, the nearest character, its distance and any child-style shape it matched, the look-alike and missing part, mirrored, fitted scale, size and size check, and the habits: plan used, starts, directions, order, each stroke's start, direction and shape, time), every review (type `review`: character, the day it was due, its interval, pass or fail, the next due day or graduated, and any practice-more reasons), every find-scene tap and every game move.
+- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, plan, stroke, ok, reason, start, direction, shape error, assisted, and since Slice 5J part 2 `reversed` and `habit: 'direction'` for a stroke traced the other way), every judged copy (type `copy`: character, try 1 to 3, the helper level, pass or fail and the reason, the nearest character, its distance and any child-style shape it matched, the look-alike and missing part, mirrored, fitted scale, size and size check, and the habits: plan used, starts, directions, order, each stroke's start, direction and shape, time), every review (type `review`: character, the day it was due, its interval, pass or fail, the next due day or graduated, and any practice-more reasons), every find-scene tap, every game move, and every "show me" in a game (type `game-help`, Slice 5J part 2).
 - `?debug=1&today=2026-11-08` pretends the tablet's date is that day, to check reviews without waiting (debug only). In this test mode the app reads her real progress but saves every change (stars, rounds, reviews, the practice-more list, finds, the log, everything) to separate keys starting `test.`. Opening the app without `today=` shows her real progress, untouched. A later test-mode visit carries on from the test copy.
 
 ### Voice, for now
@@ -351,7 +357,7 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 | 5G | Sound-first find pictures for every letter, garden and sea backdrops, the finds review sheet |
 | 5H | More game variety, and the Missing piece game |
 | 5I | Practice and review: round 3 as a copy-it round judged on shape, reviews after 1, 3, 7 and 21 days, a practice-more list (built) |
-| 5J | Testing fixes: stroke plans, shape-only judging of copies, habits coached, failure reasons and parent lines (part 1 built); the fading helper, M and N from the bottom, direction coached, child-style templates (part 2A built); game instructions, show me, the U umpire (part 2B) |
+| 5J | Testing fixes: stroke plans, shape-only judging of copies, habits coached, failure reasons and parent lines (part 1 built); the fading helper, M and N from the bottom, direction coached, child-style templates (part 2A built); game instructions, show me, the U umpire (part 2B built) |
 | 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
 | 9A, 9B, 9C | Lowercase; numbers 10 to 20; a words level |
 | 10 | Urdu: dot strokes, the Urdu font, recorder support, Dot Detective |

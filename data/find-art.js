@@ -320,6 +320,24 @@ export const ART = {
     + '<circle cx="100" cy="50" r="6" fill="#FF6B6B"/><circle cx="80" cy="54" r="4" fill="#4D96FF"/><circle cx="120" cy="54" r="4" fill="#4D96FF"/>'
     + eyes(90, 110, 92, 4) + smile(100, 102, 7) + cheeks(82, 118, 102, 5)),
 
+  // Slice 5J part 2: a cricket umpire, a doll drawn like the queen: a long white
+  // coat, dark trousers, a white sun hat, and one finger raised high.
+  umpire: art(`<path d="M86 196 h12 v20 h-12 Z M102 196 h12 v20 h-12 Z" fill="#2E3A59"/>`
+    + `<path d="M100 110 L56 200 H144 Z" ${outline('#FFFFFF', '#AEB8C8')}/>`
+    + '<path d="M100 112 V196" stroke="#AEB8C8" stroke-width="3"/><circle cx="100" cy="148" r="3.5" fill="#AEB8C8"/><circle cx="100" cy="170" r="3.5" fill="#AEB8C8"/>'
+    + '<path d="M88 116 L100 130 L112 116" stroke="#2E3A59" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<path d="M118 126 L144 176" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round"/><path d="M118 126 L144 176" stroke="#AEB8C8" stroke-width="2" stroke-linecap="round" opacity=".6"/>'
+    + `<circle cx="146" cy="180" r="8" ${outline('#F2C6A0', '#D9A57A', 2.5)}/>`
+    + '<path d="M82 126 L52 74" stroke="#AEB8C8" stroke-width="17" stroke-linecap="round"/><path d="M82 126 L52 74" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>'
+    // The raised hand: a fist with one finger pointing straight up, bold enough to read small.
+    + `<rect x="44" y="20" width="13" height="40" rx="6.5" ${outline('#F2C6A0', '#C98E62', 3)}/>`
+    + `<circle cx="50" cy="66" r="12" ${outline('#F2C6A0', '#C98E62', 3)}/>`
+    + `<circle cx="100" cy="90" r="30" ${outline('#F2C6A0', '#D9A57A', 3)}/>`
+    + '<path d="M72 86 Q74 74 84 72 L80 92 Z M128 86 Q126 74 116 72 L120 92 Z" fill="#5B3A12"/>'
+    + `<ellipse cx="100" cy="68" rx="44" ry="9" ${outline('#FFFFFF', '#AEB8C8', 3)}/>`
+    + `<path d="M74 66 Q74 38 100 38 Q126 38 126 66 Z" ${outline('#FFFFFF', '#AEB8C8', 3)}/><path d="M75 60 H125" stroke="#4D96FF" stroke-width="5"/>`
+    + eyes(90, 110, 92, 4) + smile(100, 102, 7) + cheeks(82, 118, 102, 5)),
+
   quilt: art(`<rect x="26" y="88" width="150" height="128" rx="10" ${outline('#FFFFFF', '#E0B0C8')}/>${quiltPatches}`
     + '<path d="M26 98 Q26 88 36 88 H166 Q176 88 176 98 V108 H26 Z" fill="#E86F95"/><path d="M26 108 H176" stroke="#C9507A" stroke-width="3"/>', { rx: 86 }),
 

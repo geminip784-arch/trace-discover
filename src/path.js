@@ -15,7 +15,7 @@
 
 import {
   PATH, pathBoard, pathPlay, pathKey, isPlainTap, startsAtAnimal, startTrace, stepTrace, startMisses, missRoad, boardDone,
-  gameLogEntry, firstMoveRoad, FIRST_MOVE_DELAY_MS,
+  gameLogEntry, firstMoveRoad, FIRST_MOVE_DELAY_MS, showMePath, showMeLogEntry,
 } from './games.js';
 import { ANIMALS, HOMES, FURNITURE, ROOM_HOME, roomArt } from '../data/games.js';
 import { mountBoard, svgEl, replay, JUGNU_IMG } from './match.js';
@@ -234,6 +234,16 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
   };
   board.onResize = dropTrace;
 
+  // Show me (Slice 5J part 2): Jugnu flies the first road whose traveller is not
+  // home yet; his trail fades. Nothing moves home; the log gets a help entry.
+  async function showMe() {
+    if (paused || demoing || trace) return false;
+    const r = showMePath(roads, home);
+    if (!r) return false;
+    logAttempt(showMeLogEntry({ game, ms: performance.now() - opened }));
+    return demo(r);
+  }
+
   // Jugnu's first move: he flies the top road and its traveller follows him home.
   later(async () => {
     const r = firstMoveRoad(roads);
@@ -241,6 +251,7 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
   }, FIRST_MOVE_DELAY_MS);
 
   return {
+    showMe,
     pause() { paused = true; dropTrace(); },
     resume() { paused = false; },
     stop() {

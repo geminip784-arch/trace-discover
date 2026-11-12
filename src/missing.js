@@ -14,11 +14,14 @@
 // entry; Jugnu's move does not.
 // Child-screen rules: no text, no failure sound, nothing red as feedback,
 // every piece's touch area at least 88 px, Jugnu the only character.
+// Slice 5J part 2: showMe() (the "show me" button) has Jugnu carry the right
+// piece to an empty gap, then it slides back: nothing is filled, and the log
+// gets a help entry, never one of her moves.
 
 import {
   MISSING, missingPlay, roundKey, missingLevel, partPoly, bbox, SHAPE_POLYS, shapeBoxes, partCentre, pieceHome,
   trayOf, pieceTrayScale, hitGap, hitPiece, startMissing, dropPiece, firstMovePiece, pieceLabel, marginUnits, gameLogEntry,
-  showsFirstMove, FIRST_MOVE_DELAY_MS, isPlainTap,
+  showsFirstMove, FIRST_MOVE_DELAY_MS, isPlainTap, showMeMissing, showMeLogEntry,
 } from './games.js';
 import { COLORS, MISSING_PICTURES, missingPictureArt } from '../data/games.js';
 import { MISSING_CUTS } from '../data/missing-cuts.js';
@@ -32,6 +35,7 @@ const BOUNCE_MS = 650;     // a wrong gap: the piece bounces back to its place
 const FLOAT_MS = 380;      // let go away from every gap: it floats back
 const CARRY_MS = 1600;     // Jugnu carries the first piece
 const HINT_DELAY_MS = 400;
+const SLIDE_BACK_MS = 700; // show me: the piece slides back to the shelf
 const ROUND_GLOW_MS = 1600; // every gap filled: everything glows, then the next round
 const JUGNU_SIZE = 110;
 const S = MISSING.size;
@@ -215,9 +219,9 @@ export function playMissing(view, { game, onDone = () => {}, rand = Math.random 
     later(() => (roundNo >= MISSING.roundsPerPlay ? onDone() : newRound()), ROUND_GLOW_MS);
   }
 
-  // Jugnu flies to the first gap's piece and carries it in (not logged).
-  async function firstMove() {
-    const p = firstMovePiece(round);
+  // Jugnu carries piece `p` from its shelf to gap `gapIdx`. Resolves his
+  // picture (still showing) when he arrives, or null if the game stopped.
+  async function carry(p, gapIdx) {
     const j = document.createElement('img');
     j.className = 'gm-jugnu';
     j.src = 'assets/jugnu.svg';
@@ -226,7 +230,7 @@ export function playMissing(view, { game, onDone = () => {}, rand = Math.random 
     buddy.classList.add('away');
     const from = [p.at.x, p.at.y];
     const fromK = p.at.k;
-    const to = partCentre(round, 0);
+    const to = partCentre(round, gapIdx);
     const placeJ = ([x, y]) => Object.assign(j.style, { left: `${x - JUGNU_SIZE / 2}px`, top: `${y - 60 - JUGNU_SIZE * 0.7}px`, width: `${JUGNU_SIZE}px` });
     placeJ(from);
     toFront(p);
@@ -239,13 +243,44 @@ export function playMissing(view, { game, onDone = () => {}, rand = Math.random 
       placeJ(at);
     });
     moving.delete(p.slot);
-    if (!ok) return;
+    return ok ? j : null;
+  }
+  const flyAway = (j, then = () => {}) => {
+    j.classList.add('gm-fading');
+    later(() => { j.remove(); buddy.classList.remove('away'); then(); }, 450);
+  };
+
+  // Jugnu flies to the first gap's piece and carries it in (not logged).
+  async function firstMove() {
+    const p = firstMovePiece(round);
+    const j = await carry(p, 0);
+    if (!j) return;
     const r = dropPiece(state, round, p, 0);
     state = r.state;
     await snapIn(p, 0, r);
     if (!alive) return;
-    j.classList.add('gm-fading');
-    later(() => { j.remove(); buddy.classList.remove('away'); busy = false; }, 450);
+    flyAway(j, () => { busy = false; });
+  }
+
+  // Show me (Slice 5J part 2): Jugnu carries the right piece to the first empty
+  // gap, then it slides back to the shelf. Nothing is filled; state is
+  // untouched, and the log gets a help entry.
+  async function showMe() {
+    if (busy || paused || drag) return false;
+    const p = showMeMissing(round, state);
+    if (!p) return false;
+    const gapIdx = p.right;
+    busy = true;
+    logAttempt(showMeLogEntry({ game, set: roundNo, ms: performance.now() - opened }));
+    const j = await carry(p, gapIdx);
+    if (!j) return false;
+    p.el.classList.remove('mp-lift');
+    flyAway(j);
+    const [x, y] = pieceHome(round, p);
+    await glide(p, [x, y], trayScale(p), SLIDE_BACK_MS, easeInOut);
+    if (!alive) return false;
+    busy = false;
+    return true;
   }
 
   function release() {
@@ -313,6 +348,7 @@ export function playMissing(view, { game, onDone = () => {}, rand = Math.random 
   newRound();
 
   return {
+    showMe,
     pause() { paused = true; dropDrag(); },
     resume() { paused = false; },
     stop() {
