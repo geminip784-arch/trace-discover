@@ -146,6 +146,7 @@ export const OBJECTS = [
   { id: 'sock', word: 'sock', letter: 'S', places: ['bedroom'], reward: 'wobble', art: ART.sock },
   { id: 'star', word: 'star', letter: 'S', places: ['bedroom', 'study'], reward: 'hop', art: ART.star },
   { id: 'umbrella', word: 'umbrella', letter: 'U', places: ['sea', 'living'], reward: 'swing', art: ART.umbrella },
+  { id: 'umpire', word: 'umpire', letter: 'U', places: ['living', 'garden'], reward: 'hop', art: ART.umpire }, // Slice 5J part 2
   { id: 'van', word: 'van', letter: 'V', places: ['living', 'bedroom'], reward: 'hop', art: ART.van },
   { id: 'vase', word: 'vase', letter: 'V', places: ['living'], reward: 'wobble', art: ART.vase },
   { id: 'violin', word: 'violin', letter: 'V', places: ['living', 'study'], reward: 'swing', art: ART.violin },

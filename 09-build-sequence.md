@@ -74,7 +74,11 @@ The optional "again?" after the star moved to `docs/ideas.md`.
 3. **Direction coaches, never blocks:** in rounds 1 and 2 a stroke traced the other way along the track counts; Jugnu replays the usual way after the letter. Off the track still does not count.
 4. **Crude letters:** six child-style templates for the recognizer (M shallow, M less shallow, M splayed, N short diagonal, W shallow, B uneven bumps). No limit loosened. 123 of 124 crude test letters pass; 140 of 144 crude wrong letters still fail. Screenshots: `docs/screenshots/slice-5j-2/`.
 
-**PR 2B:** game instruction lines and a "show me" button, a slower Odd one out demonstration, the U umpire.
+**PR 2B** (built): game help and the U scene.
+1. **Instruction lines:** one short grey parent-facing line at the top of every game.
+2. **Show me:** a picture-only button (Jugnu with a play mark) in the left column of every game replays Jugnu's demonstration on the current set without making the move. Logged as help, never as her move.
+3. **Slower Odd one out demonstration:** Jugnu looks at each card in turn (each lifts a little), pauses, then taps the different one: about 5 seconds.
+4. **U scene:** a cricket umpire doll (raised finger, drawn like the queen) in the living room and farm-garden, so U's scene opens in the living room with the umbrella. The queen and the umpire share a shadow look-alike group. X still skips its scene. Screenshots: `docs/screenshots/slice-5j-3/`.
 
 **Done when:**
 - [ ] B in 3 strokes and R in 2 strokes pass rounds 1 and 2

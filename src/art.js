@@ -38,6 +38,9 @@ export const ICONS = {
   home: icon('<polygon points="32,10 8,32 16,32 16,52 48,52 48,32 56,32" fill="#FF6B6B" stroke="#C93A3A" stroke-width="3" stroke-linejoin="round"/><rect x="26" y="36" width="12" height="16" rx="3" fill="#FFE3A3"/>'),
   back: icon('<path d="M40 14 L20 32 L40 50" fill="none" stroke="#2A2370" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>'),
   musicOn: icon('<path d="M14 24 H24 L36 14 V50 L24 40 H14 Z" fill="#2A2370"/><path d="M44 22 q8 10 0 20 M50 16 q14 16 0 32" stroke="#2A2370" stroke-width="5" fill="none" stroke-linecap="round"/>'),
+  // Slice 5J part 2: "show me" in the games: Jugnu with a play mark.
+  showMe: icon('<image href="assets/jugnu.svg" x="2" y="0" width="50" height="50"/>'
+    + '<circle cx="47" cy="47" r="14" fill="#35D07F" stroke="#fff" stroke-width="3"/><path d="M42.5 39.5 L55 47 L42.5 54.5 Z" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>'),
   musicOff: icon('<path d="M14 24 H24 L36 14 V50 L24 40 H14 Z" fill="#2A2370"/><path d="M44 24 L56 40 M56 24 L44 40" stroke="#2A2370" stroke-width="6" stroke-linecap="round"/>'),
 };
 

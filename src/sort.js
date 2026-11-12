@@ -12,10 +12,13 @@
 // thing makes it wiggle (not a try, not logged).
 // Child-screen rules: no text, no failure sound, nothing red as feedback,
 // every thing at least 88 px, Jugnu the only character.
+// Slice 5J part 2: showMe() (the "show me" button) has Jugnu carry a thing to
+// its basket, then it slides back: nothing is sorted, and the log gets a help
+// entry, never one of her moves.
 
 import {
   SORT, sortPlay, sortKey, isPlainTap, thingHome, hitBasket, hitThing, basketSlot, startSort, dropThing, firstMoveThing,
-  marginUnits, gameLogEntry, showsFirstMove, FIRST_MOVE_DELAY_MS,
+  marginUnits, gameLogEntry, showsFirstMove, FIRST_MOVE_DELAY_MS, showMeSort, showMeLogEntry,
 } from './games.js';
 import { sortThingArt, basketArt } from '../data/games.js';
 import { mountBoard, replay, JUGNU_IMG } from './match.js';
@@ -28,6 +31,7 @@ const BOUNCE_MS = 650;    // a wrong basket: the thing bounces back to its place
 const FLOAT_MS = 380;     // let go away from both baskets: it floats back
 const CARRY_MS = 1500;    // Jugnu carries the first thing
 const HINT_DELAY_MS = 400;
+const SLIDE_BACK_MS = 700; // show me: the thing slides back to its place
 const BOARD_GLOW_MS = 1600; // all 6 sorted: everything glows, then the next board
 const JUGNU_SIZE = 110;
 
@@ -149,9 +153,9 @@ export function playSort(view, { game, onDone = () => {}, rand = Math.random }) 
     later(() => (boardNo >= SORT.boards ? onDone() : newBoard()), BOARD_GLOW_MS);
   }
 
-  // Jugnu flies to the leftmost thing and carries it into its basket (not logged).
-  async function firstMove() {
-    const t = firstMoveThing(sb);
+  // Jugnu carries thing `t` from its place to its basket's rim. Resolves his
+  // picture (still showing) when he arrives, or null if the game stopped.
+  async function carry(t) {
     const j = document.createElement('img');
     j.className = 'gm-jugnu';
     j.src = 'assets/jugnu.svg';
@@ -171,13 +175,42 @@ export function playSort(view, { game, onDone = () => {}, rand = Math.random }) 
       placeJ(p);
     });
     moving.delete(t.spot);
-    if (!ok) return;
+    return ok ? j : null;
+  }
+  const flyAway = (j, then = () => {}) => {
+    j.classList.add('gm-fading');
+    later(() => { j.remove(); buddy.classList.remove('away'); then(); }, 450);
+  };
+
+  // Jugnu flies to the leftmost thing and carries it into its basket (not logged).
+  async function firstMove() {
+    const t = firstMoveThing(sb);
+    const j = await carry(t);
+    if (!j) return;
     const r = dropThing(state, t, t.basket);
     state = r.state;
     await intoBasket(t, r);
     if (!alive) return;
-    j.classList.add('gm-fading');
-    later(() => { j.remove(); buddy.classList.remove('away'); busy = false; }, 450);
+    flyAway(j, () => { busy = false; });
+  }
+
+  // Show me (Slice 5J part 2): Jugnu carries the leftmost thing still on the
+  // shelf to its basket, then it slides back to its place. Nothing is sorted;
+  // state is untouched, and the log gets a help entry.
+  async function showMe() {
+    if (busy || paused || drag) return false;
+    const t = showMeSort(sb, state);
+    if (!t) return false;
+    busy = true;
+    logAttempt(showMeLogEntry({ game, set: boardNo, ms: performance.now() - opened }));
+    const j = await carry(t);
+    if (!j) return false;
+    t.el.classList.remove('st-lift');
+    flyAway(j);
+    await glide(t, thingHome(t), SLIDE_BACK_MS, easeInOut);
+    if (!alive) return false;
+    busy = false;
+    return true;
   }
 
   function release() {
@@ -240,6 +273,7 @@ export function playSort(view, { game, onDone = () => {}, rand = Math.random }) 
   newBoard();
 
   return {
+    showMe,
     pause() { paused = true; dropDrag(); },
     resume() { paused = false; },
     stop() {

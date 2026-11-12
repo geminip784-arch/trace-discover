@@ -12,9 +12,15 @@
 // so a plain tap is played as one, unlike the drag games.)
 // Child-screen rules: no text, no failure sound, nothing red as feedback, every
 // card at least 88 px, Jugnu the only character.
+// Slice 5J part 2: Jugnu's demonstration is slower (about 5 s, games.js
+// ODD_DEMO): he hops onto each card in turn, each lifting a little while he
+// looks, pauses, then flies to the different one and taps it. showMe() plays
+// the same look along the row on the current row, then he points at the
+// different card and she taps it herself (logged as help, never her move).
 
 import {
   ODD, oddPlay, oddKey, oddCards, hitOdd, startOdd, tapOdd, marginUnits, gameLogEntry, showsFirstMove, FIRST_MOVE_DELAY_MS,
+  ODD_DEMO, oddDemoSteps, showMeOdd, showMeLogEntry,
 } from './games.js';
 import { oddThingArt } from '../data/games.js';
 import { mountBoard, svgEl, replay, JUGNU_IMG } from './match.js';
@@ -24,7 +30,7 @@ import { chime, letterChime } from './audio.js';
 
 const NEXT_MS = 1300;     // a right answer glows, then the next row
 const HINT_DELAY_MS = 650; // the hint waits for the wrong card's wiggle to end
-const FLY_MS = 1400;      // Jugnu flies to the odd one
+const POINT_MS = 1300;    // show me: Jugnu points at the odd one this long, then she taps
 const JUGNU_SIZE = 110;
 const DONE_MS = 1600;     // the last row: everything glows, then back to the menu
 
@@ -109,28 +115,78 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
     }
   }
 
-  // Jugnu flies to the odd one and taps it (not logged: it is not her tap).
-  async function firstMove() {
-    const c = oddCards()[row.odd];
+  // Jugnu's demonstration on the current row (games.js oddDemoSteps): he hops
+  // onto each card in turn, each lifting a little while he looks, pauses, then
+  // flies to the different one. tap: he taps it (the first row's first move,
+  // not logged: it is not her tap); otherwise he points at it and she taps it.
+  // Resolves false if the game stopped.
+  async function demo({ tap }) {
+    const cards = oddCards();
+    const top = (place) => [(cards[place].x0 + cards[place].x1) / 2, cards[place].y0 + 10];
     const j = document.createElement('img');
     j.className = 'gm-jugnu';
     j.src = 'assets/jugnu.svg';
     j.alt = '';
     board.el.appendChild(j);
     buddy.classList.add('away');
-    const from = [60, ODD.y];
-    const to = [(c.x0 + c.x1) / 2, c.y0 + 10];
     const place = ([x, y]) => Object.assign(j.style, { left: `${x - JUGNU_SIZE / 2}px`, top: `${y - JUGNU_SIZE / 2}px`, width: `${JUGNU_SIZE}px` });
-    const ok = await tween(FLY_MS, (f) => {
-      const e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
-      place([from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e - Math.sin(Math.PI * e) * 120]);
+    const ease = (f) => (f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2);
+    const fly = (from, to, ms, height) => tween(ms, (f) => {
+      const e = ease(f);
+      place([from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e - Math.sin(Math.PI * e) * height]);
     });
-    if (!ok) return;
-    replay(cardEls[row.odd], 'od-tap');
-    state = tapOdd(state, row, row.odd).state;
-    found();
+    let at = [60, ODD.y];
+    place(at);
+    let looking = null;
+    const done = () => { looking?.classList.remove('od-look'); };
+    for (const step of oddDemoSteps(row)) {
+      if (step.kind === 'look') {
+        // A short hop onto the card (most of the step), then he looks while it lifts.
+        const to = top(step.place);
+        if (!(await fly(at, to, ODD_DEMO.hopMs * 0.55, 50))) { done(); return false; }
+        at = to;
+        done();
+        looking = cardEls[step.place];
+        looking.classList.add('od-look');
+        if (!(await tween(ODD_DEMO.hopMs * 0.45, () => {}))) { done(); return false; }
+      } else if (step.kind === 'pause') {
+        if (!(await tween(ODD_DEMO.pauseMs, () => {}))) { done(); return false; }
+        done();
+      } else {
+        const to = top(step.place);
+        if (!(await fly(at, to, ODD_DEMO.flyMs, 120))) return false;
+      }
+    }
+    if (tap) {
+      replay(cardEls[row.odd], 'od-tap');
+      state = tapOdd(state, row, row.odd).state;
+      found();
+    } else {
+      // Show me: he points (the card lifts and he bobs over it); the tap is hers.
+      cardEls[row.odd].classList.add('od-look');
+      j.classList.add('gm-point');
+      if (!(await tween(POINT_MS, () => {}))) return false;
+      cardEls[row.odd]?.classList.remove('od-look');
+    }
     j.classList.add('gm-fading');
     later(() => { j.remove(); buddy.classList.remove('away'); }, 450);
+    return true;
+  }
+
+  async function firstMove() {
+    await demo({ tap: true });
+  }
+
+  // Show me (Slice 5J part 2): the demonstration again on this row, ending with
+  // Jugnu pointing at the different card. Never her move: state is untouched,
+  // and the log gets a help entry.
+  async function showMe() {
+    if (busy || paused || showMeOdd(row, state) === null) return false;
+    busy = true;
+    logAttempt(showMeLogEntry({ game, set: rowNo, ms: performance.now() - opened }));
+    const ok = await demo({ tap: false });
+    if (ok) busy = false;
+    return ok;
   }
 
   function tap(place) {
@@ -155,6 +211,7 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
   nextRow();
 
   return {
+    showMe,
     pause() { paused = true; },
     resume() { paused = false; },
     stop() {

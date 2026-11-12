@@ -24,7 +24,7 @@ function seeded(seed) {
 }
 const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1);
 const ALPHABET = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
-const NO_SCENE = ['U', 'X'];                     // fewer than 2 find pictures
+const NO_SCENE = ['X'];                          // fewer than 2 find pictures (U has 2 since Slice 5J part 2)
 const LETTERS = ALPHABET.filter((L) => !NO_SCENE.includes(L));
 const NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 // Her tablet: Chrome with its bar, the installed app (full screen), half a split screen.
@@ -40,7 +40,7 @@ const WORDS = {
   J: ['jug', 'jellyfish', 'juice'], K: ['kite', 'key', 'kettle'], L: ['lamp', 'lemon', 'lion', 'lunchbox'],
   M: ['moon', 'mango', 'milk'], N: ['nest', 'nut', 'net'], O: ['octopus', 'orange', 'olive'],
   P: ['pencil', 'pear', 'parrot'], Q: ['queen', 'quilt'], R: ['rabbit', 'ring', 'rainbow'],
-  S: ['sun', 'sock', 'star'], T: ['tiger', 'tomato', 'toys'], U: ['umbrella'], V: ['van', 'vase', 'violin'],
+  S: ['sun', 'sock', 'star'], T: ['tiger', 'tomato', 'toys'], U: ['umbrella', 'umpire'], V: ['van', 'vase', 'violin'],
   W: ['watch', 'whale', 'worm'], X: [], Y: ['yo-yo', 'yak', 'yogurt'], Z: ['zebra', 'zip'],
 };
 
@@ -59,7 +59,7 @@ const TABLE = {
   octopus: 'sea', orange: 'kitchen', olive: 'kitchen', pencil: 'study', pear: 'kitchen garden', parrot: 'zoo',
   queen: 'bedroom', quilt: 'bedroom', rabbit: 'garden', ring: 'bedroom', rainbow: 'garden',
   sun: 'sea', sock: 'bedroom', star: 'bedroom study', tiger: 'study bedroom', tomato: 'kitchen', toys: 'living bedroom',
-  umbrella: 'sea living', van: 'living bedroom', vase: 'living', violin: 'living study',
+  umbrella: 'sea living', umpire: 'living garden', van: 'living bedroom', vase: 'living', violin: 'living study',
   watch: 'bedroom', whale: 'sea', worm: 'garden', yoyo: 'bedroom living', yak: 'zoo', yogurt: 'kitchen',
   zebra: 'zoo', zip: 'bedroom',
 };
@@ -207,7 +207,7 @@ test('the spots of a place never overlap much (at most 60 square units)', () => 
 
 // ---- letters: find 3 (or 2) ----
 
-test('every letter except U and X has a scene; U and X go straight to the star', () => {
+test('every letter except X has a scene; X goes straight to the star', () => {
   for (const L of LETTERS) {
     assert.ok(hasLetterScene(L), L);
     assert.equal(afterWriting(L), 'openScene', L);
@@ -221,8 +221,8 @@ test('every letter except U and X has a scene; U and X go straight to the star',
   assert.equal(afterWriting('4'), 'openScene');
   assert.equal(afterWriting('0'), 'letterDone');
   // letterDone from the writing screen goes back to her board, where the new star shows.
-  const write = { screen: 'write', char: 'U', book: 'abc' };
-  assert.deepEqual(navigate(write, { type: afterWriting('U') }), { screen: 'board', book: 'abc' });
+  const write = { screen: 'write', char: 'X', book: 'abc' };
+  assert.deepEqual(navigate(write, { type: afterWriting('X') }), { screen: 'board', book: 'abc' });
 });
 
 test('a letter needs 2 pictures for a scene: 3 targets where 3 or more exist, 2 where only 2', () => {
@@ -238,7 +238,7 @@ test('a letter needs 2 pictures for a scene: 3 targets where 3 or more exist, 2 
   assert.equal(letterScene('Q', seeded(1), two).items.length, 7);
   // A picture kept out of scenes does not count.
   assert.equal(afterWriting('Q', [...one, { ...pic('queen', 'Q'), finds: false }]), 'letterDone');
-  for (const L of LETTERS) assert.equal(targetsFor(L), ['Q', 'Z'].includes(L) ? 2 : 3, L);
+  for (const L of LETTERS) assert.equal(targetsFor(L), ['Q', 'U', 'Z'].includes(L) ? 2 : 3, L);
 });
 
 test('the scene place is one that holds the most of her letter', () => {
@@ -255,7 +255,7 @@ test('the scene place is one that holds the most of her letter', () => {
   }
 });
 
-test('every scene: 3 targets (2 for Q and Z) plus 4 or 5 others, never sharing her letter, 7 spots, no duplicates', () => {
+test('every scene: 3 targets (2 for Q, U and Z) plus 4 or 5 others, never sharing her letter, 7 spots, no duplicates', () => {
   for (const L of LETTERS) {
     for (const seed of SEEDS) {
       const scene = letterScene(L, seeded(seed));

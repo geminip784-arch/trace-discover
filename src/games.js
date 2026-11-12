@@ -984,3 +984,45 @@ export function gameLogEntry({ game, set, from, to, road, ok, ms, now = new Date
 }
 
 export const thingArt = (kind) => THINGS[kind]?.art ?? '';
+
+// ---------------------------------------------------------------------------
+// Show me (Slice 5J part 2)
+//
+// A picture-only button in the left column replays Jugnu's demonstration on
+// the current set without making the move for her: a dragged piece slides
+// back, and in Odd one out Jugnu points at the different card but she still
+// taps it. These pick what he shows. Each only reads the game's state, never
+// changes it, and returns null when there is nothing left to show.
+
+// Match: the first pair, top to bottom on the left, she has not matched yet.
+export const showMeMatch = (set, state) => set.rows.left.find((pair) => !state.matched.includes(pair)) ?? null;
+// Follow the path: the first road whose traveller is not home yet.
+export const showMePath = (roads, home) => roads.find((r) => !home.includes(r.animal)) ?? null;
+// Sort it: the leftmost thing still on the shelf.
+export const showMeSort = (board, state) => [...board.things].sort((a, b) => a.spot - b.spot).find((t) => !state.placed.includes(t.spot)) ?? null;
+// Missing piece: the right piece for the first gap still empty.
+export function showMeMissing(round, state) {
+  const gap = round.gaps.findIndex((_, i) => !state.filled.includes(i));
+  if (gap < 0) return null;
+  return round.pieces.find((p) => p.right === gap && !state.placed.includes(p.slot)) ?? null;
+}
+// Odd one out: the different card, until she has found it.
+export const showMeOdd = (row, state) => (state.found ? null : row.odd);
+
+// A "show me" goes in the attempt log as help (type 'game-help'), never as one
+// of her moves: it has no answer (no ok, from or to) and is never a try.
+export function showMeLogEntry({ game, set, ms, now = new Date() }) {
+  const entry = { type: 'game-help', help: 'show-me', time: now.toISOString(), game };
+  if (set !== undefined) entry.set = set;
+  entry.ms = Math.max(0, Math.round(ms));
+  return entry;
+}
+
+// Odd one out's demonstration (Slice 5J part 2), about 5 seconds: Jugnu hops
+// onto each of the four cards in turn (each lifts a little while he looks),
+// pauses, then flies to the different one and taps it (or, for "show me",
+// points at it and she taps).
+export const ODD_DEMO = { hopMs: 800, pauseMs: 500, flyMs: 1200 };
+export const oddDemoMs = (cards = ODD.xs.length, d = ODD_DEMO) => cards * d.hopMs + d.pauseMs + d.flyMs;
+// The demonstration's steps, in order: [{ kind: 'look', place } x4, { kind: 'pause' }, { kind: 'go', place: odd }].
+export const oddDemoSteps = (row) => [...ODD.xs.map((_, place) => ({ kind: 'look', place })), { kind: 'pause' }, { kind: 'go', place: row.odd }];

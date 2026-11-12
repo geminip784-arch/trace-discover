@@ -9,11 +9,15 @@
 // feedback, every card at least 88 px, Jugnu the only character. Every line and
 // card is kept in board units (1280 x 640), so a resize or a rotation only
 // rescales the board. Every release goes into the attempt log as a "game" entry.
+// Slice 5J part 2: showMe() (the left column's "show me" button) has Jugnu draw
+// the line for a pair she has not matched yet; then the line fades, nothing is
+// matched, and the log gets a help entry, never one of her moves.
 
 import { makeGroup } from './finds.js';
 import {
   BOARD, boardFit, SETS_PER_PLAY, matchPlay, setKey, cardsOf, hitCard, marginUnits, startMatch, dropCard,
   partnerCard, gameLogEntry, showsFirstMove, firstMovePair, FIRST_MOVE_DELAY_MS, isPlainTap, CARD_GAP, matViewBoxes,
+  showMeMatch, showMeLogEntry,
 } from './games.js';
 import {
   blob, colorThingArt, letterArt, objectPicture, shadowArt, shapeArt, shapeThingArt,
@@ -183,10 +187,10 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
     }
   }
 
-  // Jugnu draws the line from the top left card to its partner, then that
-  // pair is matched like one of hers (not logged: it is not her move).
-  async function firstMove() {
-    const from = cards.find((c) => c.side === 'left' && c.pair === firstMovePair(set));
+  // Jugnu draws the line from the left card of `pair` to its partner. Resolves
+  // { from, to } when he arrives, or null if the game stopped.
+  async function drawDemo(pair) {
+    const from = cards.find((c) => c.side === 'left' && c.pair === pair);
     const to = partnerCard(cards, from);
     const j = document.createElement('img');
     j.className = 'gm-jugnu';
@@ -203,13 +207,37 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
       drag = { card: from, end: p };
       drawLive();
     });
-    if (!alive) return;
+    if (!alive) return null;
     from.el.classList.remove('gm-lift');
-    const r = dropCard(state, from, to);
-    state = r.state;
-    matched(from, r);
     j.classList.add('gm-fading');
-    later(() => { j.remove(); buddy.classList.remove('away'); if (!r.done) busy = false; }, FADE_MS);
+    later(() => { j.remove(); buddy.classList.remove('away'); }, FADE_MS);
+    return { from, to };
+  }
+
+  // The first move: Jugnu draws the line from the top left card to its partner,
+  // then that pair is matched like one of hers (not logged: it is not her move).
+  async function firstMove() {
+    const demo = await drawDemo(firstMovePair(set));
+    if (!demo) return;
+    const r = dropCard(state, demo.from, demo.to);
+    state = r.state;
+    matched(demo.from, r);
+    later(() => { if (!r.done) busy = false; }, FADE_MS);
+  }
+
+  // Show me (Slice 5J part 2): Jugnu draws the line for the first pair she has
+  // not matched, then it fades. Nothing is matched; state is untouched.
+  async function showMe() {
+    if (busy || paused || drag) return false;
+    const pair = showMeMatch(set, state);
+    if (pair === null) return false;
+    busy = true;
+    logAttempt(showMeLogEntry({ game, set: setNo, ms: performance.now() - opened }));
+    const demo = await drawDemo(pair);
+    if (!demo) return false;
+    fadeLine();
+    later(() => { busy = false; }, FADE_MS);
+    return true;
   }
 
   const label = (c) => (c ? set.pairs[c.pair][c.side].label : null);
@@ -329,6 +357,7 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
   }
 
   return {
+    showMe,
     pause() { paused = true; dropDrag(); },
     resume() { paused = false; },
     stop() {

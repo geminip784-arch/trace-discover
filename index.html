@@ -88,6 +88,8 @@
       transition: opacity 0.4s;
     }
     #note.on { opacity: 1; }
+    /* In the games (Slice 5J part 2) the line is the game's instruction: grey, and it stays. */
+    #note.game { color: #7A8396; font-weight: 500; background: rgba(255, 255, 255, 0.75); }
     #rounds .rl {
       box-sizing: border-box;
       width: 56px;
@@ -122,6 +124,10 @@
     #home { top: 16px; }
     #back { top: 128px; }
     #music { bottom: 16px; }
+    /* Slice 5J part 2: "show me" in the games, under back; the resting Jugnu moves down out of its way. */
+    #showme { top: 240px; }
+    #showme svg { width: 72px; height: 72px; }
+    .view-play .buddy.at-left { top: auto; bottom: 124px; }
     #music.off { opacity: 0.75; }
 
     /* ---- the screens ---- */
@@ -489,8 +495,11 @@
     .od-card {
       position: absolute; box-sizing: border-box; padding: 16px; display: flex; align-items: center; justify-content: center;
       background: #fff; border: 6px solid #D6E6F5; border-radius: 32px; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.08);
-      touch-action: none; z-index: 3; transition: border-color 0.2s, box-shadow 0.3s, opacity 0.4s;
+      touch-action: none; z-index: 3; transition: border-color 0.2s, box-shadow 0.3s, opacity 0.4s, transform 0.25s;
     }
+    /* Slice 5J part 2: a card lifts a little while Jugnu looks at it. */
+    .od-card.od-look { transform: translateY(-16px) scale(1.04); box-shadow: 0 14px 0 rgba(0, 0, 0, 0.08); }
+    .gm-jugnu.gm-point { animation: bob 0.7s ease-in-out infinite; }
     .od-card > svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
     .od-card.od-right { border-color: #FFD43B; box-shadow: 0 0 30px rgba(255, 212, 59, 0.9), 0 6px 0 rgba(0, 0, 0, 0.08); animation: od-pop 0.5s ease; }
     .od-card.od-rest { opacity: 0.55; }
@@ -615,6 +624,7 @@
   <div id="note" aria-live="polite" hidden></div>
   <button id="home" class="btn" type="button" aria-label="Home" hidden></button>
   <button id="back" class="btn" type="button" aria-label="Back" hidden></button>
+  <button id="showme" class="btn" type="button" aria-label="Show me" hidden></button>
   <button id="music" class="btn" type="button" aria-label="Music" hidden></button>
   <div id="turn" aria-hidden="true" hidden></div>
   <script type="module">
@@ -642,7 +652,7 @@
       const { startShell } = await import('./src/screens.js');
       startShell({
         shell: $('shell'), area: $('area'), lines: $('lines'), ink: $('ink'), fx: $('fx'), jugnu: $('jugnu'), rounds: $('rounds'), note: $('note'),
-        home: $('home'), back: $('back'), music: $('music'), turn: $('turn'),
+        home: $('home'), back: $('back'), showme: $('showme'), music: $('music'), turn: $('turn'),
       }, { manifest, params });
     }
   </script>
