@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "glyphs": "node tools/make-glyphs.js",
-    "missing-cuts": "node tools/missing-cuts.js"
+    "missing-cuts": "node tools/missing-cuts.js",
+    "crude-report": "node tools/crude-report.js"
   }
 }

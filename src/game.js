@@ -46,23 +46,35 @@
 //   with the part she missed glowing, a dashed outline at the right size, Jugnu
 //   drawing the missing part, or Jugnu tracing the whole model slowly.
 // - A short parent-facing line (src/notes.js) at the top says what the app saw.
+//
+// Slice 5J part 2: frustration fixes.
+// - The copy-it round has a fading helper on the lines (src/progress.js
+//   HELPER, saved per character in td.helper, used by reviews too): level 1 a
+//   faint dotted ghost and the first start dot, level 2 the start dots of the
+//   plan her strokes read as, level 3 nothing. Every copy entry logs its level.
+// - Rounds 1 and 2: a stroke traced along the track the other way (from its far
+//   end) counts (src/variants.js scoreEitherWay). Her ink keeps glowing. It is
+//   logged as a habit, and after the letter Jugnu flies it the usual way once.
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
-  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD,
+  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD, drawCopyHelper,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import {
-  variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar,
+  variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar, scoreEitherWay,
 } from './variants.js';
 import {
   CONFIG, ROUNDS, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
   startRounds, markHelp, isHelp, finishRound, starEarned, roundLights, isCopyRound, finishCopy,
+  startHelper, applyHelperCopy, strokeLogEntry,
 } from './progress.js';
 import { scoreCopy, copyStatus, copyLogEntry, copyShow, compareIds, boxOf, refBox } from './copy.js';
 import { traceNote, copyNote } from './notes.js';
-import { logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds } from './storage.js';
+import {
+  logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds, readHelper, saveHelper,
+} from './storage.js';
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
@@ -153,7 +165,13 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   let holding = null;  // while a finger holds a 'held' phase: how to resume
   let turned = null;   // while the tablet is upright (pause()): how to carry on
   let card = null;     // the copy round's model card for this screen size (render.js modelCard), else null
-  let copy = null;     // the copy round: { strokes (her letter, letter units), ids (ink ids), fails }
+  let copy = null;     // the copy round: { strokes (her letter, letter units), ids (ink ids), fails, hinted }
+  // The copy round's fading helper for this character: { level, passes, fails } (src/progress.js).
+  let helper = startHelper(readHelper(char.id));
+  // The plan her copy strokes read as so far, and its strokes she has drawn (the helper's dots follow it).
+  let helperRead = { plan: 0, done: null };
+  // Rounds 1 and 2: strokes she traced the other way this round (reference paths, the usual way).
+  let reversedStrokes = [];
   const isCopy = () => isCopyRound(rp.round, rounds);
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
@@ -196,7 +214,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     if (!debug) return;
     const { stage, streak, assisted } = progress;
     if (card) {
-      debug.status(`${char.id}  round ${rp.round + 1}/${rounds}  copy it  failed copies ${copy?.fails ?? 0}/${CONFIG.copyTries}  help ${rp.helped ? 'yes (no star)' : 'no'}`, -1);
+      debug.status(`${char.id}  round ${rp.round + 1}/${rounds}  copy it  helper ${helper.level} (passes ${helper.passes}, fails ${helper.fails})  failed copies ${copy?.fails ?? 0}/${CONFIG.copyTries}  help ${rp.helped ? 'yes (no star)' : 'no'}`, -1);
       return;
     }
     debug.status(`${char.id}  round ${rp.round + 1}/${rounds}  stage ${stage}  streak ${streak}  assisted ${assisted ? 'yes' : 'no'}  help ${rp.helped ? 'yes (no star)' : 'no'}`, progress.current);
@@ -219,7 +237,11 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
 
   function redraw() {
     drawLines(els.lines, layout);
-    if (card) return drawModelCard(els.lines, layout, card, char);
+    if (card) {
+      drawModelCard(els.lines, layout, card, char);
+      drawCopyHelper(els.lines, layout, planChar(char, helperRead.plan), offset, { level: helper.level, done: helperRead.done });
+      return;
+    }
     drawStageTrack(els.lines, layout, planChar(char, shown().plan), offset, {
       stage: progress.stage,
       done: progress.done,
@@ -323,7 +345,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
 
   // The round starts: Jugnu draws the whole letter on the model card, then she writes.
   async function beginCopy() {
-    copy = { strokes: [], ids: [], fails: 0 };
+    copy = { strokes: [], ids: [], fails: 0, hinted: false };
+    helperRead = { plan: 0, done: null };
     redraw();
     updateDebug();
     speak('copy');
@@ -361,7 +384,13 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     const id = ink.end();
     copy.strokes.push(a.points);
     copy.ids.push(id);
-    const { action, next, plan } = copyStatus(copy.strokes, char, { others });
+    const { action, next, plan, done } = copyStatus(copy.strokes, char, { others });
+    // The helper follows the plan her strokes read as (level 2's start dots; level 1's first dot goes).
+    // Judging now or soon: her letter is whole, so no dots are left. A hint with no
+    // reading (only taps so far): the first stroke counts as begun.
+    const all = planStrokes(char, plan).map(() => true);
+    helperRead = action !== 'hint' ? { plan, done: all } : { plan, done: done ?? all.map((_, i) => i === 0) };
+    if (helper.level < 3) redraw();
     if (action === 'judge-now') judgeCopy();
     else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
     else later(() => hintCopy(planStrokes(char, plan)[next].points), CONFIG.copyHintMs);
@@ -371,6 +400,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // stay on the lines, nothing is judged or logged, and it is not a failed copy.
   async function hintCopy(path) {
     if (phase !== 'trace') return;
+    copy.hinted = true; // this copy had Jugnu's help: it cannot move the helper up
     if (!(await showOnCard([path]))) return;
     phase = 'trace';
   }
@@ -413,7 +443,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     phase = 'held';
     const result = scoreCopy(copy.strokes, char, { others });
     const r = finishCopy(rp, { ok: result.ok, fails: copy.fails }, rounds);
-    logAttempt(copyLogEntry({ char: char.id, result, attempt: copy.fails + 1, helped: r.helpedOut }));
+    logAttempt(copyLogEntry({ char: char.id, result, attempt: copy.fails + 1, helped: r.helpedOut, helper: helper.level }));
+    // The fading helper moves with every judged copy, reviews included (shape judging never depends on it).
+    helper = applyHelperCopy(helper, { ok: result.ok, hinted: copy.hinted });
+    saveHelper(char.id, helper);
     if (!result.ok) sitting.failedCopies += 1;
     if (result.ok && result.mirrored) sitting.mirrored += 1;
     sitting.wrongStarts += result.strokes.filter((x) => x.startOk === false && x.reason !== 'extra-stroke').length;
@@ -437,6 +470,9 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
     copy.strokes = [];
     copy.ids = [];
+    copy.hinted = false;
+    helperRead = { plan: 0, done: null };
+    redraw(); // the helper may have dropped a level: her next try has more help at once
     if (r.helpedOut) return afterRound(r, null);
     phase = 'trace';
   }
@@ -447,6 +483,22 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   async function endRound() {
     phase = 'held';
     redraw();
+    // Direction coaches, never blocks: each stroke she traced the other way,
+    // Jugnu now flies the usual way once.
+    if (reversedStrokes.length > 0) {
+      const paths = reversedStrokes;
+      reversedStrokes = [];
+      await wait(CONFIG.sparkleMs);
+      if (!alive) return;
+      showNote(traceNote('reversed'));
+      for (const pts of paths) {
+        const flown = await jugnu.demo(pts, CONFIG.demoMs, CONFIG.hopMs);
+        if (!alive || !flown) return;
+      }
+      jugnu.hopTo(home(), CONFIG.hopMs);
+      await wait(CONFIG.hopMs);
+      if (!alive) return;
+    }
     return afterRound(finishRound(rp, { assisted: progress.assisted }, rounds));
   }
 
@@ -471,6 +523,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     fx.clear();
     progress = freshRound();
     following = startPlans(char);
+    reversedStrokes = [];
     applyLayout(); // the copy round lays the screen out round its model card
     phase = 'trace';
     beginStroke();
@@ -547,9 +600,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     const candidates = planCandidates(char, following);
     attempt = {
       candidates,
-      trackers: candidates.map((v) => createLiveTracker(v.points, progress.stage)),
-      // Touch-down check: too far from every start dot she may use and this stroke will not count.
-      startOk: candidates.some((v) => dist(q, v.points[0]) <= stageCfg().startRadius),
+      // Each track both ways: going the other way along it counts too (Slice 5J part 2), so the glow stays.
+      trackers: candidates.flatMap((v) => [createLiveTracker(v.points, progress.stage), createLiveTracker([...v.points].reverse(), progress.stage)]),
+      // Touch-down check: too far from every start dot she may use (or the far end of its stroke) and this stroke will not count.
+      startOk: candidates.some((v) => dist(q, v.points[0]) <= stageCfg().startRadius || dist(q, v.points[v.points.length - 1]) <= stageCfg().startRadius),
       wrongWay: false,
       points: [q],
     };
@@ -563,7 +617,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     const id = ink.end();
     const stage = progress.stage;
     const current = progress.current;
-    const pick = pickCandidate(a.points, a.candidates, stage);
+    // Rounds 1 and 2: a stroke traced the other way along the track counts (scoreEitherWay).
+    const pick = pickCandidate(a.points, a.candidates, stage, scoreEitherWay);
     let result = pick.result;
     // Too short to be a real try (a tap): logged, but never added to the fail streak.
     const counted = result.reason !== 'too-short';
@@ -573,7 +628,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     let lift;
     if (result.ok) {
       // A passed stroke: keep the plans it fits, and show the first of them.
-      following = advancePlans(a.points, char, following, stage);
+      following = advancePlans(a.points, char, following, stage, scoreEitherWay);
+      if (result.reversed) reversedStrokes.push(pick.variant.points);
       if (following.length === 0) following = [{ plan: pick.variant.plan, done: progress.done }]; // cannot happen: the pick passed
       lift = applyPlanPass(progress, shown().done);
     } else {
@@ -582,22 +638,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
       if (lift.assist) following = [{ plan: shown().plan, done: lift.state.done }];
     }
 
-    logAttempt({
-      time: new Date().toISOString(),
-      char: char.id,
-      stage,
-      plan: pick.variant.plan, // Slice 5J: which stroke plan the stroke was scored in (0: the default)
-      stroke: pick.variant.from,
-      variant,
-      ok: result.ok,
-      reason: result.reason,
-      startOk: result.startOk,
-      directionOk: result.directionOk,
-      shapeOk: result.shapeOk,
-      error: Number.isFinite(result.error) ? Number(result.error.toFixed(4)) : null,
-      counted,
-      assisted: lift.assist, // true: after this try, Jugnu drew the stroke himself
-    });
+    logAttempt(strokeLogEntry({ char: char.id, stage, pick, result, variant, counted, assisted: lift.assist }));
 
     progress = lift.state;
     if (!rp.helped && isHelp(stage, lift)) {

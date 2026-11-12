@@ -21,7 +21,12 @@ const MANIFEST = JSON.parse(readFileSync(new URL('../data/chars/index.json', imp
 const othersOf = (char) => compareIds(char.id).map(load);
 const scoreCopy = (strokes, char, opts = {}) => judgeAlone(strokes, char, { others: othersOf(char), ...opts });
 const copyReady = (strokes, char, opts = {}) => readyAlone(strokes, char, { others: othersOf(char), ...opts });
-const copyStatus = (strokes, char, opts = {}) => statusAlone(strokes, char, { others: othersOf(char), ...opts });
+// What these tests check: the action, the next stroke and the plan (the
+// helper's `done`, Slice 5J part 2, is checked in tests/helper.test.js).
+const copyStatus = (strokes, char, opts = {}) => {
+  const { action, next, plan } = statusAlone(strokes, char, { others: othersOf(char), ...opts });
+  return { action, next, plan };
+};
 
 // Her copy of a letter: every stroke's points, scaled by `k` about the letter's
 // top-left and moved by (dx, dy). That is "the same letter, smaller or bigger,

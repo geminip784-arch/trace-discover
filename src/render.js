@@ -788,3 +788,80 @@ export function drawModelCard(svg, layout, card, char) {
     t.textContent = String(d.label);
   }
 }
+
+// ---- The fading helper in the copy-it round (Slice 5J part 2) ----
+// Drawn on the writing lines, where her letter goes (the letter box at
+// `offset`), under her ink. Level 1: a faint dotted ghost of the whole letter,
+// and the first stroke's start dot until she has drawn a stroke. Level 2: a
+// start dot (numbered) for every stroke of the plan her strokes read as so
+// far that she has not drawn yet. Level 3: nothing.
+export const HELPER_LOOK = {
+  ghost: { color: TRACK_COLOR, opacity: 0.3, width: 0.035, gap: 0.075 }, // line units: a dotted line
+  dot: MARKERS.stage2,
+  number: 0.075,
+};
+
+// Pure: what the helper shows, in letter units. `char` is the plan to show (its
+// strokes); `done` the strokes of it she has drawn (null: none yet).
+// Returns { ghost: [paths], dots: [{ at, label }] }.
+export function copyHelperMarks(char, level, done = null) {
+  const lines = char.strokes.filter((s) => s.kind === 'line');
+  const none = !done || done.every((d) => !d);
+  if (level === 1) {
+    const first = char.strokes[0];
+    return { ghost: lines.map((s) => s.points), dots: none ? [{ at: first.points[0], label: null }] : [] };
+  }
+  if (level === 2) {
+    // A dot that would sit on an earlier one (M's two strokes start together)
+    // slides along its own stroke until it is clear, as on the model card.
+    const r = HELPER_LOOK.dot + MARKERS.ring;
+    const dots = [];
+    char.strokes.forEach((s, i) => {
+      if (done?.[i]) return;
+      const len = s.kind === 'line' ? pathLength(s.points) : 0;
+      const clear = (at) => dots.every((d) => Math.hypot(at[0] - d.at[0], at[1] - d.at[1]) >= 2 * r + MARKERS.gap);
+      let at = s.points[0];
+      for (let d = 0.02; !clear(at) && d <= 0.6 * len; d += 0.02) at = pointAlong(s.points, d).at;
+      dots.push({ at, label: i + 1 });
+    });
+    return { ghost: [], dots };
+  }
+  return { ghost: [], dots: [] };
+}
+
+// Draw the helper on the guide layer (after drawLines and the model card).
+export function drawCopyHelper(svg, layout, char, offset, { level, done = null }) {
+  const { unit } = layout;
+  const px = letterToPx(layout, offset);
+  const make = (tag, attrs) => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    svg.appendChild(el);
+    return el;
+  };
+  const { ghost, dots } = copyHelperMarks(char, level, done);
+  const g = HELPER_LOOK.ghost;
+  for (const points of ghost) {
+    make('polyline', {
+      class: 'copy-ghost',
+      points: points.map(px).map((p) => p.join(',')).join(' '),
+      fill: 'none', stroke: g.color, 'stroke-opacity': g.opacity, 'stroke-width': g.width * unit,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': `0.1 ${g.gap * unit}`,
+    });
+  }
+  // The lower numbers on top, where two strokes start together.
+  for (const d of [...dots].reverse()) {
+    const [cx, cy] = px(d.at);
+    make('circle', {
+      class: 'copy-dot', cx, cy, r: HELPER_LOOK.dot * unit,
+      fill: GAME_TRACK.dot.color, stroke: GAME_TRACK.dot.ring, 'stroke-width': MARKERS.ring * unit,
+    });
+    if (d.label) {
+      const t = make('text', {
+        x: cx, y: cy, fill: GAME_TRACK.number.color, 'font-size': HELPER_LOOK.number * unit,
+        'font-family': 'Fredoka, sans-serif', 'font-weight': '600', 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      });
+      t.textContent = String(d.label);
+    }
+  }
+}

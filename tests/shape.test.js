@@ -286,8 +286,9 @@ test('the size lines, and a usual pass says nothing', () => {
   assert.equal(copyNote(judge('H', [lines('H')[0], lines('H')[2], lines('H')[1]])), 'Well done! Here is the usual way.');
 });
 
-test('the tracing rounds: a short line for a wrong start, a wrong direction and off the track', () => {
-  assert.deepEqual(Object.keys(TRACE_NOTES).sort(), ['off-path', 'wrong-direction', 'wrong-start']);
+test('the tracing rounds: a short line for a wrong start, a wrong direction, off the track and a stroke traced the other way', () => {
+  assert.deepEqual(Object.keys(TRACE_NOTES).sort(), ['off-path', 'reversed', 'wrong-direction', 'wrong-start']);
+  assert.equal(traceNote('reversed'), 'That counts! Here is the usual way.');
   assert.equal(traceNote('wrong-start'), 'Start at the glowing dot.');
   assert.equal(traceNote('wrong-direction'), 'Go the other way. Watch Jugnu.');
   assert.equal(traceNote('off-path'), 'Stay on the track.');

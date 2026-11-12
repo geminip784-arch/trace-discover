@@ -191,6 +191,36 @@ export function clearRounds(id, store = activeStore()) {
   }
 }
 
+// The copy-it round's fading helper (Slice 5J part 2), per character:
+// { [character id]: { level, passes, fails } } (src/progress.js startHelper).
+export const HELPER_KEY = 'td.helper';
+
+function readAllHelper(store) {
+  try {
+    const all = JSON.parse(store.getItem(HELPER_KEY) ?? '{}');
+    return all && typeof all === 'object' && !Array.isArray(all) ? all : {};
+  } catch {
+    return {};
+  }
+}
+
+// What was saved for one character, or null (startHelper cleans it).
+export function readHelper(id, store = activeStore()) {
+  const entry = readAllHelper(store)[id];
+  return entry && typeof entry === 'object' ? entry : null;
+}
+
+export function saveHelper(id, { level, passes, fails }, store = activeStore()) {
+  try {
+    const all = readAllHelper(store);
+    all[id] = { level, passes, fails };
+    store.setItem(HELPER_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Her collection (Slice 5C): every find, newest last. { o } or { g, n, gold }.
 

@@ -164,8 +164,8 @@ const AGREED_PLANS = {
   H: [['stem', 'right stem', 'bar'], ['stem', 'bar', 'right stem']],
   K: [['stem', 'arm', 'leg'], ['stem', 'arm and leg']],
   L: [['stem', 'foot'], ['stem and foot']],
-  M: [['stem', 'slants and right stem'], ['stem', 'first slant', 'second slant', 'right stem']],
-  N: [['stem', 'slant and right side'], ['stem', 'slant', 'right side']],
+  M: [['stem', 'slants and right stem'], ['stem', 'first slant', 'second slant', 'right stem'], ['zigzag']],
+  N: [['stem', 'slant and right side'], ['stem', 'slant', 'right side'], ['zigzag']],
   R: [['stem', 'bump', 'leg'], ['stem', 'bump and leg']],
   T: [['stem', 'top bar'], ['top bar', 'stem']],
   V: [['slants'], ['first slant', 'second slant']],
@@ -219,6 +219,10 @@ test('every plan has the same shape as the default (within 0.01), except the two
   }
 });
 
+// M and N from the bottom (Slice 5J part 2): their stem runs up, on purpose.
+// They are checked by hand below. Plan numbers count from 0 (the default).
+const BOTTOM_UP = { M: 2, N: 2 };
+
 test('no plan runs a part the other way: each plan stroke follows the default ink forwards', () => {
   // B's default stroke runs back along the middle to the stem and out again, so
   // its middle line is in it both ways; its 3-stroke plan is checked by hand below.
@@ -226,6 +230,7 @@ test('no plan runs a part the other way: each plan stroke follows the default in
     const plans = plansOf(GLYPHS[id]).map((p) => p.map(strokePath));
     const ink = plans[0];
     for (let p = 1; p < plans.length; p++) {
+      if (BOTTOM_UP[id] === p) continue;
       for (const [k, pts] of plans[p].entries()) {
         // Walk along the plan stroke: the nearest default stroke's progress must not run backwards.
         const sample = resample(pts, 24);
@@ -243,6 +248,22 @@ test('no plan runs a part the other way: each plan stroke follows the default in
         }
       }
     }
+  }
+});
+
+test('M and N from the bottom: one stroke from the bottom left, up the stem, then the default way', () => {
+  for (const [id, p] of Object.entries(BOTTOM_UP)) {
+    const plan = plansOf(GLYPHS[id])[p];
+    assert.equal(plan.length, 1, id);
+    const pts = strokePath(plan[0]);
+    const def = plansOf(GLYPHS[id])[0].map(strokePath);
+    assert.ok(Math.hypot(pts[0][0] - MARGIN, pts[0][1] - 1) < 1e-9, `${id} starts at the bottom left`);
+    // The first piece is the stem, upwards; the rest is the default's second stroke, forwards.
+    const top = pts.findIndex(([x, y]) => Math.abs(x - MARGIN) < 1e-9 && Math.abs(y) < 1e-9);
+    assert.ok(top > 0, `${id} reaches the top of the stem`);
+    const rest = pts.slice(top);
+    assert.ok(Math.hypot(rest.at(-1)[0] - def[1].at(-1)[0], rest.at(-1)[1] - def[1].at(-1)[1]) < 1e-9, `${id} ends where the default ends`);
+    assert.equal(plan[0].from, 'grass');
   }
 });
 

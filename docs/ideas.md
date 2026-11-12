@@ -18,6 +18,11 @@ Claude Code adds ideas here instead of building them mid-slice. Each idea is tag
 - **[later]** The copy-it round fits her letter by its height (the model's longer side). If she often writes letters much wider or narrower than the model, a fit that also allows a little stretching could be kinder; check her real `copy` log entries first.
 - **[8]** Test mode (`?debug=1&today=`) keeps its changes in `test.` keys, which stay until cleared. The parent zone could offer a button to clear them (her real data is never affected).
 - **[later]** The headless ink-offset check (Playwright, both orientations, devicePixelRatio 1.5) could live in the repo as a script, so every slice can re-run it the same way.
+- **[8]** A parent switch for strict direction (Slice 5J part 2): today a stroke traced the other way along the track counts in rounds 1 and 2, and is only coached. A parent could turn on the old rule (the glow stops and the stroke does not count).
+- **[later]** Round 3 look-alikes still accepted on two tiles (Slice 5J part 2). In the crude test letters, 4 B's written on the 8 tile pass as 8. Before the child-style templates, shallow M's written on the N tile also passed as N (as a mirrored N); with the templates none of the crude ones do. Check both against her real `copy` log entries before tightening anything (a rule that rejects a letter when she drew a part the target lacks was tried and did not help: under the 0.2 cover radius an N's lines reach every part of a shallow M).
+- **[later]** A B with no stem passes round 3, the model B too (from before Slice 5J part 2): its bumps start and end on the stem line, so within the 0.2 cover radius they cover most of it. A fix would need a stricter part check for B's stem.
+- **[later]** One crude B still fails round 3: round bumps drawn straight off the stem, slanted right, reads as 8. A template for it made a crude R with a small bump read as B, so it was left out (`tests/crude.test.js` KNOWN_FAIL).
+- **[later]** In round 3 at helper level 2, start dots on the stem (E's bars after an L) sit under her ink. They could be drawn on a layer above the ink, or nudged off the stem.
 
 ## Slice 5C: objects each room still needs
 
