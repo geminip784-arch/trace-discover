@@ -25,7 +25,8 @@
 // letter: a split (B's bumps one at a time), a merge (K's "<" in one go) or
 // another order (H: stem, bar, stem). Every plan is built from the same exact
 // lines and arcs, so every plan has the same shape (tests/glyphs.test.js
-// checks it), and no plan runs any part the other way. Joins the one-stroke
+// checks it), and no plan runs any part the other way, except M and N from the
+// bottom (Slice 5J part 2), whose stem runs up. Joins the one-stroke
 // rule already accepts (src/variants.js, L in one go) are listed too, so the
 // whole list is visible on glyphs.html.
 
@@ -205,6 +206,8 @@ export const GLYPHS = {
       stroke('first slant', 'sky', 'grass', line([m, 0], [mMid, 1])),
       stroke('second slant', 'grass', 'sky', line([mMid, 1], [wid, 0])),
       stroke('right stem', 'sky', 'grass', line([wid, 0], [wid, 1]))],
+    // From the bottom (Slice 5J part 2): one stroke from the bottom left, up, down, up, down.
+    [stroke('zigzag', 'grass', 'grass', line([m, 1], [m, 0], [mMid, 1], [wid, 0], [wid, 1]))],
   ] },
   N: { strokes: [
     S.stem,
@@ -213,6 +216,8 @@ export const GLYPHS = {
     [S.stem,
       stroke('slant', 'sky', 'grass', line([m, 0], [std, 1])),
       stroke('right side', 'grass', 'sky', line([std, 1], [std, 0]))],
+    // From the bottom (Slice 5J part 2): one stroke from the bottom left, up, diagonal down, up.
+    [stroke('zigzag', 'grass', 'sky', line([m, 1], [m, 0], [std, 1], [std, 0]))],
   ] },
   O: { strokes: [
     stroke('circle', 'sky', 'sky', arc(oc, 0.5, R, R, -90, -450)),

@@ -92,6 +92,31 @@ export function applyPlanPass(state, done) {
   return { state: next, letterDone: isLetterDone(next), demo: false, assist: false };
 }
 
+// One attempt-log entry for a stroke in the tracing rounds. `pick` is
+// pickCandidate's answer, `result` its result after the touch-down start check.
+// Slice 5J part 2: a stroke traced the other way along the track counts
+// (reversed: true, directionOk: false) and is logged as a habit, never a fail.
+export function strokeLogEntry({ char, stage, pick, result, variant, counted, assisted, now = new Date() }) {
+  return {
+    time: now.toISOString(),
+    char,
+    stage,
+    plan: pick.variant.plan, // Slice 5J: which stroke plan the stroke was scored in (0: the default)
+    stroke: pick.variant.from,
+    variant,
+    ok: result.ok,
+    reason: result.reason,
+    startOk: result.startOk,
+    directionOk: result.directionOk,
+    shapeOk: result.shapeOk,
+    error: Number.isFinite(result.error) ? Number(result.error.toFixed(4)) : null,
+    counted,
+    assisted, // true: after this try, Jugnu drew the stroke himself
+    reversed: result.ok === true && result.reversed === true, // traced the other way; it counts
+    habit: result.ok === true && result.reversed === true ? 'direction' : null, // coached after the letter
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Practice rounds
 //
@@ -168,4 +193,46 @@ export function finishCopy(rp, { ok, fails = 0 }, rounds = ROUNDS, cfg = CONFIG)
   if (n < cfg.copyTries) return { state: rp, fails: n, again: true, allDone: false, helpedOut: false };
   const round = rp.round + 1;
   return { state: { ...rp, round, helped: true }, fails: n, again: false, allDone: round >= roundCount(rounds), helpedOut: true };
+}
+
+// ---------------------------------------------------------------------------
+// The fading helper in the copy-it round (Slice 5J part 2)
+//
+// Each character has its own helper level for round 3, kept across sittings
+// (td.helper) and used by reviews too:
+//   1  a faint dotted ghost of the letter on the lines, and the first stroke's start dot
+//   2  the start dots only
+//   3  nothing (the empty lines and the model card)
+// Every character starts at level 1. It moves up a level after HELPER.passesUp
+// passed copies at its current level without Jugnu's help (no hint during that
+// copy), not necessarily in a row. It drops back one level after
+// HELPER.failsDown failed copies in a row; the drop takes effect at once, so her
+// next try already has more help. A passed copy ends a run of fails. Changing
+// level starts both counts again. Shape judging never depends on the level.
+
+export const HELPER = { start: 1, top: 3, passesUp: 2, failsDown: 2 };
+
+// Where a character's helper stands: { level, passes, fails }. `saved` is what
+// storage gave back (or null); anything odd starts fresh at level 1.
+export function startHelper(saved, h = HELPER) {
+  const level = Number.isInteger(saved?.level) && saved.level >= 1 && saved.level <= h.top ? saved.level : null;
+  if (level === null) return { level: h.start, passes: 0, fails: 0 };
+  const count = (n, max) => (Number.isInteger(n) && n >= 0 && n < max ? n : 0);
+  return { level, passes: count(saved.passes, h.passesUp), fails: count(saved.fails, h.failsDown) };
+}
+
+// One judged copy. ok: it passed; hinted: Jugnu showed a hint during it.
+// Returns the new { level, passes, fails }.
+export function applyHelperCopy(state, { ok, hinted = false }, h = HELPER) {
+  const s = startHelper(state, h);
+  if (ok) {
+    if (hinted || s.level >= h.top) return { ...s, fails: 0 };
+    const passes = s.passes + 1;
+    if (passes >= h.passesUp) return { level: s.level + 1, passes: 0, fails: 0 };
+    return { ...s, passes, fails: 0 };
+  }
+  const fails = s.fails + 1;
+  if (fails < h.failsDown) return { ...s, fails };
+  if (s.level <= h.start) return { ...s, fails: 0 };
+  return { level: s.level - 1, passes: 0, fails: 0 };
 }

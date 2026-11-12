@@ -33,14 +33,35 @@ export function variantLabel(v) {
   return v.from === v.to ? 'alone' : `joined ${v.from + 1}-${v.to + 1}`;
 }
 
-// Score her stroke against every variant. Of those that pass, take the lowest error.
+// ---- Direction coaches, never blocks (Slice 5J part 2) ----
+// In the tracing rounds (1 and 2) a stroke traced along the track the other
+// way, from its far end, counts as done. It is a habit: logged (reversed: true,
+// directionOk: false) and coached once after the letter, never a fail.
+// Off the track, or started in the middle, it still does not count.
+// scoreStroke is unchanged: this only scores the reversed path as well.
+export function scoreEitherWay(child, ref, stage = 1, cfg = DEFAULTS) {
+  const r = scoreStroke(child, ref, stage, cfg);
+  if (r.reason !== 'wrong-direction') return { ...r, reversed: false };
+  const back = scoreStroke(child, [...ref].reverse(), stage, cfg);
+  // Not a good reversed trace either: the reason is what went wrong along the
+  // way she went (off the track, or started in the middle).
+  return { ...back, directionOk: false, reversed: back.ok };
+}
+
+// Of two passing results, the better: a forward one beats a reversed one
+// (so M from the bottom reads as its own plan, not the default traced back),
+// then the lower error.
+export const betterPass = (a, b) => ((a.reversed === true) !== (b.reversed === true) ? b.reversed === true : a.error < b.error);
+
+// Score her stroke against every variant. Of those that pass, take the best
+// (betterPass: forward first, then the lowest error).
 // If none passes, report the result against the stroke alone.
 // Returns { variant, result, all } where all is [{ variant, result }] in variant order.
 export function pickVariant(child, variants, stage = 1, score = scoreStroke) {
   const all = variants.map((variant) => ({ variant, result: score(child, variant.points, stage) }));
   let best = null;
   for (const r of all) {
-    if (r.result.ok && (!best || r.result.error < best.result.error)) best = r;
+    if (r.result.ok && (!best || betterPass(r.result, best.result))) best = r;
   }
   return { ...(best ?? all[0]), all };
 }
@@ -127,20 +148,22 @@ export function planCandidates(char, alive, gap = JOIN_GAP) {
 }
 
 // After a stroke that passed: the plans her strokes still follow, each moved on
-// by its lowest-error passing reference. A plan none of whose next references
-// her stroke passes is dropped.
+// by its best passing reference (betterPass). A plan none of whose next
+// references her stroke passes is dropped. When some plan takes the stroke
+// forwards, plans that take it only reversed are dropped too.
 export function advancePlans(child, char, alive, stage = 1, score = scoreStroke, gap = JOIN_GAP) {
   const out = [];
   for (const { plan, done } of alive) {
     let best = null;
     for (const v of candidatesFor(planChar(char, plan), done, gap)) {
       const r = score(child, v.points, stage);
-      if (r.ok && (!best || r.error < best.error)) best = { v, error: r.error };
+      if (r.ok && (!best || betterPass(r, best.r))) best = { v, r };
     }
     if (!best) continue;
     const next = [...done];
     for (let i = best.v.from; i <= best.v.to; i++) next[i] = true;
-    out.push({ plan, done: next });
+    out.push({ plan, done: next, reversed: best.r.reversed === true });
   }
-  return out;
+  const forward = out.filter((p) => !p.reversed);
+  return (forward.length > 0 ? forward : out).map(({ plan, done }) => ({ plan, done }));
 }

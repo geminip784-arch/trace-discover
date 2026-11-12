@@ -574,11 +574,13 @@ function readings(n, pc, gap) {
 //   'hint'       fewer strokes, and they read best as the start of the letter:
 //                after CONFIG.copyHintMs Jugnu shows `next` (a stroke of `plan`)
 //                on the model card. Her strokes stay; it is not a failed copy.
-// Returns { action, next, plan }.
+// Returns { action, next, plan, done }: for 'hint', `done` is the strokes of
+// `plan` her strokes read as (the helper's start dots follow it, Slice 5J part 2);
+// otherwise null.
 export function copyStatus(strokes, char, opts = {}) {
   const cfg = opts.cfg ?? DEFAULTS;
   const used = usableStrokes(strokes, char, cfg);
-  if (used.length > 0 && copyReady(strokes, char, opts)) return { action: 'judge-now', next: null, plan: 0 };
+  if (used.length > 0 && copyReady(strokes, char, opts)) return { action: 'judge-now', next: null, plan: 0, done: null };
   let best = null;
   for (let p = 0; p < planCount(char); p++) {
     const pc = planChar(char, p);
@@ -587,15 +589,15 @@ export function copyStatus(strokes, char, opts = {}) {
       if (!best || error < best.error) best = { ...r, error, plan: p, pc };
     }
   }
-  if (best && best.error < Infinity && best.done.every(Boolean)) return { action: 'judge-soon', next: null, plan: best.plan };
-  if (!best || best.error === Infinity) return { action: 'hint', next: nextStrokes(char, new Array(char.strokes.length).fill(false))[0], plan: 0 };
-  return { action: 'hint', next: nextStrokes(best.pc, best.done)[0], plan: best.plan };
+  if (best && best.error < Infinity && best.done.every(Boolean)) return { action: 'judge-soon', next: null, plan: best.plan, done: null };
+  if (!best || best.error === Infinity) return { action: 'hint', next: nextStrokes(char, new Array(char.strokes.length).fill(false))[0], plan: 0, done: null };
+  return { action: 'hint', next: nextStrokes(best.pc, best.done)[0], plan: best.plan, done: best.done };
 }
 
 const round4 = (v) => (Number.isFinite(v) ? Number(v.toFixed(4)) : null);
 
 // One attempt-log entry for a judged copy (type 'copy'). Existing entry types are unchanged.
-export function copyLogEntry({ char, result, attempt, helped = false, now = new Date() }) {
+export function copyLogEntry({ char, result, attempt, helped = false, helper = null, now = new Date() }) {
   const h = result.habits;
   return {
     type: 'copy',
@@ -628,5 +630,6 @@ export function copyLogEntry({ char, result, attempt, helped = false, now = new 
       error: round4(r.error),
     })),
     helped,               // true: the third failed copy, so the round ends with help
+    helper,               // Slice 5J part 2: the helper level shown on the lines for this copy (1, 2 or 3)
   };
 }

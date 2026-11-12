@@ -10,6 +10,8 @@ export const TRACE_NOTES = {
   'wrong-start': 'Start at the glowing dot.',
   'wrong-direction': 'Go the other way. Watch Jugnu.',
   'off-path': 'Stay on the track.',
+  // Slice 5J part 2: a stroke traced the other way counts; after the letter Jugnu shows the usual way.
+  reversed: 'That counts! Here is the usual way.',
 };
 
 export const traceNote = (reason) => TRACE_NOTES[reason] ?? null;
