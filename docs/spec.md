@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.1 · Nov 8, 2026 · describes the app as built through Slice 5J part 1 (stroke plans, shape judging and failure reasons), and where it goes next.
+Version 3.2 · Nov 12, 2026 · describes the app as built through Slice 5J part 2A (the fading helper, M and N from the bottom, direction coached, child-style templates), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -57,7 +57,7 @@ Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to
 | --- | --- | --- | --- |
 | 1 | Dots | The letter's track, numbered start dots, arrows. Jugnu flies each stroke first | Wide path |
 | 2 | Ghost | A faded track. Only the next start dot glows | Narrower path |
-| 3 | Copy it | Empty lines, and the finished letter on a small model card at their right end, with a numbered start dot and an arrow on every stroke. Jugnu draws it once on the card | None on the lines. Her whole letter is judged at the end |
+| 3 | Copy it | Empty lines, and the finished letter on a small model card at their right end, with a numbered start dot and an arrow on every stroke. Jugnu draws it once on the card | The fading helper on the lines (below). Her whole letter is judged at the end |
 
 - Strokes must be drawn in order, in one of the character's **allowed stroke plans** (Slice 5J, below). Stroke k of her plan is compared with stroke k of that plan. Some letters also accept known joined versions (for example, both strokes of 4 in one go).
 - **Never stuck.** After 3 misses in a row on one stroke, Jugnu demonstrates it. After 5, Jugnu draws it himself and the round starts again. The stage never drops inside a round.
@@ -75,8 +75,8 @@ Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to
 | H | stem, right stem, bar | stem, bar, right stem |
 | K | stem, arm, leg (the leg starts at the stem, where the arm ends) | stem, then the "<" in one |
 | L, 1, 7 | 2 strokes | in one go |
-| M | stem, then slants and right stem | stem, slant, slant, right stem |
-| N | stem, then slant and right side | stem, slant, right side |
+| M | stem, then slants and right stem | stem, slant, slant, right stem; one stroke from the bottom left (up, down, up, down) |
+| N | stem, then slant and right side | stem, slant, right side; one stroke from the bottom left (up, diagonal down, up) |
 | R | stem, bump, leg | stem, then bump and leg in one |
 | T | stem, top bar | top bar, stem |
 | V | one stroke | two slants |
@@ -89,17 +89,20 @@ Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to
 | 4 | stem, slant, bar | slant and bar, then stem |
 | 9 | circle, stem | circle running into the stem |
 
-No plan runs any part the other way. In rounds 1 and 2 the default plan's track and dots show until her strokes leave it; then her plan's track, next start dot and Jugnu's help follow. Start and direction are still checked for every stroke.
+No plan runs any part the other way, except M and N from the bottom (their stem runs up). In rounds 1 and 2 the default plan's track and dots show until her strokes leave it; then her plan's track, next start dot and Jugnu's help follow. Start is still checked for every stroke; direction is coached (below).
 
 **Copy it (round 3, Slice 5I, judged by shape since 5J).** She writes the whole letter herself, anywhere on the lines (`src/copy.js`).
 
+- **The fading helper (Slice 5J part 2).** Each character has its own helper level for round 3 (`HELPER` in `src/progress.js`, saved in `td.helper`). Level 1, where every character starts: a faint dotted ghost of the letter on the lines, and the first stroke's start dot until she draws. Level 2: a numbered start dot for each stroke still to draw, following the plan her strokes read as so far (an E with its L first leaves the top and middle bars' dots; two strokes that start together slide apart). Level 3: nothing. A character moves up a level after 2 passed copies at its level with no hint during them (across sittings, not necessarily in a row), and drops back one level after 2 failed copies in a row, at once, so her next try has more help. Reviews use the current level. Shape judging never depends on it.
+
 - **When it is judged:** as soon as she has drawn as many strokes as the letter's longest plan has, or fewer that already make a good letter (a joined version, such as L in one go). Fewer strokes that read best as the whole letter joined are judged 2 seconds after her last lift. A new touch cancels the wait; turning the tablet upright pauses it.
 - **Stopped part way:** fewer strokes that read best as the start of the letter are not judged. After 5 seconds Jugnu draws the next stroke on the model card as a hint. Her strokes stay on the lines, and the hint is neither a failed copy nor logged. (To tell the two apart, her strokes are fitted to each way of reading them, "the first strokes" or "the whole letter, joined", and the closest reading wins.)
-- **How it is judged (Slice 5J): shape only.** Her letter, as a cloud of points, is compared with every character on its board, in every plan, by the $P point-cloud recognizer (Vatavu, Anthony and Wobbrock, 2012; BSD license, credited in `src/pdollar.js`). Stroke count, order and direction make no difference. A few look-alikes from the other board are compared too (S and 5, Z and 2, O and 0, I and 1, B and 8, G and 6). She passes when:
+- **How it is judged (Slice 5J): shape only.** Her letter, as a cloud of points, is compared with every character on its board, in every plan and every child-style shape (below), by the $P point-cloud recognizer (Vatavu, Anthony and Wobbrock, 2012; BSD license, credited in `src/pdollar.js`). Stroke count, order and direction make no difference. A few look-alikes from the other board are compared too (S and 5, Z and 2, O and 0, I and 1, B and 8, G and 6). She passes when:
   - her letter is nearest the target (O and 0 count as each other, since children write them the same way); in a close call the letter whose lines lie closer to her ink wins, and the target gets a little benefit of the doubt;
   - it is near enough to count as a letter, and most of her ink lies along it (a scribble fails);
   - every part of the target has her ink near it (an A with no crossbar fails);
   - her letter is 75% to 125% of the model's height. It may be up to 1.5 times wider or narrower than the model.
+- **Child-style shapes (Slice 5J part 2).** Six extra templates, used only for judging and never shown (`data/child-shapes.js`): M with its middle point at 0.6 or 0.72 (the model's reaches the grass line), a splayed M, N with a short diagonal (to 0.8) and right side, W with its middle peak down to 0.4, and B with a small top bump and a big bottom one. A letter nearest one of them is checked part by part against it; a missing part is shown as the model's part of the same name. No limit was loosened. Against crude test letters (wobbly, uneven, slanted, `tests/crude-letters.js`, `npm run crude-report`), 123 of 124 pass, and 140 of 144 crude wrong letters (C for G, F for E, P for R, and more) still fail.
 - **Habits coach, never fail.** Her start points, directions, stroke order and plan are read against each plan (Stage 3 tolerances) and logged. If they differ from the default plan she still passes, and Jugnu replays the usual way once on the model card.
 - **Mirrored.** A letter written the other way round passes. Jugnu then shows the right way round once on the card, and the letter goes on the practice-more list (reason "mirrored"). Reversals are a direction cue, never an error.
 - **Pass:** a chime, sparkles along her strokes, and the round light comes on as for any round. When it is the last round, her own letter glows.
@@ -121,7 +124,7 @@ No plan runs any part the other way. In rounds 1 and 2 the default plan's track 
 | What happens | App response | Never do |
 | --- | --- | --- |
 | Starts in the wrong place | The start dot pulses and Jugnu hops onto it. Line: "Start at the glowing dot." | Red cross, buzzer |
-| Goes the wrong direction | The glow stops. Jugnu flies the right way once, then she tries again. Line: "Go the other way. Watch Jugnu." | Erase her whole letter |
+| Goes the wrong direction (rounds 1 and 2) | Along the track from its far end, it counts (Slice 5J part 2): her ink keeps glowing, and after the letter Jugnu flies that stroke the usual way once. Line: "That counts! Here is the usual way." A parent switch for strict direction is planned (Slice 8) | Erase her whole letter |
 | Wanders off the path | The trail dims. She carries on from where she left it. Line: "Stay on the track." | Snap her line onto the path |
 | Finishes a stroke well | The trail sparkles, one soft chime | A big celebration after every stroke |
 | Finishes the character | Her letter glows | Anything that interrupts with menus |
@@ -235,7 +238,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`), with each allowed stroke plan as a dashed card.
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
-- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, stroke, ok, reason, start, direction, shape error, assisted), every judged copy (type `copy`: character, try 1 to 3, pass or fail and the reason, the nearest character and its distance, the look-alike and missing part, mirrored, fitted scale, size and size check, and the habits: plan used, starts, directions, order, each stroke's start, direction and shape, time), every review (type `review`: character, the day it was due, its interval, pass or fail, the next due day or graduated, and any practice-more reasons), every find-scene tap and every game move.
+- The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, plan, stroke, ok, reason, start, direction, shape error, assisted, and since Slice 5J part 2 `reversed` and `habit: 'direction'` for a stroke traced the other way), every judged copy (type `copy`: character, try 1 to 3, the helper level, pass or fail and the reason, the nearest character, its distance and any child-style shape it matched, the look-alike and missing part, mirrored, fitted scale, size and size check, and the habits: plan used, starts, directions, order, each stroke's start, direction and shape, time), every review (type `review`: character, the day it was due, its interval, pass or fail, the next due day or graduated, and any practice-more reasons), every find-scene tap and every game move.
 - `?debug=1&today=2026-11-08` pretends the tablet's date is that day, to check reviews without waiting (debug only). In this test mode the app reads her real progress but saves every change (stars, rounds, reviews, the practice-more list, finds, the log, everything) to separate keys starting `test.`. Opening the app without `today=` shows her real progress, untouched. A later test-mode visit carries on from the test copy.
 
 ### Voice, for now
@@ -348,7 +351,7 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 | 5G | Sound-first find pictures for every letter, garden and sea backdrops, the finds review sheet |
 | 5H | More game variety, and the Missing piece game |
 | 5I | Practice and review: round 3 as a copy-it round judged on shape, reviews after 1, 3, 7 and 21 days, a practice-more list (built) |
-| 5J | Testing fixes: stroke plans, shape-only judging of copies, habits coached, failure reasons and parent lines (part 1 built); game instructions, show me, the U umpire (part 2) |
+| 5J | Testing fixes: stroke plans, shape-only judging of copies, habits coached, failure reasons and parent lines (part 1 built); the fading helper, M and N from the bottom, direction coached, child-style templates (part 2A built); game instructions, show me, the U umpire (part 2B) |
 | 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
 | 9A, 9B, 9C | Lowercase; numbers 10 to 20; a words level |
 | 10 | Urdu: dot strokes, the Urdu font, recorder support, Dot Detective |

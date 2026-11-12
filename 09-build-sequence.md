@@ -68,7 +68,13 @@ The optional "again?" after the star moved to `docs/ideas.md`.
 3. **Habits coach, never fail:** a different plan, start, direction or order passes, and Jugnu replays the usual way. A mirrored letter passes, Jugnu shows it the right way round, and it goes on the practice-more list ("mirrored").
 4. **Failure reasons:** her letter beside the model with the missed part glowing; a dashed outline at the right size; Jugnu drawing the missing part; or Jugnu tracing the whole model slowly. A short parent line for each, and for wrong start, wrong direction and off the track in rounds 1 and 2. Screenshots: `docs/screenshots/slice-5j/`.
 
-**PR 2:** game instruction lines and a "show me" button, a slower Odd one out demonstration, the U umpire.
+**PR 2A** (built): frustration fixes in writing.
+1. **Fading helper in round 3:** per character, level 1 a dotted ghost and the first start dot, level 2 start dots only (following her plan), level 3 nothing. Up after 2 passes without a hint, down after 2 failed copies in a row. Reviews use the current level; each copy entry logs it.
+2. **M and N from the bottom:** a one-stroke plan from the bottom left for each.
+3. **Direction coaches, never blocks:** in rounds 1 and 2 a stroke traced the other way along the track counts; Jugnu replays the usual way after the letter. Off the track still does not count.
+4. **Crude letters:** six child-style templates for the recognizer (M shallow, M less shallow, M splayed, N short diagonal, W shallow, B uneven bumps). No limit loosened. 123 of 124 crude test letters pass; 140 of 144 crude wrong letters still fail. Screenshots: `docs/screenshots/slice-5j-2/`.
+
+**PR 2B:** game instruction lines and a "show me" button, a slower Odd one out demonstration, the U umpire.
 
 **Done when:**
 - [ ] B in 3 strokes and R in 2 strokes pass rounds 1 and 2

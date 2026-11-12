@@ -812,7 +812,19 @@ export function copyHelperMarks(char, level, done = null) {
     return { ghost: lines.map((s) => s.points), dots: none ? [{ at: first.points[0], label: null }] : [] };
   }
   if (level === 2) {
-    return { ghost: [], dots: char.strokes.map((s, i) => ({ at: s.points[0], label: i + 1, i })).filter((d) => !done?.[d.i]).map(({ at, label }) => ({ at, label })) };
+    // A dot that would sit on an earlier one (M's two strokes start together)
+    // slides along its own stroke until it is clear, as on the model card.
+    const r = HELPER_LOOK.dot + MARKERS.ring;
+    const dots = [];
+    char.strokes.forEach((s, i) => {
+      if (done?.[i]) return;
+      const len = s.kind === 'line' ? pathLength(s.points) : 0;
+      const clear = (at) => dots.every((d) => Math.hypot(at[0] - d.at[0], at[1] - d.at[1]) >= 2 * r + MARKERS.gap);
+      let at = s.points[0];
+      for (let d = 0.02; !clear(at) && d <= 0.6 * len; d += 0.02) at = pointAlong(s.points, d).at;
+      dots.push({ at, label: i + 1 });
+    });
+    return { ghost: [], dots };
   }
   return { ghost: [], dots: [] };
 }

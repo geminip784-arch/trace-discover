@@ -111,6 +111,14 @@ test('level 2: start dots only, one per stroke she has not drawn, numbered', () 
   assert.deepEqual(copyHelperMarks(e, 2, [true, true, false, false]).dots.map((d) => d.label), [3, 4]);
 });
 
+test("level 2: two strokes that start together (M) never hide each other's dot", () => {
+  const dots = copyHelperMarks(load('M'), 2).dots;
+  assert.equal(dots.length, 2);
+  const gap = Math.hypot(dots[0].at[0] - dots[1].at[0], dots[0].at[1] - dots[1].at[1]);
+  assert.ok(gap > 0.12, `dots ${gap.toFixed(3)} apart`);
+  assert.deepEqual(dots[0].at, load('M').strokes[0].points[0], 'the first stays on its start');
+});
+
 test('level 3: nothing on the lines', () => {
   assert.deepEqual(copyHelperMarks(load('E'), 3), { ghost: [], dots: [] });
 });
