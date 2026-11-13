@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.3 · Nov 12, 2026 · describes the app as built through Slice 5J part 2 (the fading helper, M and N from the bottom, direction coached, child-style templates; game instructions, show me, the U umpire), and where it goes next.
+Version 3.4 · Nov 13, 2026 · describes the app as built through Slice 6A (the voice recorder page and voice pack; before it, Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -243,13 +243,25 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 - `recorder.html`: the stroke recorder, for hand-recorded characters.
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`), with each allowed stroke plan as a dashed card.
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
+- `voice.html` (Slice 6A): the voice recorder. See **Voice pack** below.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
 - The attempt log (`td.attempts`, newest 2,000) records every stroke (character, stage, plan, stroke, ok, reason, start, direction, shape error, assisted, and since Slice 5J part 2 `reversed` and `habit: 'direction'` for a stroke traced the other way), every judged copy (type `copy`: character, try 1 to 3, the helper level, pass or fail and the reason, the nearest character, its distance and any child-style shape it matched, the look-alike and missing part, mirrored, fitted scale, size and size check, and the habits: plan used, starts, directions, order, each stroke's start, direction and shape, time), every review (type `review`: character, the day it was due, its interval, pass or fail, the next due day or graduated, and any practice-more reasons), every find-scene tap, every game move, and every "show me" in a game (type `game-help`, Slice 5J part 2).
 - `?debug=1&today=2026-11-08` pretends the tablet's date is that day, to check reviews without waiting (debug only). In this test mode the app reads her real progress but saves every change (stars, rounds, reviews, the practice-more list, finds, the log, everything) to separate keys starting `test.`. Opening the app without `today=` shows her real progress, untouched. A later test-mode visit carries on from the test copy.
 
 ### Voice, for now
 
-Spoken prompts are switched off (`SPEECH_ON = false` in `src/audio.js`) until Slice 6 brings recorded family voices. Today the app speaks through chimes, pops, Jugnu's movements and pictures.
+Spoken prompts are switched off (`SPEECH_ON = false` in `src/audio.js`) until Slice 6B plays the voice pack. Today the app speaks through chimes, pops, Jugnu's movements and pictures.
+
+### Voice pack (Slice 6A)
+
+- **The script** (`data/voice-script.js`) lists every clip the app will need, each with an id, the exact words, a short hint and a category: letter names A to Z, letter sounds (standard pure sounds: stop sounds short with no "uh", long sounds held, short vowels as in apple, egg, insect, octopus, umbrella; c and k both "k", hard g, q "kw", x "ks"), number names 0 to 9, every find word, the counting words (plurals such as "eggs"), the five game instructions, every line `src/notes.js` can show (one full sentence for each missing part and each look-alike), and Jugnu's prompts. Most lists are built from the app's own data, so a new find word or note line appears in the script by itself. `tests/voice-script.test.js` checks the coverage and that ids are unique.
+- **Her name:** lines with her name contain `{name}` and are marked private. `voice.html` fills in the name from the setup page. Each has a public twin without the name. Private lines are never exported; her name is never written in the code.
+- **`voice.html`** (parent-facing) shows the script grouped by category, each clip marked Recorded, Imported or Missing. Filters: All, Record first (letter sounds, letter names and the private name lines) and Missing. Tap a clip to see its words and hint, record it with the microphone (it stops by itself after 10 seconds), hear it back, then keep it or record it again. Keep moves on to the next clip.
+- **Processing** (`src/voice.js`, pure): every clip, recorded or imported, is made mono, resampled to 22.05 kHz, trimmed of silence at the start and end (with a little padding so soft sounds are kept), brought to the same loudness without clipping, and saved as 16-bit WAV (about 44 KB a second).
+- **Storage:** IndexedDB on the tablet (`td-voice`, `src/voice-store.js`), every call in try/catch. Clips are never sent anywhere or committed to the repository.
+- **Import:** sound files named by clip id (for clips made with an AI voice tool), one or many at once. Capitals don't matter, spaces and underscores count as hyphens, and a copy marker like " (1)" is ignored, so `Name_B.mp3` is for `name-b`. Files with no matching clip are listed. A recorded and an imported clip for the same id: whichever was added last is kept, and the page shows which.
+- **Export script** downloads `voice-script.txt`, one `id | words` line per clip, private lines left out, to paste into an AI voice tool.
+- **Back up voice pack** downloads every clip as one `.tdvoice` file (a short list of clips, then the raw WAV bytes). **Restore** loads it on any tablet; a clip already on the tablet that is newer than the backup's is kept.
 
 ## Tracing engine
 
@@ -400,7 +412,7 @@ Behind a gate (press and hold for 3 seconds, then a simple sum): daily limit, se
 | --- | --- |
 | App | Plain HTML, CSS and vanilla JavaScript modules; no framework, no bundler |
 | Drawing | SVG for lines, tracks and pictures; one canvas for her ink |
-| Storage | `localStorage` for settings and progress; IndexedDB for audio clips (Slice 6) |
+| Storage | `localStorage` for settings and progress; IndexedDB for the voice pack's clips (Slice 6A) |
 | Tests | Node's built-in test runner (`npm test`) |
 | Hosting | GitHub Pages, installed from Chrome as a home-screen app (Slice 7) |
 

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1b1f3a">
+  <title>Voice recorder</title>
+  <style>
+    /* Parent page (Slice 6A): text is fine here, she never sees it. Nothing is
+       loaded from the internet: system fonts, no scripts but our own. */
+    html, body {
+      margin: 0;
+      height: 100%;
+      overscroll-behavior: none;
+      background: #1b1f3a;
+      color: #e8ecff;
+      font: 17px/1.35 system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body { display: flex; flex-direction: column; }
+    button {
+      font: inherit;
+      color: #e8ecff;
+      background: #2c3260;
+      border: 1px solid #4a5294;
+      border-radius: 10px;
+      padding: 8px 16px;
+      min-height: 56px;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.4; }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid #343a6e;
+    }
+    header h1 { font-size: 22px; margin: 0 8px 0 0; }
+    #progress { opacity: 0.8; margin-right: auto; }
+    .filters { display: flex; gap: 8px; }
+    .filters button { min-height: 48px; border-radius: 24px; }
+    .filters button[aria-pressed="true"] { background: #5bb8ff; border-color: #5bb8ff; color: #10142a; font-weight: 600; }
+
+    main { flex: 1; display: flex; min-height: 0; }
+    #list { flex: 1 1 52%; overflow-y: auto; padding: 4px 12px 24px; -webkit-overflow-scrolling: touch; }
+    #list h2 { font-size: 17px; margin: 18px 0 6px; display: flex; justify-content: space-between; opacity: 0.85; }
+    .clip {
+      display: flex;
+      width: 100%;
+      gap: 10px;
+      align-items: center;
+      text-align: left;
+      margin: 0 0 6px;
+      min-height: 52px;
+      background: #232852;
+    }
+    .clip .words { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .clip .id { font: 13px/1 ui-monospace, monospace; opacity: 0.6; }
+    .clip.current { outline: 3px solid #ffe85c; outline-offset: -1px; }
+    .pill { font-size: 13px; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+    .pill.recorded { background: #2f6b3a; color: #d8ffd9; }
+    .pill.imported { background: #24538c; color: #dcecff; }
+    .pill.missing { background: #3a3f63; color: #b8bdd6; }
+    .lock { font-size: 13px; color: #ffe85c; }
+
+    #detail {
+      flex: 1 1 48%;
+      max-width: 600px;
+      border-left: 1px solid #343a6e;
+      padding: 16px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #d-where { opacity: 0.7; font-size: 15px; }
+    #d-words { font-size: 40px; line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; }
+    #d-hint { color: #c9cff0; }
+    #d-state { min-height: 24px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .actions button { min-width: 140px; min-height: 88px; font-size: 20px; font-weight: 600; }
+    #rec { background: #e8a33a; border-color: #e8a33a; color: #10142a; }
+    #rec.on { background: #ffe85c; border-color: #ffe85c; }
+    #keep { background: #4cc25a; border-color: #4cc25a; color: #10142a; }
+    .step { display: flex; gap: 12px; margin-top: auto; }
+    .step button { flex: 1; }
+    #status { color: #ffe85c; min-height: 22px; white-space: pre-line; }
+    .note { font-size: 14px; opacity: 0.7; }
+    [hidden] { display: none !important; }
+
+    @media (max-width: 860px) {
+      main { flex-direction: column; }
+      #detail { max-width: none; border-left: 0; border-top: 1px solid #343a6e; flex: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Voice recorder</h1>
+    <span id="progress"></span>
+    <button id="import" type="button">Import sound files</button>
+    <button id="export" type="button">Export script</button>
+    <button id="backup" type="button">Back up voice pack</button>
+    <button id="restore" type="button">Restore</button>
+    <input id="import-files" type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg,.oga,.webm,.aac,.flac" multiple hidden>
+    <input id="restore-file" type="file" accept=".tdvoice,application/octet-stream" hidden>
+  </header>
+  <header>
+    <div class="filters" role="group" aria-label="Show">
+      <button type="button" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" data-filter="first" aria-pressed="false">Record first</button>
+      <button type="button" data-filter="missing" aria-pressed="false">Missing</button>
+    </div>
+    <span id="status" role="status"></span>
+  </header>
+  <main>
+    <section id="list" aria-label="Clips"></section>
+    <section id="detail" aria-live="polite">
+      <div id="d-where"></div>
+      <div id="d-words"></div>
+      <div id="d-hint"></div>
+      <div id="d-state"></div>
+      <div class="actions">
+        <button id="rec" type="button">● Record</button>
+        <button id="play" type="button">▶ Play</button>
+        <button id="keep" type="button" hidden>✓ Keep</button>
+        <button id="again" type="button" hidden>↻ Re-record</button>
+      </div>
+      <p class="note">Hold the tablet about a hand's width away. Silence at the start and end is trimmed, and every clip is brought to the same volume. Clips stay on this tablet.</p>
+      <div class="step">
+        <button id="prev" type="button">‹ Previous</button>
+        <button id="next" type="button">Next ›</button>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import { startVoicePage } from './src/voice-page.js';
+    startVoicePage(document);
+  </script>
+</body>
+</html>
