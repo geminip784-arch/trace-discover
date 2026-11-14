@@ -34,6 +34,7 @@ export function piecePoints(piece) {
 // One stroke's pieces joined end to end. Each piece must start where the one
 // before it ended.
 export function strokePath(stroke) {
+  if (stroke.kind === 'dot') return [[...stroke.at]]; // a dot: its one target point
   const out = [];
   stroke.pieces.forEach((piece, i) => {
     const pts = piecePoints(piece);
@@ -94,7 +95,10 @@ const roundPoint = ([x, y]) => [round3(x), round3(y)];
 
 // One generated stroke: { kind, part, points } (part: its short name for the
 // parent-facing lines; recorded files have none).
-const strokeFile = (s) => ({ kind: 'line', part: s.part, points: spacedPoints(strokePath(s)).map(roundPoint) });
+// A dot stroke (the dot of i and j) keeps its single point.
+const strokeFile = (s) => (s.kind === 'dot'
+  ? { kind: 'dot', part: s.part, points: [roundPoint(s.at)] }
+  : { kind: 'line', part: s.part, points: spacedPoints(strokePath(s)).map(roundPoint) });
 
 // The character file object for one glyph: the recorder's format, with each
 // stroke's part name, plus anyOrder (before strokes) when the glyph has one,
@@ -120,4 +124,5 @@ export function characterText(char) {
 
 // Join gaps for every pair of strokes: [{ gap, joins }] (src/recording.js joinGap),
 // where joins says the one-stroke rule lets her draw stroke k and k + 1 in one go.
-export const joinGaps = (char) => char.strokes.slice(0, -1).map((_, k) => joinGap(char.strokes, k));
+// A pair with a dot in it (i, j) never joins: { gap: null, joins: false }.
+export const joinGaps = (char) => char.strokes.slice(0, -1).map((_, k) => joinGap(char.strokes, k) ?? { gap: null, joins: false });

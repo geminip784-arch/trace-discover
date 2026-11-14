@@ -9,18 +9,20 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DEFAULTS, scoreStroke } from '../src/geometry.js';
 import {
-  scoreEitherWay, betterPass, startPlans, planCandidates, advancePlans, shownPlan, pickCandidate, planStrokes, planCount, variantLabel,
+  scoreEitherWay, scoreMark, betterPass, startPlans, planCandidates, advancePlans, shownPlan, pickCandidate, planStrokes, planCount, variantLabel,
 } from '../src/variants.js';
 import { initialState, applyLift, applyPlanPass, isLetterDone, strokeLogEntry } from '../src/progress.js';
 import { scoreCopy, compareIds, copyStatus } from '../src/copy.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const others = (id) => compareIds(id).filter((i) => i !== id).map(load);
 const back = (pts) => [...pts].reverse();
 const shift = (pts, dx, dy) => pts.map(([x, y]) => [x + dx, y + dy]);
 
 // Trace a letter as game.js does in rounds 1 and 2: the touch-down start check
-// (either end of any candidate), then pickCandidate and advancePlans with scoreEitherWay.
+// (either end of any candidate), then pickCandidate and advancePlans with
+// scoreMark (scoreEitherWay for a line; a tap at its place for a dot, Slice 9A).
 function trace(char, strokes, stage = 1) {
   let alive = startPlans(char);
   let progress = initialState(char.strokes.length);
@@ -30,11 +32,11 @@ function trace(char, strokes, stage = 1) {
     const r0 = DEFAULTS.stages[stage].startRadius;
     const near = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= r0;
     const startOk = candidates.some((v) => near(s[0], v.points[0]) || near(s[0], v.points.at(-1)));
-    const pick = pickCandidate(s, candidates, stage, scoreEitherWay);
+    const pick = pickCandidate(s, candidates, stage, scoreMark);
     let result = pick.result;
     if (result.reason !== 'too-short' && !startOk) result = { ...result, ok: false, reason: 'wrong-start', startOk: false };
     if (result.ok) {
-      alive = advancePlans(s, char, alive, stage, scoreEitherWay);
+      alive = advancePlans(s, char, alive, stage, scoreMark);
       progress = applyPlanPass(progress, shownPlan(alive).done).state;
     } else {
       progress = applyLift(progress, { ok: false }).state;

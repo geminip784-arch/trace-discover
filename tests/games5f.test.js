@@ -16,7 +16,7 @@ import {
   dropCard, startMatch, partnerCard, showsFirstMove, firstMovePair, PATH, pathThings, pathBoard,
   boardDone, firstMoveRoad, startsAtAnimal, stepTrace, startTrace, gameLogEntry, boardFit,
 } from '../src/games.js';
-import { navigate } from '../src/session.js';
+import { navigate, charFile } from '../src/session.js';
 
 function seeded(seed) {
   let a = seed >>> 0;
@@ -30,7 +30,7 @@ function seeded(seed) {
 }
 const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1);
 const chars = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url)));
-const loadChar = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url)));
+const loadChar = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url)));
 const isInlineSvg = (s) => s.startsWith('<svg') && s.endsWith('</svg>') && !/https?:\/\/(?!www\.w3\.org)/.test(s);
 
 // ---- the menu ----

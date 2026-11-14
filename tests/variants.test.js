@@ -4,8 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { joinsNext, variantsFrom, variantLabel, pickVariant, JOIN_GAP } from '../src/variants.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const joins = (id) => {
   const { strokes } = load(id);
   return strokes.slice(0, -1).map((_, k) => joinsNext(strokes, k));

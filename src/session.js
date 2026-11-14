@@ -71,6 +71,13 @@ export const BOARD_ORDER = Object.values(BOARDS).flatMap((b) => b.tiles.map((t) 
 // The books that hold at least one of today's due letters (they glow on the shelf).
 export const booksWithDue = (due) => [...new Set(due.map(bookOf).filter(Boolean))];
 
+// The file name of a character: data/chars/<charFile(id)>.json. Lowercase
+// letters are lower-a ... lower-z (Slice 9A), so a.json and A.json never
+// clash on a computer whose file names ignore capitals (Windows, Mac).
+export const charFile = (id) => (/^[a-z]$/.test(id) ? `lower-${id}` : id);
+// The id a file name stands for (charFile turned round).
+export const fileChar = (name) => (/^lower-[a-z]$/.test(name) ? name.slice('lower-'.length) : name);
+
 // The app only ever requests character files listed in the manifest.
 export const canLoad = (id, manifest) => typeof id === 'string' && manifest.includes(id);
 

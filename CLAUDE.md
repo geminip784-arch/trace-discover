@@ -19,12 +19,12 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - Measured in Chrome (Slice 0): landscape is 1280 x 626 CSS px, portrait is 800 x 1106 CSS px, devicePixelRatio is 1.5. The full screen (installed app, no browser bars) is probably 1280 x 800 CSS px.
 
 ## Coordinates and character files
-- Characters are stored in line units: y = 0 sky line, 0.5 fence (dashed), 1 grass line, 1.3 ground line. x = 0 at the left edge of the character box.
+- Characters are stored in line units: y = 0 sky line, 0.5 fence (dashed), 1 grass line, 1.5 tail line (brown; where the tails of g j p q y end). x = 0 at the left edge of the character box.
 - At render time, 1 unit = pixel distance from sky line to grass line.
-- One file per character: `data/chars/<id>.json`. Format: see `data/chars/L.example.json`.
+- One file per character: `data/chars/<id>.json`; lowercase letters are `lower-<id>.json` (so `a.json` and `A.json` never clash on Windows or Mac; use `charFile(id)` from `src/session.js`). Format: see `data/chars/L.example.json`.
 - `strokes` are in the order she must draw them. `kind` is `line` (a path) or `dot` (a single target point, for Urdu nuqtas and the dot on i or j).
 - Urdu strokes run right to left. The body comes first, then dots.
-- Character files come from `recorder.html` (Slice 3). Do not hand-edit their points.
+- Character files are generated from `data/glyphs.js` by `npm run glyphs` (capitals, digits and, since Slice 9A, lowercase); `recorder.html` makes hand-recorded overrides. Do not hand-edit their points.
 
 ## Scoring (src/geometry.js — written and tested; extend it, never rewrite it)
 - `scoreStroke(child, ref, stage)` checks direction, then shape, then start. Returns `ok` and `reason`: `too-short`, `wrong-direction`, `off-path` or `wrong-start`.

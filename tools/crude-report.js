@@ -6,8 +6,9 @@
 import { readFileSync } from 'node:fs';
 import { scoreCopy, compareIds, inkExplained, inkRatio } from '../src/copy.js';
 import { crudeLetters, SHAPES } from '../tests/crude-letters.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const only = process.argv.slice(2);
 const ids = only.length ? only : Object.keys(SHAPES);
 const fmt = (v) => (Number.isFinite(v) ? v.toFixed(2) : '-');

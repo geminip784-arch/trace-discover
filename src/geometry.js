@@ -1,5 +1,5 @@
 // geometry.js — pure functions only. No DOM, no storage, no audio.
-// Units are "line units": y = 0 sky line, 0.5 fence, 1 grass line, 1.3 ground.
+// Units are "line units": y = 0 sky line, 0.5 fence, 1 grass line, 1.5 tail line.
 // One unit = the distance from sky line to grass line on screen.
 // A point is [x, y]. A stroke is an array of points in drawing order.
 

@@ -328,3 +328,179 @@ export const GLYPHS = {
 
 // Every plan of a character: the default first, then the others.
 export const plansOf = (glyph) => [glyph.strokes, ...(glyph.plans ?? [])];
+
+// ---------------------------------------------------------------------------
+// Lowercase a to z (Slice 9A). Plain print to match the capitals: round parts
+// are true circles, sticks are straight. Kept together here so the style can be
+// swapped in one place if the school's handwriting sheet differs.
+//
+// Four lines: sky 0, fence 0.5, grass 1, tail line 1.5 (src/render.js LINES).
+// Small letters (a c e m n o r s u v w x z) sit between the fence and the grass.
+// Tall letters (b d f h k l) reach the sky, t a little short of it. Tails
+// (g j p q y) reach the tail line. i and j have a `dot` stroke: a tap target,
+// scored with scoreDot.
+//
+// The one-go plans of a b d g h m n p q r u y run back over part of a stick
+// ("down, back up, and round"), the way children draw them in one go: the only
+// plans besides M and N from the bottom that run a part the other way
+// (tests/glyphs.test.js lists them).
+
+export const LOW = {
+  bowl: 0.25,      // radius of the round part of a b c d e g o p q (fence to grass)
+  bowlY: 0.75,     // its centre: halfway between the fence and the grass
+  tail: 1.5,       // the tail line
+  tTop: 0.2,       // t's stick starts a little below the sky line
+  dotY: 0.25,      // the dot of i and j: halfway between the sky and the fence
+  jHook: 0.2,      // radius of j's hook
+  fHook: 0.17,     // radius of f's hook
+  mArch: 0.21,     // radius of each arch of m (m is as wide as M)
+  sBowl: 0.125,    // radius of each half of s (S at half size)
+  kArm: 0.4,       // how far k's arm and leg reach right of the stick
+  tBar: 0.4,       // length of t's and f's bar
+};
+
+// A dot stroke: one target point (the dot of i and j).
+const dot = (part, x, y) => ({ part, kind: 'dot', from: null, to: null, at: [x, y] });
+
+const lr = LOW.bowl;
+const lc = m + lr;              // 0.33: centre x of the round part
+const ly = LOW.bowlY;
+const lx = m + 2 * lr;          // 0.58: the right side of the round part (the stick of a d g q)
+const tl = LOW.tail;
+const fx = m + LOW.fHook;       // f's stick
+const jx = m + 2 * LOW.jHook;   // j's stick
+const tx = m + LOW.tBar / 2;    // t's stick, in the middle of its bar
+const mr = LOW.mArch;
+const sr = LOW.sBowl;
+
+// The round part of a d g q: anticlockwise from the upper right, round to its right side.
+const lRound = () => arc(lc, ly, lr, lr, -45, -360);
+// The round part of b p: from the stick at its middle, up and round clockwise.
+const bRound = () => arc(lc, ly, lr, lr, 180, 540);
+// An arch over from the stick (h n r m): from its left side up over the top.
+const arch = (cx, r, to = 360) => arc(cx, 0.5 + r, r, r, 180, to);
+
+const L = {
+  aRound: stroke('round', null, null, lRound()),
+  aStick: stroke('stick', 'fence', 'grass', line([lx, 0.5], [lx, 1])),
+  tallStem: stroke('stick', 'sky', 'grass', line([m, 0], [m, 1])),
+  smallStem: stroke('stick', 'fence', 'grass', line([m, 0.5], [m, 1])),
+  tailStem: stroke('stick', 'fence', 'tail', line([m, 0.5], [m, tl])),
+  bRound: stroke('round', null, null, bRound()),
+  hArch: stroke('arch', null, 'grass', arch(lc, lr), line([lx, ly], [lx, 1])),
+  eBar: stroke('bar', null, null, line([m, ly], [lx, ly])),
+  eCurve: stroke('curve', null, null, arc(lc, ly, lr, lr, 0, -315)),
+  fHook: stroke('hook and stick', null, 'grass', arc(fx + LOW.fHook, LOW.fHook, LOW.fHook, LOW.fHook, -30, -180), line([fx, LOW.fHook], [fx, 1])),
+  fBar: stroke('bar', 'fence', 'fence', line([m, 0.5], [m + LOW.tBar, 0.5])),
+  gTail: stroke('stick and tail', 'fence', null, line([lx, 0.5], [lx, tl - lr]), arc(lc, tl - lr, lr, lr, 0, 180)),
+  iStick: stroke('stick', 'fence', 'grass', line([m, 0.5], [m, 1])),
+  iDot: dot('dot', m, LOW.dotY),
+  jTail: stroke('stick and tail', 'fence', null, line([jx, 0.5], [jx, tl - LOW.jHook]), arc(m + LOW.jHook, tl - LOW.jHook, LOW.jHook, LOW.jHook, 0, 180)),
+  jDot: dot('dot', jx, LOW.dotY),
+  kArm: stroke('arm', 'fence', null, line([m + LOW.kArm, 0.5], [m, ly])),
+  kLeg: stroke('leg', null, 'grass', line([m, ly], [m + LOW.kArm, 1])),
+  mArch1: stroke('first arch', null, 'grass', arch(m + mr, mr), line([m + 2 * mr, 0.5 + mr], [m + 2 * mr, 1])),
+  mArch2: stroke('second arch', null, 'grass', arch(m + 3 * mr, mr), line([m + 4 * mr, 0.5 + mr], [m + 4 * mr, 1])),
+  qStick: stroke('stick', 'fence', 'tail', line([lx, 0.5], [lx, tl])),
+  rShoulder: stroke('shoulder', null, null, arch(lc, lr, 315)),
+  tStick: stroke('stick', null, 'grass', line([tx, LOW.tTop], [tx, 1])),
+  tBar: stroke('bar', 'fence', 'fence', line([m, 0.5], [m + LOW.tBar, 0.5])),
+  uCup: stroke('cup', 'fence', 'fence', line([m, 0.5], [m, ly]), arc(lc, ly, lr, lr, 180, 0), line([lx, ly], [lx, 0.5])),
+  uStick: stroke('stick', 'fence', 'grass', line([lx, 0.5], [lx, 1])),
+  vSlant1: stroke('first slant', 'fence', 'grass', line([m, 0.5], [lc, 1])),
+  vSlant2: stroke('second slant', 'grass', 'fence', line([lc, 1], [lx, 0.5])),
+  xDown: stroke('first slant', 'fence', 'grass', line([m, 0.5], [lx, 1])),
+  xUp: stroke('second slant', 'fence', 'grass', line([lx, 0.5], [m, 1])),
+  yLeft: stroke('left arm', 'fence', 'grass', line([m, 0.5], [lc, 1])),
+  yRight: stroke('right arm and tail', 'fence', 'tail', line([lx, 0.5], [lc, 1], [m, tl])),
+};
+// w: four slants between the fence and the grass, its middle up to the fence.
+const wStep = 0.18;
+const wx = (i) => m + i * wStep;
+
+export const LOWERCASE = {
+  a: { strokes: [L.aRound, L.aStick], plans: [
+    [stroke('round and stick', null, 'grass', lRound(), line([lx, ly], [lx, 0.5], [lx, 1]))],
+  ] },
+  b: { strokes: [L.tallStem, L.bRound], plans: [
+    [stroke('stick and round', 'sky', null, line([m, 0], [m, 1], [m, ly]), bRound())],
+  ] },
+  c: { strokes: [stroke('curve', null, null, arc(lc, ly, lr, lr, -45, -315))] },
+  d: { strokes: [L.aRound, stroke('tall stick', 'sky', 'grass', line([lx, 0], [lx, 1]))], plans: [
+    [stroke('round and stick', null, 'grass', lRound(), line([lx, ly], [lx, 0], [lx, 1]))],
+  ] },
+  e: { strokes: [merge('bar and curve', L.eBar, L.eCurve)], plans: [
+    [L.eBar, L.eCurve],
+  ] },
+  f: { strokes: [L.fHook, L.fBar] },
+  g: { strokes: [L.aRound, L.gTail], plans: [
+    [stroke('round and tail', null, null, lRound(), line([lx, ly], [lx, 0.5], [lx, tl - lr]), arc(lc, tl - lr, lr, lr, 0, 180))],
+  ] },
+  h: { strokes: [L.tallStem, L.hArch], plans: [
+    [stroke('stick and arch', 'sky', 'grass', line([m, 0], [m, 1], [m, ly]), arch(lc, lr), line([lx, ly], [lx, 1]))],
+  ] },
+  i: { strokes: [L.iStick, L.iDot], plans: [
+    [L.iDot, L.iStick],
+  ] },
+  j: { strokes: [L.jTail, L.jDot], plans: [
+    [L.jDot, L.jTail],
+  ] },
+  k: { strokes: [L.tallStem, L.kArm, L.kLeg], plans: [
+    [L.tallStem, merge('arm and leg', L.kArm, L.kLeg)],
+  ] },
+  l: { strokes: [L.tallStem] },
+  m: { strokes: [L.smallStem, stroke('arches', null, 'grass',
+    arch(m + mr, mr), line([m + 2 * mr, 0.5 + mr], [m + 2 * mr, 1], [m + 2 * mr, 0.5 + mr]),
+    arch(m + 3 * mr, mr), line([m + 4 * mr, 0.5 + mr], [m + 4 * mr, 1]))], plans: [
+    [L.smallStem, L.mArch1, L.mArch2],
+    [stroke('stick and arches', 'fence', 'grass', line([m, 0.5], [m, 1], [m, 0.5 + mr]),
+      arch(m + mr, mr), line([m + 2 * mr, 0.5 + mr], [m + 2 * mr, 1], [m + 2 * mr, 0.5 + mr]),
+      arch(m + 3 * mr, mr), line([m + 4 * mr, 0.5 + mr], [m + 4 * mr, 1]))],
+  ] },
+  n: { strokes: [L.smallStem, L.hArch], plans: [
+    [stroke('stick and arch', 'fence', 'grass', line([m, 0.5], [m, 1], [m, ly]), arch(lc, lr), line([lx, ly], [lx, 1]))],
+  ] },
+  o: { strokes: [stroke('circle', 'fence', 'fence', arc(lc, ly, lr, lr, -90, -450))] },
+  p: { strokes: [L.tailStem, L.bRound], plans: [
+    [stroke('stick and round', 'fence', null, line([m, 0.5], [m, tl], [m, ly]), bRound())],
+  ] },
+  q: { strokes: [L.aRound, L.qStick], plans: [
+    [stroke('round and stick', null, 'tail', lRound(), line([lx, ly], [lx, 0.5], [lx, tl]))],
+  ] },
+  r: { strokes: [L.smallStem, L.rShoulder], plans: [
+    [stroke('stick and shoulder', 'fence', null, line([m, 0.5], [m, 1], [m, ly]), arch(lc, lr, 315))],
+  ] },
+  s: { strokes: [
+    // S at half size: two small circles' parts, the lower one the upper turned round.
+    stroke('curve', null, null, arc(m + sr, 0.5 + sr, sr, sr, -30, -270), arc(m + sr, 1 - sr, sr, sr, -90, 150)),
+  ] },
+  t: { strokes: [L.tStick, L.tBar], plans: [
+    [L.tBar, L.tStick],
+  ] },
+  u: { strokes: [L.uCup, L.uStick], plans: [
+    [merge('cup and stick', L.uCup, L.uStick)],
+  ] },
+  v: { strokes: [stroke('slants', 'fence', 'fence', line([m, 0.5], [lc, 1], [lx, 0.5]))], plans: [
+    [L.vSlant1, L.vSlant2],
+  ] },
+  w: { strokes: [stroke('zigzag', 'fence', 'fence', line([wx(0), 0.5], [wx(1), 1], [wx(2), 0.5], [wx(3), 1], [wx(4), 0.5]))], plans: [
+    [stroke('first V', 'fence', 'fence', line([wx(0), 0.5], [wx(1), 1], [wx(2), 0.5])),
+      stroke('second V', 'fence', 'fence', line([wx(2), 0.5], [wx(3), 1], [wx(4), 0.5]))],
+  ] },
+  x: { strokes: [L.xDown, L.xUp], plans: [
+    [L.xUp, L.xDown],
+  ] },
+  y: { strokes: [L.yLeft, L.yRight], plans: [
+    [stroke('arms and tail', 'fence', 'tail', line([m, 0.5], [lc, 1], [lx, 0.5], [lc, 1], [m, tl]))],
+  ] },
+  z: { strokes: [stroke('zigzag', 'fence', 'grass', line([m, 0.5], [lx, 0.5], [m, 1], [lx, 1]))], plans: [
+    [stroke('top', 'fence', 'fence', line([m, 0.5], [lx, 0.5])),
+      stroke('slant', 'fence', 'grass', line([lx, 0.5], [m, 1])),
+      stroke('bottom', 'grass', 'grass', line([m, 1], [lx, 1]))],
+  ] },
+};
+
+Object.assign(GLYPHS, LOWERCASE);
+
+// Lowercase letters that look the same in a mirror (checked like the capitals).
+MIRROR_SYMMETRIC.push('i', 'l', 'o', 't', 'v', 'w', 'x');

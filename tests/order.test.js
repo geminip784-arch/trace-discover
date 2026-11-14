@@ -8,8 +8,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { groupOf, nextStrokes, candidatesFor, pickCandidate, variantLabel } from '../src/variants.js';
 import { initialState, applyLift } from '../src/progress.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const { plans, ...tFile } = load('T');
 const T = { ...tFile, anyOrder: [[0, 1]] };
 const L = load('L');

@@ -6,11 +6,12 @@
 import { pathLength, dist } from './geometry.js';
 import { joinGaps } from './glyph-points.js';
 import { CHAR_GROUPS } from './recording.js';
+import { charFile } from './session.js';
 import { planCount, planChar } from './variants.js';
 
 const UNIT = 120;              // px per line unit
 const TOP = -0.28;             // card spans y from TOP to BOTTOM (line units)
-const BOTTOM = 1.42;
+const BOTTOM = 1.62;           // below the tail line (1.5, Slice 9A)
 const PAD = 0.2;               // space left and right of the character box
 const COLORS = ['#2b6cb0', '#d98a00', '#2f855a', '#805ad5'];
 const NS = 'http://www.w3.org/2000/svg';
@@ -54,7 +55,7 @@ function card(char) {
   el('line', { x1: -PAD, x2: w - PAD, y1: 0, y2: 0, stroke: '#6b8fd6' }, guides);
   el('line', { x1: -PAD, x2: w - PAD, y1: 0.5, y2: 0.5, stroke: '#9aa9c9', 'stroke-dasharray': '0.05 0.04' }, guides);
   el('line', { x1: -PAD, x2: w - PAD, y1: 1, y2: 1, stroke: '#5aa35a' }, guides);
-  el('line', { x1: -PAD, x2: w - PAD, y1: 1.3, y2: 1.3, stroke: '#c9b48a', 'stroke-width': 0.008 }, guides);
+  el('line', { x1: -PAD, x2: w - PAD, y1: 1.5, y2: 1.5, stroke: '#b9834d' }, guides); // the tail line
 
   const lines = char.strokes.filter((s) => s.kind === 'line');
   // The track, then each stroke's centre line in its colour.
@@ -128,7 +129,7 @@ async function main() {
   const manifest = await (await fetch('data/chars/index.json')).json();
   const chars = new Map();
   await Promise.all(manifest.map(async (id) => {
-    const res = await fetch(`data/chars/${encodeURIComponent(id)}.json`);
+    const res = await fetch(`data/chars/${encodeURIComponent(charFile(id))}.json`);
     chars.set(id, await res.json());
   }));
   sets.textContent = '';

@@ -5,9 +5,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { GLYPHS, OVERRIDES, MIRROR_SYMMETRIC, MARGIN, plansOf } from '../data/glyphs.js';
+import { GLYPHS, OVERRIDES, MIRROR_SYMMETRIC, MARGIN, plansOf, LOWERCASE, LOW } from '../data/glyphs.js';
 import { STROKE_ORDER } from '../data/stroke-order.js';
 import { CHAR_IDS } from '../src/recording.js';
+import { charFile } from '../src/session.js';
 import { scoreStroke, resample, meanPairDistance, nearestOnPath, dist, pathLength } from '../src/geometry.js';
 import {
   strokePath, spacedPoints, glyphCharacter, characterText, joinGaps, cornerIndexes,
@@ -16,13 +17,14 @@ import {
 
 const dir = new URL('../data/chars/', import.meta.url);
 const read = (name) => readFileSync(new URL(name, dir), 'utf8');
-const load = (id) => JSON.parse(read(`${id}.json`));
+const load = (id) => JSON.parse(read(`${charFile(id)}.json`));
 const GENERATED = CHAR_IDS.filter((id) => !OVERRIDES.includes(id));
-const LINE_Y = { sky: 0, fence: 0.5, grass: 1 };
+const LINE_Y = { sky: 0, fence: 0.5, grass: 1, tail: 1.5 };
+const isDot = (s) => s.kind === 'dot';
 
 // ---- the definitions ----
 
-test('every capital and digit has a definition, and nothing else', () => {
+test('every capital, digit and lowercase letter has a definition, and nothing else', () => {
   assert.deepEqual(Object.keys(GLYPHS).sort(), [...CHAR_IDS].sort());
 });
 
@@ -124,6 +126,7 @@ test('stroke counts, order, directions and start points match stroke-order.js', 
       const where = `${id} stroke ${k + 1}`;
       const rough = order.strokes[k].path;
       assert.ok(dist(pts[0], rough[0]) < 0.03, `${where}: starts ${dist(pts[0], rough[0]).toFixed(3)} from the stroke-order start`);
+      if (pts.length === 1) return assert.equal(rough.length, 1, `${where}: a dot in both`); // the dot of i and j
       // Same order and direction: this stroke matches rough stroke k going forward,
       // much better than backward or than any other rough stroke.
       const g = resample(pts, 32);
@@ -179,6 +182,29 @@ const AGREED_PLANS = {
   4: [['stem', 'slant', 'bar'], ['slant', 'bar', 'stem']],
   7: [['top bar', 'slant'], ['top bar and slant']],
   9: [['circle', 'stem'], ['circle and stem']],
+  // Lowercase (Slice 9A), as approved.
+  a: [['round', 'stick'], ['round and stick']],
+  b: [['stick', 'round'], ['stick and round']],
+  d: [['round', 'tall stick'], ['round and stick']],
+  e: [['bar and curve'], ['bar', 'curve']],
+  f: [['hook and stick', 'bar']],
+  g: [['round', 'stick and tail'], ['round and tail']],
+  h: [['stick', 'arch'], ['stick and arch']],
+  i: [['stick', 'dot'], ['dot', 'stick']],
+  j: [['stick and tail', 'dot'], ['dot', 'stick and tail']],
+  k: [['stick', 'arm', 'leg'], ['stick', 'arm and leg']],
+  m: [['stick', 'arches'], ['stick', 'first arch', 'second arch'], ['stick and arches']],
+  n: [['stick', 'arch'], ['stick and arch']],
+  p: [['stick', 'round'], ['stick and round']],
+  q: [['round', 'stick'], ['round and stick']],
+  r: [['stick', 'shoulder'], ['stick and shoulder']],
+  t: [['stick', 'bar'], ['bar', 'stick']],
+  u: [['cup', 'stick'], ['cup and stick']],
+  v: [['slants'], ['first slant', 'second slant']],
+  w: [['zigzag'], ['first V', 'second V']],
+  x: [['first slant', 'second slant'], ['second slant', 'first slant']],
+  y: [['left arm', 'right arm and tail'], ['arms and tail']],
+  z: [['zigzag'], ['top', 'slant', 'bottom']],
 };
 
 test('the stroke plans are the agreed ones, and every other character has only its default', () => {
@@ -222,15 +248,20 @@ test('every plan has the same shape as the default (within 0.01), except the two
 // M and N from the bottom (Slice 5J part 2): their stem runs up, on purpose.
 // They are checked by hand below. Plan numbers count from 0 (the default).
 const BOTTOM_UP = { M: 2, N: 2 };
+// Lowercase one-go plans (Slice 9A) run back up over part of a stick ("down,
+// back up, and round"): also on purpose, checked by hand below.
+// u's cup runs up its right side and the stick comes back down it (the default does too).
+const BACK_UP = { a: 1, b: 1, d: 1, g: 1, h: 1, m: 2, n: 1, p: 1, q: 1, r: 1, u: 1, y: 1 };
 
 test('no plan runs a part the other way: each plan stroke follows the default ink forwards', () => {
   // B's default stroke runs back along the middle to the stem and out again, so
   // its middle line is in it both ways; its 3-stroke plan is checked by hand below.
-  for (const id of CHAR_IDS.filter((c) => c !== 'B')) {
+  // m's default runs back up between its arches in the same way, so it is left out too.
+  for (const id of CHAR_IDS.filter((c) => c !== 'B' && c !== 'm')) {
     const plans = plansOf(GLYPHS[id]).map((p) => p.map(strokePath));
     const ink = plans[0];
     for (let p = 1; p < plans.length; p++) {
-      if (BOTTOM_UP[id] === p) continue;
+      if (BOTTOM_UP[id] === p || BACK_UP[id] === p) continue;
       for (const [k, pts] of plans[p].entries()) {
         // Walk along the plan stroke: the nearest default stroke's progress must not run backwards.
         const sample = resample(pts, 24);
@@ -297,7 +328,8 @@ test('the character files carry the plans: same format, each stroke with its par
       plan.strokes.forEach((s, k) => {
         assert.deepEqual(Object.keys(s), ['kind', 'part', 'points'], id);
         assert.equal(s.part, plans[p + 1][k].part, id);
-        assert.equal(s.points.length, pointCount(pathLength(strokePath(plans[p + 1][k]))), `${id} plan ${p + 2} stroke ${k + 1}`);
+        const n = isDot(plans[p + 1][k]) ? 1 : pointCount(pathLength(strokePath(plans[p + 1][k])));
+        assert.equal(s.points.length, n, `${id} plan ${p + 2} stroke ${k + 1}`);
       });
     });
   }
@@ -306,10 +338,10 @@ test('the character files carry the plans: same format, each stroke with its par
 // ---- the generated files ----
 
 test('the files in data/chars/ are up to date with data/glyphs.js (run npm run glyphs)', () => {
-  for (const id of GENERATED) assert.equal(read(`${id}.json`), characterText(glyphCharacter(id, GLYPHS[id])), id);
+  for (const id of GENERATED) assert.equal(read(`${charFile(id)}.json`), characterText(glyphCharacter(id, GLYPHS[id])), id);
 });
 
-test('data/chars/index.json lists all 36 characters in board order', () => {
+test('data/chars/index.json lists all 62 characters: capitals, digits, then lowercase', () => {
   assert.deepEqual(JSON.parse(read('index.json')), CHAR_IDS);
 });
 
@@ -331,6 +363,7 @@ test('at least 24 evenly spaced points per stroke, rounded to 3 decimals', () =>
   for (const id of GENERATED) {
     load(id).strokes.forEach((s, k) => {
       const where = `${id} stroke ${k + 1}`;
+      if (s.kind === 'dot') return assert.equal(s.points.length, 1, where); // the dot of i and j
       assert.equal(s.kind, 'line', where);
       assert.ok(s.points.length >= MIN_POINTS, `${where}: ${s.points.length} points`);
       assert.equal(s.points.length, pointCount(pathLength(strokePath(GLYPHS[id].strokes[k]))), where);
@@ -381,7 +414,7 @@ function wobbly(points, amount = 0.03) {
 
 test('tracing each generated stroke with a small wobble passes at stages 1, 2 and 3', () => {
   for (const id of GENERATED) {
-    load(id).strokes.forEach((s, k) => {
+    load(id).strokes.filter((s) => !isDot(s)).forEach((s, k) => {
       for (const stage of [1, 2, 3]) {
         const r = scoreStroke(wobbly(s.points), s.points, stage);
         assert.ok(r.ok, `${id} stroke ${k + 1} stage ${stage}: ${r.reason} (error ${r.error.toFixed(3)})`);
@@ -392,7 +425,7 @@ test('tracing each generated stroke with a small wobble passes at stages 1, 2 an
 
 test('tracing a generated stroke backwards fails as wrong-direction', () => {
   for (const id of GENERATED) {
-    load(id).strokes.forEach((s, k) => {
+    load(id).strokes.filter((s) => !isDot(s)).forEach((s, k) => {
       for (const stage of [1, 2, 3]) {
         const r = scoreStroke(wobbly([...s.points].reverse()), s.points, stage);
         assert.equal(r.ok, false, `${id} stroke ${k + 1} stage ${stage}`);
@@ -409,11 +442,109 @@ test('join gaps: where she may draw two strokes in one go', (t) => {
   for (const id of GENERATED) {
     const gaps = joinGaps(load(id));
     if (gaps.length === 0) continue;
-    t.diagnostic(`${id}: ${gaps.map((g, k) => `${k + 1}->${k + 2} ${g.gap.toFixed(3)}${g.joins ? ' JOINS' : ''}`).join(', ')}`);
+    t.diagnostic(`${id}: ${gaps.map((g, k) => `${k + 1}->${k + 2} ${g.gap === null ? 'dot' : g.gap.toFixed(3)}${g.joins ? ' JOINS' : ''}`).join(', ')}`);
     const j = gaps.flatMap((g, k) => (g.joins ? [`${k + 1}-${k + 2}`] : []));
     if (j.length) joined[id] = j;
   }
   // The joins are on purpose: a corner (L, 7, 1, 4), a curve running into its bar (G),
   // or K's arm and leg meeting at the stem (Slice 5J).
-  assert.deepEqual(joined, { G: ['1-2'], K: ['2-3'], L: ['1-2'], 1: ['1-2'], 4: ['2-3'], 7: ['1-2'] });
+  // Lowercase: k's arm and leg, and u's cup running into its stick.
+  assert.deepEqual(joined, { G: ['1-2'], K: ['2-3'], L: ['1-2'], 1: ['1-2'], 4: ['2-3'], 7: ['1-2'], k: ['2-3'], u: ['1-2'] });
+});
+
+// ---- lowercase (Slice 9A) ----
+
+const SMALL = 'acemnorsuvwxz'.split('');
+const TALL = 'bdfhkl'.split('');
+const TAILS = 'gjpqy'.split('');
+const yRange = (id) => {
+  const ys = load(id).strokes.flatMap((s) => s.points.map((p) => p[1]));
+  return [Math.min(...ys), Math.max(...ys)];
+};
+
+test('every lowercase letter is in one group: small, tall (with t and the dotted i), or tail', () => {
+  assert.deepEqual([...SMALL, ...TALL, ...TAILS, 'i', 't'].sort(), Object.keys(LOWERCASE).sort());
+});
+
+test('small letters sit between the fence and the grass', () => {
+  for (const id of SMALL) assert.deepEqual(yRange(id).map((y) => Math.round(y * 100) / 100), [0.5, 1], id);
+});
+
+test('tall letters reach the sky line and stand on the grass; t stops a little short of the sky', () => {
+  for (const id of TALL) assert.deepEqual(yRange(id), [0, 1], id);
+  assert.deepEqual(yRange('t'), [LOW.tTop, 1]);
+  assert.ok(LOW.tTop > 0 && LOW.tTop < 0.5);
+});
+
+test('tails go from the fence down to the tail line (1.5)', () => {
+  for (const id of TAILS) {
+    const lines = load(id).strokes.filter((s) => !isDot(s)).flatMap((s) => s.points.map((p) => p[1]));
+    assert.equal(Math.round(Math.min(...lines) * 100) / 100, 0.5, id);
+    assert.equal(Math.max(...lines), LOW.tail, id);
+  }
+});
+
+test('i and j: a dot halfway between the sky and the fence, above the top of the stick', () => {
+  for (const id of ['i', 'j']) {
+    const char = load(id);
+    const dots = char.strokes.filter(isDot);
+    assert.equal(dots.length, 1, id);
+    const [dx, dy] = dots[0].points[0];
+    assert.equal(dy, LOW.dotY, id);
+    const stick = char.strokes[0].points[0];
+    assert.equal(dx, stick[0], `${id}: the dot is right above the stick`);
+    assert.equal(stick[1], 0.5, `${id}: the stick starts on the fence`);
+    // In every plan, the dot is the same point.
+    for (const plan of char.plans) assert.deepEqual(plan.strokes.find(isDot).points, dots[0].points, id);
+  }
+});
+
+test('round parts are true circles, every arc of every lowercase letter', () => {
+  for (const id of Object.keys(LOWERCASE)) {
+    for (const plan of plansOf(GLYPHS[id])) {
+      for (const st of plan) for (const piece of st.pieces ?? []) if (piece.type === 'arc') assert.equal(piece.rx, piece.ry, `${id}: ${st.part}`);
+    }
+  }
+  // The round part of a b c d e g o p q: radius 0.25, centred on 0.75, touching the fence and the grass.
+  for (const id of 'abcdegopq'.split('')) {
+    const arcs = plansOf(GLYPHS[id])[0].flatMap((st) => st.pieces ?? []).filter((p) => p.type === 'arc' && p.cy === LOW.bowlY);
+    assert.ok(arcs.length >= 1, id);
+    for (const a of arcs) assert.deepEqual([a.cx, a.rx], [MARGIN + LOW.bowl, LOW.bowl], id);
+  }
+});
+
+test('the stick of a d g q touches the right side of the round part, and of b p its left side', () => {
+  const right = MARGIN + 2 * LOW.bowl;
+  for (const id of 'adgq'.split('')) assert.equal(load(id).strokes[1].points[0][0], right, id);
+  for (const id of 'bp'.split('')) assert.equal(load(id).strokes[0].points[0][0], MARGIN, id);
+});
+
+test('sticks are straight: every stick part is a single vertical line', () => {
+  for (const id of Object.keys(LOWERCASE)) {
+    for (const st of plansOf(GLYPHS[id])[0]) {
+      if (!/^(tall )?stick$/.test(st.part)) continue;
+      assert.equal(st.pieces.length, 1, `${id}: ${st.part}`);
+      const [[x0], [x1]] = st.pieces[0].points;
+      assert.equal(x0, x1, `${id}: ${st.part} is upright`);
+    }
+  }
+});
+
+test('one-go plans that run back up a stick: start where the default starts, end where it ends, and only go back over a stick', () => {
+  for (const [id, p] of Object.entries(BACK_UP)) {
+    const def = plansOf(GLYPHS[id])[0].map(strokePath);
+    const plan = plansOf(GLYPHS[id])[p];
+    assert.equal(plan.length, 1, `${id}: one stroke`);
+    const pts = strokePath(plan[0]);
+    assert.ok(dist(pts[0], def[0][0]) < 1e-9, `${id} starts where the default starts`);
+    assert.ok(dist(pts.at(-1), def.at(-1).at(-1)) < 1e-9, `${id} ends where the default ends`);
+    // Where it goes back up, it goes straight up (a stick) or back along y's straight arm.
+    const turns = cornerIndexes(pts, 170);
+    assert.ok(turns.length >= 1, `${id} turns back at least once`);
+    for (const i of turns) {
+      const [a, b, c] = [pts[i - 1], pts[i], pts[i + 1]];
+      const straight = Math.abs((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])) < 1e-6;
+      assert.ok(straight, `${id}: turns back along a straight line at ${b}`);
+    }
+  }
 });

@@ -3,7 +3,7 @@
 // (the corner of an L, the top of a 7), she may draw both in one go.
 // A joined reference is those strokes' points one after the other.
 
-import { DEFAULTS, dist, scoreStroke, resample, meanPairDistance } from './geometry.js';
+import { DEFAULTS, dist, scoreStroke, scoreDot, resample, meanPairDistance, pathLength } from './geometry.js';
 
 // Line units. The end of stroke k must be this close to the start of stroke k+1.
 export const JOIN_GAP = 0.12;
@@ -46,6 +46,20 @@ export function scoreEitherWay(child, ref, stage = 1, cfg = DEFAULTS) {
   // Not a good reversed trace either: the reason is what went wrong along the
   // way she went (off the track, or started in the middle).
   return { ...back, directionOk: false, reversed: back.ok };
+}
+
+// ---- Dots (Slice 9A: the dot of i and j; later the Urdu nuqtas) ----
+// A dot stroke's reference is its single point. Her mark counts when it is a
+// tap or a tiny stroke (no longer than DOT_MAX) whose middle lands within the
+// stage's dotRadius of the dot (scoreDot). Anything else is 'off-target'.
+// The result has scoreStroke's fields, so the tracing round treats it alike.
+export const DOT_MAX = 0.2; // line units: longer than this is a line, not a dot
+
+export function scoreMark(child, ref, stage = 1, cfg = DEFAULTS, score = scoreEitherWay) {
+  if (ref.length !== 1) return score(child, ref, stage, cfg);
+  const d = scoreDot(child, ref[0], stage, cfg);
+  const ok = d.ok && pathLength(child) <= DOT_MAX;
+  return { ok, reason: ok ? null : 'off-target', startOk: ok, directionOk: true, shapeOk: ok, error: d.error, reversed: false };
 }
 
 // Of two passing results, the better: a forward one beats a reversed one

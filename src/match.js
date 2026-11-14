@@ -23,7 +23,7 @@ import {
   blob, colorThingArt, letterArt, objectPicture, shadowArt, shapeArt, shapeThingArt,
 } from '../data/games.js';
 import { trackSinglePointer } from './input.js';
-import { tileColorOf } from './session.js';
+import { tileColorOf, charFile } from './session.js';
 import { logAttempt, readLastPlay, saveLastPlay } from './storage.js';
 import { chime, letterChime } from './audio.js';
 import { STAR } from './art.js';
@@ -84,7 +84,7 @@ const curve = ([ax, ay], [bx, by]) => `M${ax} ${ay} C${ax + CURVE} ${ay} ${bx - 
 async function loadLetters(ids) {
   const out = {};
   await Promise.all(ids.map(async (id) => {
-    const res = await fetch(`data/chars/${encodeURIComponent(id)}.json`);
+    const res = await fetch(`data/chars/${encodeURIComponent(charFile(id))}.json`);
     out[id] = await res.json();
   }));
   return out;

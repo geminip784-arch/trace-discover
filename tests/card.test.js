@@ -4,13 +4,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { computeLayout, letterOffset, modelCard, cardMarkers, CARD, BOARD } from '../src/render.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const MANIFEST = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url), 'utf8'));
 // Chrome in the tablet's landscape, and the installed app's full screen.
 const SCREENS = [[1280, 626], [1280, 800]];
-// The round lights, top right: 20 px down, 56 px tall (index.html).
-const LIGHTS_BOTTOM = 20 + 56;
+// The round lights, top right: 6 px down, 44 px tall (index.html, Slice 9A).
+const LIGHTS_BOTTOM = 6 + 44;
 // The button column on the left (src/session.js BOARD_BOX.left).
 const BUTTONS_RIGHT = 136;
 

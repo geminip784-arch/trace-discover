@@ -6,7 +6,9 @@ import { resample, pathLength } from './geometry.js';
 // Height the layout grows to. Above this the lines stop growing and stay centered.
 export const MAX_HEIGHT = 800;
 
-// Share of the (capped) height that one line unit takes. 1.3 units then fills ~72%.
+// Share of the (capped) height that one line unit takes. The four lines span
+// 1.5 units (sky to tail line), which then fills ~83%. Unchanged by Slice 9A,
+// so capitals and digits are the same size on screen as before.
 const UNIT_SHARE = 0.55;
 // Gap between each screen edge and the ends of the lines, in units.
 const PAD_UNITS = 0.1;
@@ -15,8 +17,10 @@ export const LINES = [
   { y: 0,   color: '#5bb8ff', width: 0.012 },                       // sky
   { y: 0.5, color: '#9aa0b8', width: 0.008, dash: [0.05, 0.035] }, // fence
   { y: 1,   color: '#4cc25a', width: 0.012 },                       // grass
-  { y: 1.3, color: '#b9834d', width: 0.018 },                       // ground
+  { y: 1.5, color: '#b9834d', width: 0.018 },                       // tail line (Slice 9A; was the ground line at 1.3)
 ];
+// The lowest line: the four lines span y = 0 to TAIL_LINE.
+export const TAIL_LINE = 1.5;
 
 // Her ink: a strong blue, as in docs/mockups/mockup4.html (42, 26 and 12 px at 340 px).
 // The glow is two soft layers under the core. Never red.
@@ -39,9 +43,22 @@ export function computeLayout(width, height) {
     areaWidth,
     areaHeight: height,
     originX: PAD_UNITS * unit,             // x = 0 of the character box, in area px
-    top: (height - 1.3 * unit) / 2,        // sky line, in area px
+    top: (height - TAIL_LINE * unit) / 2,  // sky line, in area px: the four lines centred
     lineEnd: areaWidth - PAD_UNITS * unit, // right end of the lines, in area px
   };
+}
+
+// A stroke's path for drawing it, flying it or making it sparkle: a dot (a
+// single point: the dot of i and j) becomes a tiny circle round it, so Jugnu
+// shows it as a little tap and the glow has something to draw.
+export const DOT_MARK_RADIUS = 0.04; // line units
+export function markPath(points, r = DOT_MARK_RADIUS) {
+  if (points.length !== 1) return points;
+  const [cx, cy] = points[0];
+  return Array.from({ length: 13 }, (_, i) => {
+    const a = -Math.PI / 2 + (i / 12) * 2 * Math.PI;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
 }
 
 // Area px -> line units.
@@ -175,6 +192,10 @@ export function trackWidths(stage) {
   return widths;
 }
 
+// A dot stroke's target on the track (line units): a soft round band at least
+// `min` across, with a small solid core in round 1.
+export const DOT_TARGET = { min: 0.07, core: 0.025 };
+
 export const START_DOT_RADIUS = 0.075; // line units, the big numbered dot (26 px in mockup4)
 
 // The start markers, in line units, worked out without the DOM (the tests use this).
@@ -282,7 +303,23 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done }) {
     el.textContent = String(text);
   };
 
+  // A dot (the dot of i and j, Slice 9A): a round target where she taps, gold once done.
+  const disc = (at, r, color, extra = {}) => {
+    const [cx, cy] = px(at);
+    make('circle', { cx, cy, r: r * unit, fill: color, ...extra });
+  };
   char.strokes.forEach((stroke, i) => {
+    if (stroke.kind === 'dot') {
+      const at = stroke.points[0];
+      if (done[i]) {
+        disc(at, DONE_LOOK.halo / 2, DONE_LOOK.color, { 'fill-opacity': DONE_LOOK.haloOpacity });
+        disc(at, DONE_LOOK.core / 2 + DOT_TARGET.core, DONE_LOOK.color);
+      } else {
+        disc(at, Math.max(look.band / 2, DOT_TARGET.min), TRACK_COLOR, { 'fill-opacity': look.opacity });
+        if (look.dots) disc(at, DOT_TARGET.core, look.dots.color, { 'fill-opacity': look.dots.opacity });
+      }
+      return;
+    }
     if (stroke.kind !== 'line') return;
     if (done[i]) {
       path(stroke.points, DONE_LOOK.color, DONE_LOOK.halo, { 'stroke-opacity': DONE_LOOK.haloOpacity });
@@ -669,7 +706,7 @@ export const CARD = {
   lineWidth: 0.022,                             // card units, the four little lines
   dot: { r: 0.1, ring: 0.02, color: '#35D07F', number: '#fff', size: 0.15 },
   arrow: { size: 0.07, color: '#2F4BD6', after: 0.1 }, // arrow sits this far past its dot's edge
-  slide: { step: 0.02, upTo: 0.6, gap: 0.02 },  // a dot on top of another slides along its stroke
+  slide: { step: 0.02, upTo: 0.8, gap: 0.02 },  // a dot on top of another slides along its stroke (up to 80% of it: a's short stick, Slice 9A)
 };
 
 // Pure: where the card sits for this screen. `offset` is the main letter box's x.
@@ -680,9 +717,9 @@ export function modelCard(layout, offset, char) {
   const { unit } = layout;
   const k = CARD.scale * unit;
   const w = (char.width + 2 * CARD.pad) * k;
-  const h = (1.3 + 2 * CARD.pad) * k;
+  const h = (TAIL_LINE + 2 * CARD.pad) * k;
   const x = layout.lineEnd - w;
-  const y = layout.top + 0.65 * unit - h / 2;
+  const y = layout.top + (TAIL_LINE / 2) * unit - h / 2;
   const origin = [x + CARD.pad * k, y + CARD.pad * k];
   const toMain = ([px, py]) => [
     (origin[0] - layout.originX) / unit - offset + px * CARD.scale,
@@ -805,11 +842,12 @@ export const HELPER_LOOK = {
 // strokes); `done` the strokes of it she has drawn (null: none yet).
 // Returns { ghost: [paths], dots: [{ at, label }] }.
 export function copyHelperMarks(char, level, done = null) {
-  const lines = char.strokes.filter((s) => s.kind === 'line');
   const none = !done || done.every((d) => !d);
   if (level === 1) {
     const first = char.strokes[0];
-    return { ghost: lines.map((s) => s.points), dots: none ? [{ at: first.points[0], label: null }] : [] };
+    // A dot stroke (i, j) is in the ghost as a tiny dotted circle round its place.
+    const ghost = char.strokes.filter((s) => s.kind === 'line' || s.kind === 'dot').map((s) => markPath(s.points));
+    return { ghost, dots: none ? [{ at: first.points[0], label: null }] : [] };
   }
   if (level === 2) {
     // A dot that would sit on an earlier one (M's two strokes start together)

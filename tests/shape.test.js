@@ -12,10 +12,14 @@ import { cloudOf, matchDistance, resampleCloud, CLOUD_POINTS } from '../src/pdol
 import { planCount, planStrokes } from '../src/variants.js';
 import { copyNote, traceNote, TRACE_NOTES } from '../src/notes.js';
 import { practiceReasons, PRACTICE_MORE } from '../src/review.js';
+import { charFile, bookOf } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
-const IDS = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url), 'utf8'));
-const CHARS = Object.fromEntries(IDS.map((id) => [id, load(id)]));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
+const ALL = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url), 'utf8'));
+const CHARS = Object.fromEntries(ALL.map((id) => [id, load(id)]));
+// The characters on the boards. Lowercase (Slice 9A) joins the ABC board, and
+// these judging tests, in the second part of the slice, where its judging is set up.
+const IDS = ALL.filter((id) => bookOf(id));
 const othersOf = (id) => compareIds(id).map((i) => CHARS[i]);
 // As the game does: her strokes against the character, with its board and look-alikes.
 const judge = (id, strokes) => scoreCopy(strokes, CHARS[id], { others: othersOf(id) });
@@ -287,7 +291,8 @@ test('the size lines, and a usual pass says nothing', () => {
 });
 
 test('the tracing rounds: a short line for a wrong start, a wrong direction, off the track and a stroke traced the other way', () => {
-  assert.deepEqual(Object.keys(TRACE_NOTES).sort(), ['off-path', 'reversed', 'wrong-direction', 'wrong-start']);
+  assert.deepEqual(Object.keys(TRACE_NOTES).sort(), ['off-path', 'off-target', 'reversed', 'wrong-direction', 'wrong-start']);
+  assert.equal(traceNote('off-target'), 'Tap right on the dot.'); // Slice 9A: a tap that missed the dot of i or j
   assert.equal(traceNote('reversed'), 'That counts! Here is the usual way.');
   assert.equal(traceNote('wrong-start'), 'Start at the glowing dot.');
   assert.equal(traceNote('wrong-direction'), 'Go the other way. Watch Jugnu.');

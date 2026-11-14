@@ -9,8 +9,9 @@ import { copyHelperMarks } from '../src/render.js';
 import { copyStatus, copyLogEntry, scoreCopy, compareIds } from '../src/copy.js';
 import { planChar, planStrokes } from '../src/variants.js';
 import { readHelper, saveHelper, HELPER_KEY, testStore } from '../src/storage.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const others = (id) => compareIds(id).filter((i) => i !== id).map(load);
 
 // A small in-memory store, as localStorage.

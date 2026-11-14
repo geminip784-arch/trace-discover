@@ -6,10 +6,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DEFAULTS } from '../src/geometry.js';
 import { TRACK_LOOKS, DONE_LOOK, INK, trackLook, trackWidths, startMarkers, outerRadius, MARKERS, START_DOT_RADIUS } from '../src/render.js';
+import { charFile } from '../src/session.js';
 
 const MOCKUP_U = 340; // mockup4's letter height in px
 const CHARS = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url)));
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url)));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url)));
 const close = (a, b, tol = 0.006) => Math.abs(a - b) <= tol;
 
 test('the track widths are mockup4 sizes in line units', () => {
@@ -59,7 +60,7 @@ test('the ink is a strong blue and never red', () => {
   for (const layer of INK.glow) assert.equal(layer.color, '#4D6BFF');
 });
 
-test('no track runs past the sky or grass line by more than half its band', () => {
+test('no track runs past the sky or grass line (tails: the tail line) by more than half its band', () => {
   for (const id of CHARS) {
     const char = load(id);
     for (const stage of [1, 2, 3]) {
@@ -69,7 +70,9 @@ test('no track runs past the sky or grass line by more than half its band', () =
           // Round line ends stick out by half the width beyond the points.
           const ys = stroke.points.map((p) => p[1]);
           const above = -(Math.min(...ys) - width / 2);
-          const below = Math.max(...ys) + width / 2 - 1;
+          // Tails (g j p q y, Slice 9A) end on the tail line, 1.5.
+          const bottom = /^[gjpqy]$/.test(id) ? 1.5 : 1;
+          const below = Math.max(...ys) + width / 2 - bottom;
           assert.ok(above <= width / 2 + 1e-9, `${id} stage ${stage}: past the sky line`);
           assert.ok(below <= width / 2 + 1e-9, `${id} stage ${stage}: past the grass line`);
         }
