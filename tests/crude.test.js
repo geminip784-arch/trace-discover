@@ -11,8 +11,9 @@ import { readFileSync } from 'node:fs';
 import { scoreCopy, compareIds, COPY_MATCH, COPY_SIZE, childShapes, copyLogEntry } from '../src/copy.js';
 import { CHILD_SHAPES } from '../data/child-shapes.js';
 import { crudeLetters, crudeWrong, SHAPES, HANDS, seeded, wobble } from './crude-letters.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const CHARS = {};
 const char = (id) => (CHARS[id] ??= load(id));
 const judge = (id, strokes) => scoreCopy(strokes, char(id), { others: compareIds(id).filter((i) => i !== id).map(char) });
@@ -25,6 +26,7 @@ const isKnown = (c) => KNOWN_FAIL.some((k) => k.id === c.id && k.name === c.name
 test('the limits are untouched: child templates, not a looser shape limit', () => {
   assert.deepEqual(COPY_MATCH, {
     maxDistance: 1.2, coverRadius: 0.2, coverMin: 0.6, maxStretch: 1.5, closeCall: 0.35, closeKind: 1.1, inkRadius: 0.25, inkMin: 0.75, maxInk: 1.8,
+    dotRadius: 0.22, dotShare: 0.4, // Slice 9A: the dot of i and j, checked on its own
   });
   assert.deepEqual(COPY_SIZE, { min: 0.75, max: 1.25 });
 });

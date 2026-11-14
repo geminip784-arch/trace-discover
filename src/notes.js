@@ -12,6 +12,8 @@ export const TRACE_NOTES = {
   'off-path': 'Stay on the track.',
   // Slice 5J part 2: a stroke traced the other way counts; after the letter Jugnu shows the usual way.
   reversed: 'That counts! Here is the usual way.',
+  // Slice 9A: a tap that missed the dot of i or j.
+  'off-target': 'Tap right on the dot.',
 };
 
 export const traceNote = (reason) => TRACE_NOTES[reason] ?? null;

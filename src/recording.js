@@ -5,11 +5,12 @@ import { resample, pathLength, DEFAULTS, dist } from './geometry.js';
 import { JOIN_GAP } from './variants.js';
 import { STROKE_ORDER } from '../data/stroke-order.js';
 
-// The recorder's picker, one row per group. Lowercase and Urdu get their own
-// group here later; everything else reads CHAR_IDS.
+// The recorder's picker, one row per group. Urdu gets its own group here
+// later; everything else reads CHAR_IDS.
 export const CHAR_GROUPS = [
   { name: 'Capitals', ids: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('') },
   { name: 'Digits', ids: '0123456789'.split('') },
+  { name: 'Lowercase', ids: 'abcdefghijklmnopqrstuvwxyz'.split('') }, // Slice 9A
 ];
 export const CHAR_IDS = CHAR_GROUPS.flatMap((g) => g.ids);
 export const SMOOTH_PASSES = 3;   // Chaikin corner-cutting passes for the Smooth button
@@ -140,7 +141,7 @@ export function charWidth(strokes) {
 export function buildCharacter(id, strokes, direction = 'ltr') {
   const isDigit = /^[0-9]$/.test(id);
   const char = { id, script: isDigit ? 'digit' : 'latin' };
-  if (!isDigit) char.case = 'upper';
+  if (!isDigit) char.case = /^[a-z]$/.test(id) ? 'lower' : 'upper';
   char.family = strokeOrderOf(id)?.family ?? 'straight';
   char.direction = direction;
   char.width = charWidth(strokes);

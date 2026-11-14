@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { bookOf, BOARDS } from '../src/session.js';
+import { bookOf, BOARDS, charFile, fileChar } from '../src/session.js';
 
 const dir = new URL('../data/chars/', import.meta.url);
 const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.endsWith('.example.json') && f !== 'index.json');
@@ -18,7 +18,7 @@ if (files.length === 0) {
 for (const file of files) {
   test(`data/chars/${file}`, () => {
     const char = JSON.parse(readFileSync(new URL(file, dir), 'utf8'));
-    assert.equal(char.id, file.slice(0, -'.json'.length), 'id matches the filename');
+    assert.equal(char.id, fileChar(file.slice(0, -'.json'.length)), 'id matches the filename (lowercase: lower-<id>)');
     assert.ok(Array.isArray(char.strokes) && char.strokes.length >= 1, 'at least one stroke');
     char.strokes.forEach((stroke, i) => {
       const where = `stroke ${i + 1}`;
@@ -53,14 +53,16 @@ export function checkAnyOrder(anyOrder, strokeCount) {
   });
 }
 
-// Optional "plans" (Slice 5J): other allowed stroke plans, each { strokes } of line strokes.
+// Optional "plans" (Slice 5J): other allowed stroke plans, each { strokes } of
+// line strokes, and dot strokes (the dot of i and j, Slice 9A).
 export function checkPlans(plans) {
   assert.ok(Array.isArray(plans) && plans.length >= 1, 'plans is a list of at least one plan');
   plans.forEach((plan, p) => {
     assert.ok(Array.isArray(plan.strokes) && plan.strokes.length >= 1, `plan ${p + 2}: at least one stroke`);
     for (const s of plan.strokes) {
-      assert.equal(s.kind, 'line', `plan ${p + 2}: line strokes`);
-      assert.ok(Array.isArray(s.points) && s.points.length >= 2, `plan ${p + 2}: a line needs at least 2 points`);
+      assert.ok(s.kind === 'line' || s.kind === 'dot', `plan ${p + 2}: line or dot strokes`);
+      if (s.kind === 'line') assert.ok(Array.isArray(s.points) && s.points.length >= 2, `plan ${p + 2}: a line needs at least 2 points`);
+      else assert.equal(s.points.length, 1, `plan ${p + 2}: a dot has exactly 1 point`);
     }
   });
 }
@@ -85,10 +87,12 @@ test('data/chars/index.json lists exactly the recorded character files', () => {
   const manifest = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
   assert.ok(Array.isArray(manifest), 'the manifest is a list of ids');
   assert.equal(new Set(manifest).size, manifest.length, 'no id is listed twice');
-  const ids = files.map((f) => f.slice(0, -'.json'.length));
-  for (const id of manifest) assert.ok(ids.includes(id), `${id} is in the manifest but data/chars/${id}.json is missing`);
-  for (const id of ids) assert.ok(manifest.includes(id), `data/chars/${id}.json exists but ${id} is not in the manifest`);
-  for (const id of manifest) assert.ok(bookOf(id), `${id} is on one of the boards`);
+  const ids = files.map((f) => fileChar(f.slice(0, -'.json'.length)));
+  for (const id of manifest) assert.ok(ids.includes(id), `${id} is in the manifest but data/chars/${charFile(id)}.json is missing`);
+  for (const id of ids) assert.ok(manifest.includes(id), `data/chars/${charFile(id)}.json exists but ${id} is not in the manifest`);
+  // Lowercase (Slice 9A) is in the manifest, so ?char=a and glyphs.html can load it,
+  // but goes on the ABC board only in the second part of the slice.
+  for (const id of manifest) assert.ok(bookOf(id) || /^[a-z]$/.test(id), `${id} is on one of the boards`);
 });
 
 // Character ids are plain ASCII, so file names never hold Urdu letters. An Urdu

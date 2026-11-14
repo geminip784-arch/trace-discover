@@ -117,3 +117,10 @@ counting thing), fairy (Jugnu is the only character).
 - **[6B]** Add a link to `voice.html` from the setup page (`index.html?setup=1`).
 - **[7]** `voice.html` loads nothing from the internet, but with no offline cache it only opens with Wi-Fi off if Chrome still has it in memory. Add `voice.html`, `src/voice-page.js`, `src/voice.js`, `src/voice-store.js` and `data/voice-script.js` (with what they import) to Slice 7's service worker cache, alongside the app itself. The clips are already on the tablet in IndexedDB, so they play offline once the app's files are cached.
 - **[later]** New script lines (a new find word, a new note) show up as Missing on `voice.html` automatically. Clips for ids that leave the script stay in the pack and in backups but are not shown.
+
+## Slice 9A part 1: the lowercase letters
+
+- **[9A part 2]** Copy-it judging for lowercase is set up in part 2 (case look-alikes such as c/C, o/O, s/S, l/I; b d p q; size against the model's own height). Until then the copy round compares a lowercase letter only with itself, and the judging tests (`tests/shape.test.js`) still cover the board characters only.
+- **[later]** `recorder.html`'s Straighten button snaps upright strokes to the sky and grass lines only. A hand-recorded lowercase override would want the fence and the tail line too (`VERTICAL_LINE_SNAP` in `src/recording.js`).
+- **[later]** In round 1, Jugnu waiting at i's stick (on the fence) sits partly over the dot's target just above it. He moves away during each demonstration, so it is minor; if it bothers her, give him a perch to the lower left for strokes whose start has a dot right above it.
+- **[later]** The review screenshot in `docs/screenshots/glyphs/review.png` still shows the old ground line at 1.3. Retake it with the next change to the capitals.

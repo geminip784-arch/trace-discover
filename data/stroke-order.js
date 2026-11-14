@@ -154,6 +154,111 @@ export const STROKE_ORDER = {
     s('across the top, slant down to the bottom left, across the bottom',
       [[0.08, 0], [0.72, 0], [0.08, 1], [0.72, 1]]),
   ] },
+  // Lowercase (Slice 9A). Small letters sit between the fence (0.5) and the
+  // grass (1); tall letters reach the sky; tails reach the tail line (1.5).
+  a: { family: 'mixed', width: 0.66, strokes: [
+    s('round: from the top right, anticlockwise all the way round', arc(0.33, 0.75, 0.25, 0.25, -45, -360, 20)),
+    s('stick down the right side, fence to grass', [[0.58, 0.5], [0.58, 1]]),
+  ] },
+  b: { family: 'mixed', width: 0.66, strokes: [
+    s('tall stick down, sky to grass', [[0.08, 0], [0.08, 1]]),
+    s('from the middle of the stick, up and round clockwise', arc(0.33, 0.75, 0.25, 0.25, 180, 540, 24)),
+  ] },
+  c: { family: 'curved', width: 0.587, strokes: [
+    s('one curve from the top right, round anticlockwise, ending bottom right', arc(0.33, 0.75, 0.25, 0.25, -45, -315, 18)),
+  ] },
+  d: { family: 'mixed', width: 0.66, strokes: [
+    s('round: from the top right, anticlockwise all the way round', arc(0.33, 0.75, 0.25, 0.25, -45, -360, 20)),
+    s('tall stick down the right side, sky to grass', [[0.58, 0], [0.58, 1]]),
+  ] },
+  e: { family: 'curved', width: 0.66, strokes: [
+    s('bar across the middle, left to right, then round anticlockwise, open at the bottom right',
+      [[0.08, 0.75], [0.58, 0.75]], arc(0.33, 0.75, 0.25, 0.25, 0, -315, 20)),
+  ] },
+  f: { family: 'mixed', width: 0.647, strokes: [
+    s('hook over the top from the right, then down to the grass', arc(0.42, 0.17, 0.17, 0.17, -30, -180, 10), [[0.25, 1]]),
+    s('bar across the fence, left to right', [[0.08, 0.5], [0.48, 0.5]]),
+  ] },
+  g: { family: 'mixed', width: 0.66, strokes: [
+    s('round: from the top right, anticlockwise all the way round', arc(0.33, 0.75, 0.25, 0.25, -45, -360, 20)),
+    s('stick down the right side below the grass, hooking left at the tail line',
+      [[0.58, 0.5], [0.58, 1.25]], arc(0.33, 1.25, 0.25, 0.25, 0, 180, 12)),
+  ] },
+  h: { family: 'mixed', width: 0.66, strokes: [
+    s('tall stick down, sky to grass', [[0.08, 0], [0.08, 1]]),
+    s('from the stick, up and over the arch, down to the grass', arc(0.33, 0.75, 0.25, 0.25, 180, 360, 12), [[0.58, 1]]),
+  ] },
+  i: { family: 'straight', width: 0.16, strokes: [
+    s('stick down, fence to grass', [[0.08, 0.5], [0.08, 1]]),
+    s('the dot: a tap above the stick', [[0.08, 0.25]]),
+  ] },
+  j: { family: 'mixed', width: 0.56, strokes: [
+    s('stick down from the fence below the grass, hooking left at the tail line',
+      [[0.48, 0.5], [0.48, 1.3]], arc(0.28, 1.3, 0.2, 0.2, 0, 180, 12)),
+    s('the dot: a tap above the stick', [[0.48, 0.25]]),
+  ] },
+  k: { family: 'straight', width: 0.56, strokes: [
+    s('tall stick down, sky to grass', [[0.08, 0], [0.08, 1]]),
+    s('arm from the fence on the right in to the stick', [[0.48, 0.5], [0.08, 0.75]]),
+    s('leg from the same point out to the grass on the right', [[0.08, 0.75], [0.48, 1]]),
+  ] },
+  l: { family: 'straight', width: 0.16, strokes: [
+    s('tall stick down, sky to grass', [[0.08, 0], [0.08, 1]]),
+  ] },
+  m: { family: 'mixed', width: 1, strokes: [
+    s('stick down, fence to grass', [[0.08, 0.5], [0.08, 1]]),
+    s('from the stick: up and over, down, back up, over again, down',
+      arc(0.29, 0.71, 0.21, 0.21, 180, 360, 10), [[0.5, 1], [0.5, 0.71]], arc(0.71, 0.71, 0.21, 0.21, 180, 360, 10), [[0.92, 1]]),
+  ] },
+  n: { family: 'mixed', width: 0.66, strokes: [
+    s('stick down, fence to grass', [[0.08, 0.5], [0.08, 1]]),
+    s('from the stick, up and over the arch, down to the grass', arc(0.33, 0.75, 0.25, 0.25, 180, 360, 12), [[0.58, 1]]),
+  ] },
+  o: { family: 'curved', width: 0.66, strokes: [
+    s('one circle from the top, anticlockwise, back to the top', arc(0.33, 0.75, 0.25, 0.25, -90, -450, 24)),
+  ] },
+  p: { family: 'mixed', width: 0.66, strokes: [
+    s('stick down from the fence to the tail line', [[0.08, 0.5], [0.08, 1.5]]),
+    s('from the middle of the stick, up and round clockwise', arc(0.33, 0.75, 0.25, 0.25, 180, 540, 24)),
+  ] },
+  q: { family: 'mixed', width: 0.66, strokes: [
+    s('round: from the top right, anticlockwise all the way round', arc(0.33, 0.75, 0.25, 0.25, -45, -360, 20)),
+    s('stick down the right side from the fence to the tail line', [[0.58, 0.5], [0.58, 1.5]]),
+  ] },
+  r: { family: 'mixed', width: 0.587, strokes: [
+    s('stick down, fence to grass', [[0.08, 0.5], [0.08, 1]]),
+    s('from the stick, up and over a short shoulder', arc(0.33, 0.75, 0.25, 0.25, 180, 315, 10)),
+  ] },
+  s: { family: 'curved', width: 0.41, strokes: [
+    s('one curve from the top right, back over to the left, through the middle, round to the bottom left',
+      arc(0.205, 0.625, 0.125, 0.125, -30, -270, 12), arc(0.205, 0.875, 0.125, 0.125, -90, 150, 12)),
+  ] },
+  t: { family: 'straight', width: 0.56, strokes: [
+    s('stick down from a little below the sky to the grass', [[0.28, 0.2], [0.28, 1]]),
+    s('bar across the fence, left to right', [[0.08, 0.5], [0.48, 0.5]]),
+  ] },
+  u: { family: 'mixed', width: 0.66, strokes: [
+    s('down from the fence, round the bottom, up to the fence', [[0.08, 0.5], [0.08, 0.75]], arc(0.33, 0.75, 0.25, 0.25, 180, 0, 12), [[0.58, 0.5]]),
+    s('stick down the right side, fence to grass', [[0.58, 0.5], [0.58, 1]]),
+  ] },
+  v: { family: 'straight', width: 0.66, strokes: [
+    s('slant down to the grass in the middle, and up to the fence on the right', [[0.08, 0.5], [0.33, 1], [0.58, 0.5]]),
+  ] },
+  w: { family: 'straight', width: 0.88, strokes: [
+    s('down, up to the fence in the middle, down, and up to the fence on the right',
+      [[0.08, 0.5], [0.26, 1], [0.44, 0.5], [0.62, 1], [0.8, 0.5]]),
+  ] },
+  x: { family: 'straight', width: 0.66, strokes: [
+    s('slant from the top left down to the bottom right', [[0.08, 0.5], [0.58, 1]]),
+    s('slant from the top right down to the bottom left', [[0.58, 0.5], [0.08, 1]]),
+  ] },
+  y: { family: 'straight', width: 0.66, strokes: [
+    s('short slant from the fence on the left down to the grass in the middle', [[0.08, 0.5], [0.33, 1]]),
+    s('long slant from the fence on the right, through the same point, down to the tail line', [[0.58, 0.5], [0.33, 1], [0.08, 1.5]]),
+  ] },
+  z: { family: 'straight', width: 0.66, strokes: [
+    s('across the fence, slant down to the bottom left, across the grass', [[0.08, 0.5], [0.58, 0.5], [0.08, 1], [0.58, 1]]),
+  ] },
   0: { family: 'curved', width: 0.66, strokes: [
     s('one oval from the top, anticlockwise, back to the top', arc(0.33, 0.5, 0.25, 0.5, -90, -450, 28)),
   ] },

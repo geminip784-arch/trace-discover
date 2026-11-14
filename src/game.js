@@ -58,12 +58,12 @@
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
-  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD, drawCopyHelper,
+  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD, drawCopyHelper, markPath,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import {
-  variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar, scoreEitherWay,
+  variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar, scoreMark,
 } from './variants.js';
 import {
   CONFIG, ROUNDS, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
@@ -78,7 +78,7 @@ import {
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
-import { canLoad } from './session.js';
+import { canLoad, charFile } from './session.js';
 
 // Jugnu's home, near the left: area px from the left as line units, and height in line units.
 const HOME = { x: 0.35, y: 0.65 };
@@ -96,7 +96,7 @@ const PLAIN_INK = { dim: false, glow: true };
 async function loadChar(id, manifest) {
   if (!canLoad(id, manifest)) return null;
   try {
-    const res = await fetch(`data/chars/${encodeURIComponent(id)}.json`);
+    const res = await fetch(`data/chars/${encodeURIComponent(charFile(id))}.json`);
     if (!res.ok) return null;
     const char = await res.json();
     return Array.isArray(char?.strokes) && char.strokes.length > 0 ? char : null;
@@ -293,7 +293,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     redraw();
     updateDebug();
     if (progress.done.every((d) => !d)) speak('start');
-    if (progress.stage === 1) jugnu.demo(ref(), CONFIG.demoMs, CONFIG.hopMs);
+    if (progress.stage === 1) jugnu.demo(markPath(ref()), CONFIG.demoMs, CONFIG.hopMs);
     else if (progress.stage === 2) jugnu.hopTo(startDot(), CONFIG.hopMs);
     else jugnu.hopTo(home(), CONFIG.hopMs);
   }
@@ -310,17 +310,17 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     if (demo) {
       // Demonstrations use the recorded order.
       speak('wrongDirection');
-      jugnu.demo(ref(), CONFIG.demoMs, CONFIG.hopMs);
+      jugnu.demo(markPath(ref()), CONFIG.demoMs, CONFIG.hopMs);
     } else if (reason === 'wrong-direction') {
       speak('wrongDirection');
-      jugnu.demo(tried, CONFIG.demoMs, CONFIG.hopMs);
+      jugnu.demo(markPath(tried), CONFIG.demoMs, CONFIG.hopMs);
     } else if (reason === 'wrong-start') {
       speak('wrongStart');
       jugnu.hopTo(startDot(), CONFIG.hopMs);
     } else {
       // off-path or too-short: Jugnu rests on the start dot and the track glows once.
       jugnu.hopTo(tried[0], CONFIG.hopMs);
-      fx.glowPath(tried.map(toPx), bandWidth(), CONFIG.trackGlowMs);
+      fx.glowPath(markPath(tried).map(toPx), bandWidth(), CONFIG.trackGlowMs);
     }
   }
 
@@ -328,7 +328,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   async function assist(k, letterDone) {
     phase = 'held';
     speak('assist');
-    const pts = planNow()[k].points;
+    const pts = markPath(planNow()[k].points);
     const trail = fx.trail(pts.map(toPx), TRAIL_WIDTH * layout.unit);
     await jugnu.demo(pts, CONFIG.assistMs, CONFIG.hopMs, (f) => trail.set(f));
     if (!alive) return;
@@ -354,8 +354,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     phase = 'trace';
   }
 
-  // The default plan's lines: the model letter, the usual way.
-  const modelPaths = () => strokes.filter((s) => s.kind === 'line').map((s) => s.points);
+  // The default plan: the model letter, the usual way (a dot as a tiny circle).
+  const modelPaths = () => strokes.map((s) => markPath(s.points));
 
   // Jugnu draws `paths` (letter units of the card's letter) on the model card,
   // each leaving a glowing trail, then the trails fade and he flies home.
@@ -393,7 +393,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     if (helper.level < 3) redraw();
     if (action === 'judge-now') judgeCopy();
     else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
-    else later(() => hintCopy(planStrokes(char, plan)[next].points), CONFIG.copyHintMs);
+    else later(() => hintCopy(markPath(planStrokes(char, plan)[next].points)), CONFIG.copyHintMs);
   }
 
   // She stopped part way: Jugnu draws the next stroke on the card. Her strokes
@@ -409,7 +409,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // Resolves false if stopped.
   async function showWhy(result) {
     const how = copyShow(result);
-    if (how === 'part') return showOnCard([result.missing.points]);
+    if (how === 'part') return showOnCard([markPath(result.missing.points)]);
     if (how === 'slow') return showOnCard(modelPaths(), CONFIG.copySlowMs);
     phase = 'held';
     const hers = boxOf(copy.strokes);
@@ -432,7 +432,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
       const oy = box.y + (box.h - h) / 2;
       const lines = copy.strokes.map((pts) => pts.map(([x, y]) => [ox + (x - hers.x0) * scale, oy + (y - hers.y0) * scale]));
       fx.beside(lines, box, CARD.letter.width * card.k, CONFIG.copyReasonMs);
-      if (result.missing) fx.partGlow(result.missing.points.map(card.toMain).map(toPx), CARD.letter.width * card.k, CONFIG.copyReasonMs);
+      if (result.missing) fx.partGlow(markPath(result.missing.points).map(card.toMain).map(toPx), CARD.letter.width * card.k, CONFIG.copyReasonMs);
     }
     await wait(CONFIG.copyReasonMs);
     return alive;
@@ -538,7 +538,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     updateDebug();
     speak('letterDone');
     letterChime();
-    const model = strokes.filter((s) => s.kind === 'line').map((s) => s.points);
+    const model = strokes.map((s) => markPath(s.points));
     let lines = model.map((pts) => pts.map(toPx));
     let width = LETTER_GLOW_WIDTH * layout.unit;
     if (herLetter) lines = herLetter.map((pts) => pts.map(toPx));
@@ -618,7 +618,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     const stage = progress.stage;
     const current = progress.current;
     // Rounds 1 and 2: a stroke traced the other way along the track counts (scoreEitherWay).
-    const pick = pickCandidate(a.points, a.candidates, stage, scoreEitherWay);
+    // A dot (i, j) is scored as a tap at its place (scoreMark, Slice 9A).
+    const pick = pickCandidate(a.points, a.candidates, stage, scoreMark);
     let result = pick.result;
     // Too short to be a real try (a tap): logged, but never added to the fail streak.
     const counted = result.reason !== 'too-short';
@@ -628,7 +629,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     let lift;
     if (result.ok) {
       // A passed stroke: keep the plans it fits, and show the first of them.
-      following = advancePlans(a.points, char, following, stage, scoreEitherWay);
+      following = advancePlans(a.points, char, following, stage, scoreMark);
       if (result.reversed) reversedStrokes.push(pick.variant.points);
       if (following.length === 0) following = [{ plan: pick.variant.plan, done: progress.done }]; // cannot happen: the pick passed
       lift = applyPlanPass(progress, shown().done);
@@ -652,7 +653,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
 
     if (result.ok) {
       chime();
-      fx.sparkle(pick.variant.points.map(toPx), CONFIG.sparkleMs);
+      fx.sparkle(markPath(pick.variant.points).map(toPx), CONFIG.sparkleMs);
       if (lift.letterDone) return endRound();
       goodStrokes += 1;
       if (goodStrokes % CONFIG.goodEvery === 0) speak('good');

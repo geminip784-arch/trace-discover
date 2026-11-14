@@ -7,12 +7,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  planCount, planStrokes, planChar, startPlans, planCandidates, advancePlans, shownPlan, pickCandidate,
+  planCount, planStrokes, planChar, startPlans, planCandidates, advancePlans, shownPlan, pickCandidate, scoreMark,
 } from '../src/variants.js';
+import { DEFAULTS, scoreStroke } from '../src/geometry.js';
 import { initialState, applyLift, applyPlanPass, isLetterDone } from '../src/progress.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const pts = (char, plan, k) => planStrokes(char, plan)[k].points;
+// Forwards only (scoreStroke); a dot (i, j, Slice 9A) is a tap at its place (scoreMark).
+const forward = (c, r, st) => scoreMark(c, r, st, DEFAULTS, scoreStroke);
 
 // Trace a whole letter as the game does: each stroke is picked against every
 // plan she still follows; a pass moves the plans on and shows the first one.
@@ -22,10 +26,10 @@ function trace(char, strokes, stage = 1) {
   const shown = [];
   const results = [];
   for (const s of strokes) {
-    const pick = pickCandidate(s, planCandidates(char, alive), stage);
+    const pick = pickCandidate(s, planCandidates(char, alive), stage, forward);
     results.push(pick.result);
     if (pick.result.ok) {
-      alive = advancePlans(s, char, alive, stage);
+      alive = advancePlans(s, char, alive, stage, forward);
       progress = applyPlanPass(progress, shownPlan(alive).done).state;
     } else {
       progress = applyLift(progress, { ok: false }).state;

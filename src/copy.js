@@ -23,7 +23,7 @@
 // they differ from the default plan, Jugnu replays the usual way once.
 
 import { DEFAULTS, pathLength, scoreStroke, scoreDot, resample, meanPairDistance, nearestOnPath } from './geometry.js';
-import { candidatesFor, nextStrokes, pickCandidate, variantLabel, planCount, planChar, planStrokes } from './variants.js';
+import { candidatesFor, nextStrokes, pickCandidate, variantLabel, planCount, planChar, planStrokes, DOT_MAX } from './variants.js';
 import { cloudOf, mirrorStrokes, matchDistance } from './pdollar.js';
 import { BOARDS } from './session.js';
 import { CHILD_SHAPES } from '../data/child-shapes.js';
@@ -44,6 +44,8 @@ export const COPY_MATCH = {
   inkRadius: 0.25,    // line units: her ink this close to the letter counts as part of it
   inkMin: 0.75,       // at least this share of her ink must be part of the letter (a scribble is not)
   maxInk: 1.8,        // her ink may be at most this many times as long as the letter's lines (a scribble is longer)
+  dotRadius: 0.22,    // Slice 9A: line units, once her letter is fitted: her dot this close to the dot of i or j counts
+  dotShare: 0.4,      // a mark is a dot only if it is also no longer than this share of her longest stroke
 };
 
 // Look-alikes from the other board, compared too (a 5 written for S is caught).
@@ -77,8 +79,28 @@ export function boxOf(strokes) {
   return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
 }
 
-// The reference letter's box, from every point of every stroke (lines and dots).
-export const refBox = (char) => boxOf(char.strokes.map((s) => s.points));
+// The reference letter's box, from its lines (a dot, on i and j, is checked on
+// its own and never stretches the box), or every point when it has no lines.
+export const refBox = (char) => {
+  const lines = char.strokes.filter((s) => s.kind === 'line');
+  return boxOf((lines.length ? lines : char.strokes).map((s) => s.points));
+};
+
+// ---- dots (Slice 9A: the dot of i and j) ----
+
+// The dot strokes of a character's default plan: [{ stroke, part, at }].
+export const dotsOf = (char) => char.strokes.flatMap((s, stroke) => (s.kind === 'dot' ? [{ stroke, part: s.part ?? 'dot', at: s.points[0] }] : []));
+
+// Her strokes split into marks (taps or tiny strokes: her dots) and lines, for a
+// character with dots. A mark is no longer than DOT_MAX and no longer than
+// match.dotShare of her longest stroke, so a tiny letter's stick stays a line.
+// Characters with no dots: every stroke is a line.
+export function splitMarks(strokes, char, match = COPY_MATCH) {
+  if (dotsOf(char).length === 0) return { lines: strokes, marks: [] };
+  const longest = Math.max(0, ...strokes.map(pathLength));
+  const isMark = (pts) => pathLength(pts) <= Math.min(DOT_MAX, match.dotShare * longest);
+  return { lines: strokes.filter((p) => !isMark(p)), marks: strokes.filter(isMark) };
+}
 
 // A tap, not a stroke (shorter than DEFAULTS.minLength).
 export const isTap = (pts, cfg = DEFAULTS) => pts.length < 2 || pathLength(pts) < cfg.minLength;
@@ -97,22 +119,23 @@ const side = (box, tall) => (tall ? box.h : box.w);
 // Fit her strokes to the reference box with one uniform scale, centre on centre.
 // Returns { scale, size, sizeOk, strokes } (strokes fitted, in letter units), or
 // a result with scale null when her letter has no height to measure.
-export function fitLetter(strokes, char, size = COPY_SIZE, cfg = DEFAULTS) {
+// `extra` (her dots, Slice 9A) are moved by the same fit, but take no part in it.
+export function fitLetter(strokes, char, size = COPY_SIZE, cfg = DEFAULTS, extra = []) {
   const ref = refBox(char);
   const hers = boxOf(strokes);
   const tall = ref.h >= ref.w;
   const refSide = side(ref, tall);
   const herSide = hers ? side(hers, tall) : 0;
-  if (!hers || herSide < cfg.minLength) return { scale: null, size: 0, sizeOk: false, strokes };
+  if (!hers || herSide < cfg.minLength) return { scale: null, size: 0, sizeOk: false, strokes, extra };
   const scale = refSide / herSide;
   const ratio = herSide / refSide;
-  const fitted = strokes.map((pts) => pts.map(([x, y]) => [
+  const move = (pts) => pts.map(([x, y]) => [
     ref.cx + (x - hers.cx) * scale,
     ref.cy + (y - hers.cy) * scale,
-  ]));
+  ]);
   // Rounded so 0.75 and 1.25 themselves pass, whatever the float error.
   const r = Math.round(ratio * 1e6) / 1e6;
-  return { scale, size: ratio, sizeOk: r >= size.min && r <= size.max, strokes: fitted };
+  return { scale, size: ratio, sizeOk: r >= size.min && r <= size.max, strokes: strokes.map(move), extra: extra.map(move) };
 }
 
 // ---- shape ----
@@ -449,11 +472,16 @@ export function readHabits(fitted, char, stage = COPY_STAGE, cfg = DEFAULTS) {
 //   'missing-stroke' nearest the target, but a part has no ink near it (missing: that part)
 //   'too-small' | 'too-big'
 export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE, cfg = DEFAULTS, others = [], match = COPY_MATCH } = {}) {
-  const used = usableStrokes(strokes, char, cfg);
-  const fit = fitLetter(used, char, size, cfg);
+  const all = usableStrokes(strokes, char, cfg);
+  // i and j (Slice 9A): her dots are checked on their own, after the shape;
+  // the shape and the size are judged on her lines alone.
+  const { lines: used, marks } = splitMarks(all, char, match);
+  const fit = fitLetter(used, char, size, cfg, marks);
+  // Her strokes, fitted, in the order she drew them (for the habits).
+  const fittedOf = new Map([...used.map((p, i) => [p, fit.strokes[i]]), ...marks.map((p, i) => [p, fit.extra[i]])]);
   const habits = fit.scale === null
     ? { plan: 0, strokes: [], starts: [], directions: [], order: 'usual', usual: true }
-    : readHabits(fit.strokes, char, stage, cfg);
+    : readHabits(all.map((p) => fittedOf.get(p)), char, stage, cfg);
   const out = {
     ok: false, reason: null, scale: fit.scale, size: fit.size, sizeOk: fit.sizeOk,
     match: null, lookalike: null, missing: null, mirrored: false, habits, strokes: habits.strokes,
@@ -504,8 +532,27 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
   out.mirrored = best.mirrored && best.id === char.id;
   const gone = parts.find((p) => p.coverage < match.coverMin);
   if (gone) return { ...out, reason: 'missing-stroke', missing: best.child !== null && best.child !== undefined ? modelPart(gone, char) : strip(gone, out.mirrored, char) };
+  // The dot of i and j: one of her marks near its place (turned round with a mirrored letter).
+  const lost = missingDot(fit.extra, char, out.mirrored, match);
+  if (lost) return { ...out, reason: 'missing-stroke', missing: lost };
   if (!fit.sizeOk) return { ...out, reason: fit.size < size.min ? 'too-small' : 'too-big' };
   return { ...out, ok: true };
+}
+
+// The first dot of `char` with none of her fitted marks near it, as a part to
+// show on the model card ({ plan: 0, stroke, part, points, coverage: 0 }), or null.
+// A mark is near when its middle is within match.dotRadius of the dot.
+export function missingDot(marks, char, mirrored = false, match = COPY_MATCH) {
+  for (const d of dotsOf(char)) {
+    const at = mirrored ? [char.width - d.at[0], d.at[1]] : d.at;
+    const near = marks.some((pts) => {
+      const cx = pts.reduce((sum, p) => sum + p[0], 0) / pts.length;
+      const cy = pts.reduce((sum, p) => sum + p[1], 0) / pts.length;
+      return Math.hypot(cx - at[0], cy - at[1]) <= match.dotRadius;
+    });
+    if (!near) return { plan: 0, stroke: d.stroke, part: d.part, points: [d.at], coverage: 0 };
+  }
+  return null;
 }
 
 // A part to show on the model card: always the model's own way round.

@@ -7,6 +7,15 @@
 
 // Where Jugnu perches, relative to a start dot, so the dot stays visible.
 export const PERCH = [-0.11, -0.13];
+// Slice 9A: the four lines fill more of the screen, so the sky line is close
+// to the top edge. On a dot this near the top (y below PERCH_TOP), Jugnu
+// perches below and to the left of it instead, so he stays on screen.
+export const PERCH_TOP = 0.15;
+export const PERCH_LOW = [-0.22, 0.2];
+export const perchFor = (dot) => {
+  const [dx, dy] = dot[1] < PERCH_TOP ? PERCH_LOW : PERCH;
+  return [dot[0] + dx, dot[1] + dy];
+};
 // Jugnu's size, in line units.
 const SIZE = 0.32;
 // The point of the picture that sits on the path: the glowing tail (jugnu.svg is 120 x 120).
@@ -91,7 +100,7 @@ export function createJugnu(img, toPx) {
     return [mid, to];
   }
 
-  const perchOf = (dot) => [dot[0] + PERCH[0], dot[1] + PERCH[1]];
+  const perchOf = perchFor;
 
   return {
     resize(newUnit) {

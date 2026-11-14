@@ -13,8 +13,9 @@ import {
 } from '../src/copy.js';
 import { DEFAULTS } from '../src/geometry.js';
 import { CONFIG, finishCopy, isCopyRound } from '../src/progress.js';
+import { charFile } from '../src/session.js';
 
-const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${id}.json`, import.meta.url), 'utf8'));
+const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
 const MANIFEST = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.meta.url), 'utf8'));
 
 // As the game does: compared with the character's board and its look-alikes.
@@ -54,7 +55,7 @@ test('the scoring tolerances are untouched', () => {
 });
 
 test('every capital and digit stands sky line to grass line, so its size is measured against that', () => {
-  for (const id of MANIFEST) {
+  for (const id of MANIFEST.filter((c) => !/^[a-z]$/.test(c))) {
     const b = refBox(load(id));
     assert.ok(Math.abs(b.y0) < 0.005 && Math.abs(b.y1 - 1) < 0.005, `${id}: ${b.y0}..${b.y1}`);
     assert.ok(b.h >= b.w, `${id} is taller than wide`);
