@@ -105,3 +105,15 @@ counting thing), fairy (Jugnu is the only character).
 - **[later]** Cross-board look-alikes written very wobbly (2 for Z, 8 for B, 5 for S) can occasionally pass, about 3 in 100 at a wobble of 3% of the letter's height. If she mixes them up, raise `closeKind` to make the target win less often in a close call.
 - **[later]** A page of parallel slanted lines can pass as W (W is itself a zigzag). Unlikely from her; noted in case it happens.
 - **[later]** In round 3, a letter with fewer strokes than the letter needs gets a hint after 5 seconds, not a failure reason (as built in 5I). So a C written for G is helped by Jugnu showing the bar, rather than "Almost! The bar is missing". Watch whether that is enough.
+
+## Slice 6A: how the app will use the voice pack
+
+- **[6B]** Play clips from the pack (IndexedDB `td-voice`, store `clips`, one 22.05 kHz mono WAV per script id; `src/voice-store.js` `readClips`). Load the pack once when the app starts and decode each clip into a Web Audio buffer the first time it is needed, so prompts start without a delay. Every play goes through the same `hush()` rule: no sound while her finger is down.
+- **[6B]** Which clip to play: a line with her name plays its private clip (`jugnu-…-name`) when one is saved and a name is set, otherwise its public twin without the name. A line with no clip falls back to browser speech (`sayText`), which stays the fallback only.
+- **[6B]** Note lines: `clipForText(line)` in `data/voice-script.js` finds the clip for the exact line `src/notes.js` shows, so the parent-facing line and its spoken version always match. The note lines are for a grown-up watching; decide in 6B whether they are spoken aloud to her or only the Jugnu prompts are.
+- **[6B]** "B, b, ball!": play `name-b`, then `sound-b`, then the scene's find word (`find-ball`), with a short gap between them. Counting scenes say the number (`number-3`) and then the counting word (`count-eggs`). The `picture` line in `src/audio.js` ("B is for ball!") is replaced by this.
+- **[6B]** Game instructions: play `game-<kind>` when a game opens, and again from the ear button.
+- **[6B]** Bring back the ear button (it replays the last clip), switch `SPEECH_ON` back on for the fallback, and make the setup page's "Test voice" button play `jugnu-greeting-name`.
+- **[6B]** Add a link to `voice.html` from the setup page (`index.html?setup=1`).
+- **[7]** `voice.html` loads nothing from the internet, but with no offline cache it only opens with Wi-Fi off if Chrome still has it in memory. Add `voice.html`, `src/voice-page.js`, `src/voice.js`, `src/voice-store.js` and `data/voice-script.js` (with what they import) to Slice 7's service worker cache, alongside the app itself. The clips are already on the tablet in IndexedDB, so they play offline once the app's files are cached.
+- **[later]** New script lines (a new find word, a new note) show up as Missing on `voice.html` automatically. Clips for ids that leave the script stay in the pack and in backups but are not shown.
