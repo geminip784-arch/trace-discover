@@ -37,6 +37,9 @@ const shallowM = (d) => [
   part('right stem', line([wid, 0], [wid, 1])),
 ];
 
+// Lowercase m and w (Slice 9A): radius of m's arches and the left edge.
+const lr = 0.21;
+
 export const CHILD_SHAPES = {
   M: [
     { name: 'middle at 0.6', strokes: shallowM(0.6) },
@@ -64,6 +67,21 @@ export const CHILD_SHAPES = {
     { name: 'middle at 0.4', strokes: [
       part('first V', line([m, 0], [0.29, 1], [mid, 0.4])),
       part('second V', line([mid, 0.4], [0.71, 1], [wid, 0])),
+    ] },
+  ],
+  // Lowercase (Slice 9A). An m with pointed tops, like a small zigzag from the
+  // grass line; a w with round bottoms, like two u's. Children write both, and
+  // they make an m turned upside down read as w, and a w turned upside down as m.
+  m: [
+    { name: 'pointed tops', strokes: [
+      part('first arch', line([m, 1], [m + lr, 0.5], [m + 2 * lr, 1])),
+      part('second arch', line([m + 2 * lr, 1], [m + 3 * lr, 0.5], [m + 4 * lr, 1])),
+    ] },
+  ],
+  w: [
+    { name: 'round bottoms', strokes: [
+      part('first V', [...line([m, 0.5], [m, 1 - lr]), ...arc(m + lr, 1 - lr, lr, lr, 180, 0), ...line([m + 2 * lr, 1 - lr], [m + 2 * lr, 0.5])]),
+      part('second V', [...line([m + 2 * lr, 0.5], [m + 2 * lr, 1 - lr]), ...arc(m + 3 * lr, 1 - lr, lr, lr, 180, 0), ...line([m + 4 * lr, 1 - lr], [m + 4 * lr, 0.5])]),
     ] },
   ],
   B: [

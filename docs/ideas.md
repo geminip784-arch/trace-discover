@@ -120,7 +120,14 @@ counting thing), fairy (Jugnu is the only character).
 
 ## Slice 9A part 1: the lowercase letters
 
-- **[9A part 2]** Copy-it judging for lowercase is set up in part 2 (case look-alikes such as c/C, o/O, s/S, l/I; b d p q; size against the model's own height). Until then the copy round compares a lowercase letter only with itself, and the judging tests (`tests/shape.test.js`) still cover the board characters only.
 - **[later]** `recorder.html`'s Straighten button snaps upright strokes to the sky and grass lines only. A hand-recorded lowercase override would want the fence and the tail line too (`VERTICAL_LINE_SNAP` in `src/recording.js`).
 - **[later]** In round 1, Jugnu waiting at i's stick (on the fence) sits partly over the dot's target just above it. He moves away during each demonstration, so it is minor; if it bothers her, give him a perch to the lower left for strokes whose start has a dot right above it.
 - **[later]** The review screenshot in `docs/screenshots/glyphs/review.png` still shows the old ground line at 1.3. Retake it with the next change to the capitals.
+
+## Slice 9A part 2: lowercase in the app
+
+- **[parked]** Slice 6B (playing the voice pack: letter sounds, "B, buh, ball!", spoken prompts) is parked until we have the school's phonics programme, so the sounds and their order match what she learns at school.
+- **[kept]** `voice.html` (Slice 6A) stays as it is: the script, recording, import, backup and restore all keep working, and the clips wait on the tablet for 6B.
+- **[later]** The lowercase style (plain print: true circles, straight sticks, tails to the tail line) may be restyled once we have the school's handwriting sheet. The shapes are kept together in `data/glyphs.js` (`LOWERCASE`, sizes in `LOW`); change them there and run `npm run glyphs`. The stroke plans and the line-position limits (`POSITION` in `src/copy.js`) may need the same review.
+- **[6B]** The new note lines ("Let the tail go below the grass.", "Make the stick reach up high.", "Keep it between the fence and the grass.") and the new part names (round, stick, arch, dot...) appear on `voice.html` as Missing by themselves. A lowercase "That looks like d." can play the clip for "That looks like D.": the letter's name sounds the same.
+- **[later]** The line-position limits were set on drawn test letters. Check her real `copy` log entries (`reason: 'position-…'`) after a week; if a letter that looks right to you fails on position, loosen the matching limit in `POSITION`.

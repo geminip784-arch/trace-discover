@@ -47,6 +47,13 @@ export const ICONS = {
 // A gold star for a completed character (viewBox 0 0 40 40).
 export const STAR = `<svg ${NS} viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L25 14 L37 15 L28 23 L31 35 L20 29 L9 35 L12 23 L3 15 L15 14 Z" fill="#FFC21A" stroke="#D99400" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
 
+// The ABC book's page switch (Slice 9A): a folded-back page corner, gold, for
+// the bottom right of the switch tile. No text.
+export const PAGE_CURL = `<svg ${NS} viewBox="0 0 40 40" aria-hidden="true">
+  <path d="M40 4 L40 40 L4 40 Z" fill="#FFE8A3"/>
+  <path d="M40 4 L4 40 L14 14 Z" fill="#FFF6D6" stroke="#E0B84A" stroke-width="2" stroke-linejoin="round"/>
+</svg>`;
+
 // A letter due for review: a small firefly light, a warm glowing dot with two little wings. No text.
 export const DUE_MARK = `<svg ${NS} viewBox="0 0 40 40" aria-hidden="true">
   <circle cx="20" cy="22" r="15" fill="#FFE066" opacity="0.45"/>

@@ -12,6 +12,7 @@ import { cloudOf, matchDistance, resampleCloud, CLOUD_POINTS } from '../src/pdol
 import { planCount, planStrokes } from '../src/variants.js';
 import { copyNote, traceNote, TRACE_NOTES } from '../src/notes.js';
 import { practiceReasons, PRACTICE_MORE } from '../src/review.js';
+import { MIRROR_IS_LETTER } from '../src/copy.js';
 import { charFile, bookOf } from '../src/session.js';
 
 const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
@@ -189,7 +190,8 @@ test('confusions still fail when written a little wobbly', () => {
 // ---- mirrored letters and scribbles ----
 
 test('a mirrored letter passes, flagged: Jugnu shows the right way round and it goes on the practice-more list', () => {
-  for (const id of IDS) {
+  // b, d, p and q are left out: mirrored, each is another letter (tests/lower.test.js).
+  for (const id of IDS.filter((c) => !MIRROR_IS_LETTER.includes(c))) {
     const r = judge(id, mirror(id));
     assert.ok(r.ok, `${id} mirrored: ${r.reason}`);
     // Letters that look the same in a mirror (A, H, O, 8 ...) are simply right.

@@ -25,7 +25,7 @@
 import { DEFAULTS, pathLength, scoreStroke, scoreDot, resample, meanPairDistance, nearestOnPath } from './geometry.js';
 import { candidatesFor, nextStrokes, pickCandidate, variantLabel, planCount, planChar, planStrokes, DOT_MAX } from './variants.js';
 import { cloudOf, mirrorStrokes, matchDistance } from './pdollar.js';
-import { BOARDS } from './session.js';
+import { BOARDS, pageOf, pageTiles } from './session.js';
 import { CHILD_SHAPES } from '../data/child-shapes.js';
 
 // Her letter's size, as a share of the model's height.
@@ -53,16 +53,60 @@ export const LOOKALIKES = {
   S: ['5'], 5: ['S'], Z: ['2'], 2: ['Z'], O: ['0'], 0: ['O'],
   I: ['1'], 1: ['I'], B: ['8'], 8: ['B'], G: ['6'], 6: ['G'],
 };
-// Characters children write the same way: each counts as the other.
-export const SAME_SHAPE = [['O', '0']];
+// Slice 9A: a lowercase letter is compared with every lowercase letter and these
+// capitals and digits that look like one (a capital written for its lowercase
+// letter, a 9 for a g, a 6 for a b...).
+export const LOWER_LOOKALIKES = ['C', 'O', 'S', 'U', 'V', 'W', 'X', 'Z', 'P', 'K', 'Y', 'J', 'I', '0', '1', '2', '5', '6', '9'];
+// Characters children write the same way: each counts as the other. Since
+// Slice 9A also l and I (both a stick from the sky to the grass; i's lines are
+// that stick too, and j's are J), and each
+// lowercase letter that is its capital made smaller: these pass on shape, and
+// the size check then asks for a capital-sized one to be smaller. Capitals are
+// never compared with lowercase, so their judging is unchanged.
+export const SAME_SHAPE = [
+  ['O', '0', 'o'], ['I', 'l', 'i'], ['J', 'j'], // i and j by their lines: the dot is checked on its own
+  ['C', 'c'], ['S', 's'], ['U', 'u'], ['V', 'v'], ['W', 'w'], ['X', 'x'], ['Z', 'z'], ['P', 'p'],
+];
 export const sameShape = (a, b) => a === b || SAME_SHAPE.some((g) => g.includes(a) && g.includes(b));
 
-// The characters her letter is compared with: its board, then its look-alikes.
+export const isLower = (id) => /^[a-z]$/.test(id);
+
+// Lowercase letters whose mirror image is another letter (b and d, p and q):
+// they have no "written the other way round" template, so a d written for b is
+// read as d ("Almost! That looks like d."), never as a mirrored b.
+export const MIRROR_IS_LETTER = ['b', 'd', 'p', 'q'];
+// Letters that turn into each other (mirrored, upside down or both). A copy
+// read as one of these says "That looks like d", never a missing part.
+export const TURNED = {
+  b: ['d', 'p', 'q'], d: ['b', 'p', 'q'], p: ['b', 'd', 'q'], q: ['b', 'd', 'p'],
+  n: ['u'], u: ['n'], m: ['w', 'W'], w: ['m'],
+};
+
+// The characters her letter is compared with: its board page, then its look-alikes.
 export function compareIds(id) {
-  const board = Object.values(BOARDS).find((b) => b.tiles.some((t) => t.id === id));
-  const ids = board ? board.tiles.map((t) => t.id) : [id];
-  return [...new Set([...ids, ...(LOOKALIKES[id] ?? [])])];
+  const entry = Object.entries(BOARDS).find(([, b]) => b.tiles.some((t) => t.id === id));
+  const ids = entry ? pageTiles(entry[0], pageOf(id)).map((t) => t.id) : [id];
+  const extra = isLower(id) ? LOWER_LOOKALIKES : (LOOKALIKES[id] ?? []);
+  return [...new Set([...ids, ...extra])];
 }
+
+// ---- line position (Slice 9A, lowercase only) ----
+// Where a lowercase letter sits on the lines is part of the letter (p and P
+// have the same shape and height). A gentle check, after shape and size:
+//   tails (g j p q y): her lowest ink at least `tailBelow` below the grass line
+//   tall (b d f h k l): her highest ink at least `tallAbove` above the fence (t: `tAbove`)
+//   small (the rest, and the body of i): at least `smallShare` of her ink
+//     between `band` above the fence and `band` below the grass
+// Line units: sky 0, fence 0.5, grass 1, tail line 1.5. Capitals and digits are never checked.
+export const POSITION = { tailBelow: 0.15, tallAbove: 0.2, tAbove: 0.1, band: 0.15, smallShare: 0.7 };
+export const LOWER_HEIGHTS = { tail: 'gjpqy', tall: 'bdfhklt' };
+export function heightKind(id) {
+  if (!isLower(id)) return null;
+  if (LOWER_HEIGHTS.tail.includes(id)) return 'tail';
+  return LOWER_HEIGHTS.tall.includes(id) ? 'tall' : 'small';
+}
+// The guide lines that glow with each position reason (y in line units).
+export const POSITION_LINES = { 'position-tail': [1, 1.5], 'position-tall': [0, 0.5], 'position-small': [0.5, 1] };
 
 // The box round a list of strokes (arrays of [x, y]): { x0, y0, x1, y1, w, h, cx, cy }.
 export function boxOf(strokes) {
@@ -123,7 +167,8 @@ const side = (box, tall) => (tall ? box.h : box.w);
 export function fitLetter(strokes, char, size = COPY_SIZE, cfg = DEFAULTS, extra = []) {
   const ref = refBox(char);
   const hers = boxOf(strokes);
-  const tall = ref.h >= ref.w;
+  // A lowercase letter is always measured on its height (Slice 9A): small, tall or tail.
+  const tall = ref.h >= ref.w || char.case === 'lower';
   const refSide = side(ref, tall);
   const herSide = hers ? side(hers, tall) : 0;
   if (!hers || herSide < cfg.minLength) return { scale: null, size: 0, sizeOk: false, strokes, extra };
@@ -177,7 +222,7 @@ function templatesOf(char) {
     // The target turned round, unless it looks the same in a mirror.
     const flipped = cloudOf(mirrorStrokes(linePoints(char.strokes)));
     const symmetric = matchDistance(flipped, list[0].cloud) < 0.6;
-    const mirrors = symmetric ? [] : Array.from({ length: planCount(char) }, (_, p) => make(mirrorStrokes(linePoints(planStrokes(char, p))), p, true));
+    const mirrors = symmetric || MIRROR_IS_LETTER.includes(char.id) ? [] : Array.from({ length: planCount(char) }, (_, p) => make(mirrorStrokes(linePoints(planStrokes(char, p))), p, true));
     templateCache.set(char, { list, mirrors });
   }
   return templateCache.get(char);
@@ -262,11 +307,17 @@ function inkSamples(strokes) {
   return out;
 }
 
+// Points of two parts closer than this lie on both (line units).
+const OVERLAP = 0.02;
+
 // How much of each part her ink covers (0..1 each). Every bit of her ink
 // belongs to the part it is nearest, and only covers that part: so the slants
 // of an A do not cover its missing crossbar, though they pass close by its ends.
 // A point of a part is covered when ink belonging to it lies within `radius`.
-export function coverage(strokes, parts, radius = COPY_MATCH.coverRadius) {
+// ownOnly (lowercase, Slice 9A): a part's points that lie on another part (u's
+// stick runs back down over its cup) are left out, so each part is judged on
+// the ink only it can have.
+export function coverage(strokes, parts, radius = COPY_MATCH.coverRadius, { ownOnly = false } = {}) {
   const ink = inkSamples(strokes);
   const owned = parts.map(() => []);
   for (const q of ink) {
@@ -279,7 +330,11 @@ export function coverage(strokes, parts, radius = COPY_MATCH.coverRadius) {
     if (best >= 0) owned[best].push(q);
   }
   return parts.map((ref, i) => {
-    const pts = resample(ref, Math.max(8, Math.ceil(pathLength(ref) / 0.04)));
+    let pts = resample(ref, Math.max(8, Math.ceil(pathLength(ref) / 0.04)));
+    if (ownOnly) {
+      const own = pts.filter((p) => parts.every((other, j) => j === i || nearestOnPath(p, other).distance > OVERLAP));
+      if (own.length >= 2) pts = own;
+    }
     const mine = owned[i];
     let covered = 0;
     for (const p of pts) if (mine.some((q) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= radius)) covered += 1;
@@ -345,7 +400,7 @@ export function partCoverage(strokes, char, cfg = DEFAULTS, match = COPY_MATCH) 
   const parts = [];
   for (let p = 0; p < planCount(char); p++) {
     const lines = planStrokes(char, p).filter((s) => s.kind === 'line');
-    const covered = coverage(laid, lines.map((s) => s.points));
+    const covered = coverage(laid, lines.map((s) => s.points), match.coverRadius, { ownOnly: char.case === 'lower' });
     planStrokes(char, p).forEach((s, k) => {
       if (s.kind !== 'line') return;
       parts.push({ plan: p, stroke: k, part: s.part ?? null, points: s.points, coverage: covered[lines.indexOf(s)], length: pathLength(s.points) });
@@ -374,6 +429,16 @@ function missingFrom(lines, char, cfg, match) {
     });
   }
   return flat.sort((a, b) => a.coverage - b.coverage || a.length - b.length)[0];
+}
+
+// For a lowercase target: a capital or digit her letter looks like that is the
+// same shape as a lowercase letter (U as u, O as o) is named as that lowercase
+// letter, so the line names a letter on her board ("That looks like u").
+// Only the name: the shape judged is still the capital's.
+function twinOf(id, char, ranked) {
+  if (!isLower(char.id) || isLower(id)) return id;
+  const group = SAME_SHAPE.find((g) => g.includes(id));
+  return group?.find((c) => isLower(c) && ranked.some((r) => r.id === c)) ?? id;
 }
 
 // ---- habits: start points, directions, order and plan ----
@@ -471,7 +536,9 @@ export function readHabits(fitted, char, stage = COPY_STAGE, cfg = DEFAULTS) {
 //                    character does not have, if any: the part she left out)
 //   'missing-stroke' nearest the target, but a part has no ink near it (missing: that part)
 //   'too-small' | 'too-big'
-export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE, cfg = DEFAULTS, others = [], match = COPY_MATCH } = {}) {
+//   'position-tail' | 'position-tall' | 'position-small'  lowercase only (Slice 9A):
+//                    not where it belongs on the lines (checkPosition)
+export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE, cfg = DEFAULTS, others = [], match = COPY_MATCH, position = POSITION } = {}) {
   const all = usableStrokes(strokes, char, cfg);
   // i and j (Slice 9A): her dots are checked on their own, after the shape;
   // the shape and the size are judged on her lines alone.
@@ -510,6 +577,14 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
       if (chamfer(used, shapeOf(own), cfg, match) <= match.closeKind * chamfer(used, shapeOf(best) ?? otherChar, cfg, match)) best = own;
     }
   }
+  // A letter turned into another (b, d, p, q; n, u; m, w) is read as that
+  // letter, ahead of a look-alike digit or capital nearly as close (a p
+  // turned round is a q, not a 9).
+  const turnedInto = (id) => TURNED[char.id]?.includes(twinOf(id, char, ranked)) === true;
+  if (!sameShape(best.id, char.id) && !turnedInto(best.id)) {
+    const turned = ranked.find((t) => turnedInto(t.id) && !t.mirrored);
+    if (turned && turned.distance - best.distance <= match.closeCall) best = turned;
+  }
   out.match = best;
   // Her letter is judged part by part against the shape it is nearest: the
   // character (turned round if mirrored) or one of its child shapes.
@@ -526,8 +601,11 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
     // Both are model letters on the same lines, so they are compared as they
     // stand and also laid over the target (an I stands at the left, a T's stem in
     // the middle); a part either way covers is there.
+    // A letter turned into another (b and d, n and u...): "That looks like d", no missing part.
+    const lookalike = twinOf(best.id, char, ranked);
+    if (turnedInto(best.id)) return { ...out, reason: 'looks-like', lookalike, missing: null };
     const least = missingFrom(linePoints(looks.strokes), char, cfg, match);
-    return { ...out, reason: 'looks-like', lookalike: best.id, missing: least && least.coverage < match.coverMin ? strip(least, false, char) : null };
+    return { ...out, reason: 'looks-like', lookalike, missing: least && least.coverage < match.coverMin ? strip(least, false, char) : null };
   }
   out.mirrored = best.mirrored && best.id === char.id;
   const gone = parts.find((p) => p.coverage < match.coverMin);
@@ -536,7 +614,23 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
   const lost = missingDot(fit.extra, char, out.mirrored, match);
   if (lost) return { ...out, reason: 'missing-stroke', missing: lost };
   if (!fit.sizeOk) return { ...out, reason: fit.size < size.min ? 'too-small' : 'too-big' };
+  // Lowercase: where it sits on the lines (her lines as she wrote them, not fitted).
+  const placed = checkPosition(used, char, position);
+  if (placed) return { ...out, reason: placed };
   return { ...out, ok: true };
+}
+
+// The line-position reason for her lowercase letter ('position-tail',
+// 'position-tall' or 'position-small'), or null when it sits well (and for
+// capitals and digits). `lines`: her strokes in letter units, as she wrote them.
+export function checkPosition(lines, char, pos = POSITION) {
+  const kind = heightKind(char.id);
+  if (!kind || lines.length === 0) return null;
+  const ys = inkSamples(lines).map((p) => p[1]);
+  if (kind === 'tail') return Math.max(...ys) >= 1 + pos.tailBelow ? null : 'position-tail';
+  if (kind === 'tall') return Math.min(...ys) <= 0.5 - (char.id === 't' ? pos.tAbove : pos.tallAbove) ? null : 'position-tall';
+  const inside = ys.filter((y) => y >= 0.5 - pos.band && y <= 1 + pos.band).length;
+  return inside / ys.length >= pos.smallShare ? null : 'position-small';
 }
 
 // The first dot of `char` with none of her fitted marks near it, as a part to
@@ -577,6 +671,7 @@ function modelPart(gone, char) {
 //   'part'        he draws the missing part (missing-stroke)
 //   'beside'      her letter beside the model, the missed part glowing (looks-like)
 //   'size'        a dashed outline at the right size round her letter
+//   'lines'       the guide lines it should reach or sit between glow (POSITION_LINES, Slice 9A)
 //   'slow'        he traces the whole model slowly (unrecognized, no-letter)
 export function copyShow(result) {
   if (result.ok) return result.mirrored ? 'right-way' : result.habits.usual ? 'none' : 'usual-way';
@@ -584,6 +679,7 @@ export function copyShow(result) {
     case 'looks-like': return 'beside';
     case 'missing-stroke': return 'part';
     case 'too-small': case 'too-big': return 'size';
+    case 'position-tail': case 'position-tall': case 'position-small': return 'lines';
     default: return 'slow';
   }
 }

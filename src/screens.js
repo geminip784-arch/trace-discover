@@ -9,7 +9,7 @@
 
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, gridFor, localDay,
-  startScreen, navigate, tuneFor, bookOf, tileColorOf, BOARD_ORDER, booksWithDue,
+  startScreen, navigate, tuneFor, bookOf, tileColorOf, BOARD_ORDER, booksWithDue, pageNow, pageSwitch,
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
@@ -22,7 +22,7 @@ import {
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
 import { startGame } from './game.js';
-import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, bookCover } from './art.js';
+import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, bookCover } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
@@ -257,7 +257,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       <div class="board"><div class="tiles" dir="${board.dir}"></div></div>`;
     const grid = view.querySelector('.tiles');
     grid.classList.add(`script-${board.script}`);
-    const tiles = boardTiles(state.book, manifest, readStars(), dueNow());
+    const page = pageNow(state);
+    const tiles = boardTiles(state.book, manifest, readStars(), dueNow(), page);
     for (const t of tiles) {
       const el = document.createElement('div');
       el.className = `tile${t.bright ? ' bright' : ' faint'}`;
@@ -292,7 +293,43 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       });
       grid.appendChild(el);
     }
+    // Slice 9A: the ABC book's switch tile, last in the grid. A picture of "A a":
+    // the page it turns to big and bright, the page she is on small and faint.
+    const sw = pageSwitch(state.book, page, manifest, dueNow());
+    if (sw) grid.appendChild(switchTile(sw));
+    if (turning) grid.classList.add(`turn-${turning}`);
+    turning = null;
     sizeBoard();
+  }
+
+  // The direction the page turns in (for the slide), or null.
+  let turning = null;
+  function switchTile({ to, due }) {
+    const el = document.createElement('div');
+    el.className = `tile bright page-switch to-${to}`;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', to === 'lower' ? 'a b c' : 'A B C');
+    el.innerHTML = `<span class="sw-cap">A</span><span class="sw-low">a</span><span class="curl">${PAGE_CURL}</span>`;
+    if (due) {
+      // A letter on the other page is due today: the switch glows and carries the firefly light too.
+      el.classList.add('due');
+      const mark = document.createElement('span');
+      mark.className = 'due-mark';
+      mark.innerHTML = DUE_MARK;
+      el.appendChild(mark);
+    }
+    el.addEventListener('click', () => {
+      if (busy) return;
+      busy = true;
+      popSound();
+      el.classList.add('picked');
+      setTimeout(() => {
+        busy = false;
+        turning = to === 'lower' ? 'next' : 'back';
+        go(navigate(state, { type: 'turnPage' }));
+      }, TILE_PICK_MS);
+    });
+    return el;
   }
 
   // The tile grid fills the board: as big as fits, never under 88 px on her tablet.

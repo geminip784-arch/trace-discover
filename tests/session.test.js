@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   BOARDS, URDU, BOOKS, TILE_COLORS, boardTiles, bookOf, canLoad, gridFor, boardSpace, BOARD_BOX,
   localDay, isFirstVisitToday, startScreen, navigate, tuneFor, isBookOpen,
+  pagesOf, pageTiles, pageNow, pageOf, pageSwitch,
 } from '../src/session.js';
 import { tileColorOf } from '../src/session.js';
 import { GAMES, kindOf } from '../src/games.js';
@@ -46,8 +47,10 @@ test('startScreen: ?char=X goes straight to writing X, returning to its board', 
 // ---------------------------------------------------------------------------
 // The boards
 
-test('ABC is A to Z and 123 is 0 to 9, left to right', () => {
-  assert.equal(BOARDS.abc.tiles.map((t) => t.glyph).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+test('ABC is A to Z then a to z (two pages) and 123 is 0 to 9, left to right', () => {
+  assert.equal(BOARDS.abc.tiles.map((t) => t.glyph).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz');
+  assert.equal(BOARDS.abc.pages.upper.map((t) => t.glyph).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+  assert.equal(BOARDS.abc.pages.lower.map((t) => t.glyph).join(''), 'abcdefghijklmnopqrstuvwxyz');
   assert.equal(BOARDS.num.tiles.map((t) => t.glyph).join(''), '0123456789');
   assert.equal(BOARDS.abc.dir, 'ltr');
   assert.equal(BOARDS.num.dir, 'ltr');
@@ -113,15 +116,22 @@ test('every tile color reads on white (contrast at least 4.5 : 1)', () => {
   for (const c of TILE_COLORS) assert.ok(contrastOnWhite(c) >= 4.5, `${c}: ${contrastOnWhite(c).toFixed(2)}`);
 });
 
-test('tiles are at least 88 px on every board at 1280 x 626 and in the full screen', () => {
+test('tiles are at least 88 px on every board page at 1280 x 626 and in the full screen', () => {
   for (const [w, h] of [[1280, 626], [1280, 800]]) {
     const space = boardSpace(w, h);
-    for (const [book, board] of Object.entries(BOARDS)) {
-      const g = gridFor(board.tiles.length, space.w, space.h, BOARD_BOX.gap);
-      assert.ok(g.size >= 88, `${book} at ${w}x${h}: ${g.size}px`);
-      assert.ok(g.cols * g.rows >= board.tiles.length);
+    for (const book of Object.keys(BOARDS)) {
+      for (const page of pagesOf(book)) {
+        // A page of a book with two pages has the switch tile at the end too.
+        const n = pageTiles(book, page).length + (pagesOf(book).length > 1 ? 1 : 0);
+        const g = gridFor(n, space.w, space.h, BOARD_BOX.gap);
+        assert.ok(g.size >= 88, `${book} ${page} at ${w}x${h}: ${g.size}px`);
+        assert.ok(g.cols * g.rows >= n);
+      }
     }
   }
+  // Slice 9A: each ABC page, 26 letters and the switch, is 7 columns of 120 px tiles at 1280 x 626.
+  const s = boardSpace(1280, 626);
+  assert.deepEqual(gridFor(27, s.w, s.h, BOARD_BOX.gap), { cols: 7, rows: 4, size: 120 });
 });
 
 test('gridFor picks the column count with the biggest tiles', () => {
@@ -285,9 +295,11 @@ test('a tile due for review is flagged; only a bright tile can be due', () => {
 test('books that hold a due letter glow; board order is ABC, 123, Urdu', () => {
   assert.deepEqual(booksWithDue(['A', '3', 'B']).sort(), ['abc', 'num']);
   assert.deepEqual(booksWithDue([]), []);
+  assert.deepEqual(booksWithDue(['a']), ['abc']); // a lowercase letter is in the ABC book
   assert.deepEqual(BOARD_ORDER.slice(0, 3), ['A', 'B', 'C']);
-  assert.equal(BOARD_ORDER[26], '0');
-  assert.equal(BOARD_ORDER[36], 'ur-alif-madd');
+  assert.equal(BOARD_ORDER[26], 'a');
+  assert.equal(BOARD_ORDER[52], '0');
+  assert.equal(BOARD_ORDER[62], 'ur-alif-madd');
 });
 
 test('tapping a due tile opens a review; any other tile, a practice', () => {
@@ -297,4 +309,53 @@ test('tapping a due tile opens a review; any other tile, a practice', () => {
   const review = navigate(board, { type: 'openChar', id: 'L', manifest: ['L'], review: true });
   assert.deepEqual(navigate(review, { type: 'openScene' }), { screen: 'find', char: 'L', book: 'abc' });
   assert.deepEqual(navigate(review, { type: 'letterDone' }), board);
+});
+
+// ---- the ABC book's two pages (Slice 9A) ----
+
+test('the ABC book opens on its capitals page; the switch turns to lowercase and back', () => {
+  const abc = navigate({ screen: 'shelf' }, { type: 'openBook', book: 'abc' });
+  assert.deepEqual(abc, { screen: 'board', book: 'abc' });
+  assert.equal(pageNow(abc), 'upper');
+  const lower = navigate(abc, { type: 'turnPage' });
+  assert.deepEqual(lower, { screen: 'board', book: 'abc', page: 'lower' });
+  assert.deepEqual(navigate(lower, { type: 'turnPage' }), abc);
+  // Books with one page do not turn.
+  const num = { screen: 'board', book: 'num' };
+  assert.equal(navigate(num, { type: 'turnPage' }), num);
+  assert.equal(navigate({ screen: 'shelf' }, { type: 'turnPage' }).screen, 'shelf');
+});
+
+test('a page shows only its own letters, and a letter opens only from its page', () => {
+  const manifest = ['A', 'a'];
+  assert.equal(boardTiles('abc', manifest).length, 26);
+  assert.deepEqual(boardTiles('abc', manifest, [], [], 'lower').slice(0, 2).map((t) => [t.id, t.bright]), [['a', true], ['b', false]]);
+  const lower = { screen: 'board', book: 'abc', page: 'lower' };
+  assert.deepEqual(navigate(lower, { type: 'openChar', id: 'a', manifest }), { screen: 'write', char: 'a', book: 'abc' });
+  assert.equal(navigate(lower, { type: 'openChar', id: 'A', manifest }), lower);
+});
+
+test('after a lowercase letter she comes back to the lowercase page; after a capital, to the capitals', () => {
+  const lower = navigate({ screen: 'write', char: 'g', book: 'abc' }, { type: 'letterDone' });
+  assert.deepEqual(lower, { screen: 'board', book: 'abc', page: 'lower' });
+  const found = navigate(navigate({ screen: 'write', char: 'g', book: 'abc' }, { type: 'openScene' }), { type: 'letterDone' });
+  assert.deepEqual(found, lower);
+  assert.deepEqual(navigate({ screen: 'write', char: 'G', book: 'abc' }, { type: 'letterDone' }), { screen: 'board', book: 'abc' });
+  assert.deepEqual(startScreen({ today: '2026-11-15', lastVisit: '2026-11-15', char: 'g' }), { screen: 'write', char: 'g', book: 'abc' });
+});
+
+test('each lowercase letter has its capital\'s color', () => {
+  for (const ch of 'abcdefghijklmnopqrstuvwxyz') assert.equal(tileColorOf(ch), tileColorOf(ch.toUpperCase()), ch);
+  assert.equal(pageOf('a'), 'lower');
+  assert.equal(pageOf('A'), 'upper');
+  assert.equal(pageOf('3'), 'all');
+});
+
+test('the switch tile: turns to the other page, and glows when that page has a letter due today', () => {
+  const manifest = ['A', 'a', 'b'];
+  assert.deepEqual(pageSwitch('abc', 'upper', manifest, []), { to: 'lower', due: false });
+  assert.deepEqual(pageSwitch('abc', 'upper', manifest, ['a']), { to: 'lower', due: true });
+  assert.deepEqual(pageSwitch('abc', 'lower', manifest, ['a']), { to: 'upper', due: false });
+  assert.deepEqual(pageSwitch('abc', 'lower', manifest, ['A']), { to: 'upper', due: true });
+  assert.equal(pageSwitch('num', 'all', manifest, []), null);
 });

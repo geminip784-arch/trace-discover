@@ -34,8 +34,11 @@ export function shuffle(list, rand = Math.random) {
 // A picture that can stand in a find scene (finds: false pictures only show on her shelf).
 export const inScenes = (o) => o.finds !== false;
 
+// Slice 9A: a lowercase letter's scene is its capital's (the same pictures and places).
+export const sceneLetter = (letter) => (/^[a-z]$/.test(letter) ? letter.toUpperCase() : letter);
+
 // Her letter's find pictures.
-export const objectsFor = (letter, objects = OBJECTS) => objects.filter((o) => o.letter === letter && inScenes(o));
+export const objectsFor = (letter, objects = OBJECTS) => objects.filter((o) => o.letter === sceneLetter(letter) && inScenes(o));
 
 // How many right objects her letter's scene has: 3, or 2 when only 2 exist.
 export const targetsFor = (letter, objects = OBJECTS) => Math.min(FINDS, objectsFor(letter, objects).length);
@@ -76,7 +79,7 @@ export function letterScene(letter, rand = Math.random, objects = OBJECTS) {
   const room = roomFor(letter, rand, objects);
   const targets = targetsFor(letter, objects);
   const right = preferPlace(objectsFor(letter, objects), room, targets, rand);
-  const others = preferPlace(objects.filter((o) => inScenes(o) && o.letter !== letter), room, SPOTS - targets, rand);
+  const others = preferPlace(objects.filter((o) => inScenes(o) && o.letter !== sceneLetter(letter)), room, SPOTS - targets, rand);
   const spots = shuffle(PLACES[room].spots, rand);
   const items = [...right.map((o) => ({ ...o, right: true })), ...others.map((o) => ({ ...o, right: false }))]
     .map((o, i) => ({ ...o, spot: spots[i] }));

@@ -31,11 +31,13 @@ test('the limits are untouched: child templates, not a looser shape limit', () =
   assert.deepEqual(COPY_SIZE, { min: 0.75, max: 1.25 });
 });
 
-test('six child-style templates: three for M, one each for N, W and B', () => {
+test('the child-style templates: three for M, one each for N, W and B, and (Slice 9A) one each for m and w', () => {
   assert.deepEqual(Object.fromEntries(Object.entries(CHILD_SHAPES).map(([id, list]) => [id, list.map((s) => s.name)])), {
     M: ['middle at 0.6', 'middle at 0.72', 'splayed, middle at 0.6'],
     N: ['short diagonal and right side'],
     W: ['middle at 0.4'],
+    m: ['pointed tops'],
+    w: ['round bottoms'],
     B: ['small top bump, big bottom bump'],
   });
   assert.deepEqual(childShapes(char('A')), []);

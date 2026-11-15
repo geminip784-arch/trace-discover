@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.4 · Nov 13, 2026 · describes the app as built through Slice 6A (the voice recorder page and voice pack; before it, Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.5 · Nov 15, 2026 · describes the app as built through Slice 9A (lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -43,8 +43,9 @@ The home button (top of the left column) always returns here. The back button go
 
 Each board is a grid of large tiles, one per character, each in its own color. No tile color is red, and each one is dark enough to read on white.
 
-- **ABC**: A to Z. **123**: 0 to 9. **Urdu**: the 39 letters in qaida order, filling from the top right.
-- A tile is bright (tappable) when its character file exists in `data/chars/index.json`. Today every capital and digit is bright. Urdu tiles stay faint until Slice 10.
+- **ABC**: two pages, A to Z and a to z (Slice 9A). **123**: 0 to 9. **Urdu**: the 39 letters in qaida order, filling from the top right.
+- **The ABC book's page switch (Slice 9A).** The book opens on the capitals page. The last place in the grid is a switch tile: a picture of "A a", the page it turns to big and bright, the page she is on small and faint, on a white tile with a dashed gold edge and a folded page corner (no text, no star). A tap turns the page: a pop, and the tiles slide across. With 26 letters and the switch, the tiles are 120 px at 1280 x 626 (7 columns, 4 rows). Each lowercase letter has its capital's color. When a letter on the other page is due for review today, the switch glows and carries the firefly light too. After a letter and its scene she comes back to that letter's page.
+- A tile is bright (tappable) when its character file exists in `data/chars/index.json`. Today every capital, digit and lowercase letter is bright. Urdu tiles stay faint until Slice 10.
 - A character she has finished with no help from Jugnu shows a gold star on its tile.
 - A character due for review today glows gently and carries a small firefly light (see **Reviews** below).
 - Tapping a bright tile pops it and opens the writing screen.
@@ -97,14 +98,22 @@ No plan runs any part the other way, except M and N from the bottom (their stem 
 
 - **When it is judged:** as soon as she has drawn as many strokes as the letter's longest plan has, or fewer that already make a good letter (a joined version, such as L in one go). Fewer strokes that read best as the whole letter joined are judged 2 seconds after her last lift. A new touch cancels the wait; turning the tablet upright pauses it.
 - **Stopped part way:** fewer strokes that read best as the start of the letter are not judged. After 5 seconds Jugnu draws the next stroke on the model card as a hint. Her strokes stay on the lines, and the hint is neither a failed copy nor logged. (To tell the two apart, her strokes are fitted to each way of reading them, "the first strokes" or "the whole letter, joined", and the closest reading wins.)
-- **How it is judged (Slice 5J): shape only.** Her letter, as a cloud of points, is compared with every character on its board, in every plan and every child-style shape (below), by the $P point-cloud recognizer (Vatavu, Anthony and Wobbrock, 2012; BSD license, credited in `src/pdollar.js`). Stroke count, order and direction make no difference. A few look-alikes from the other board are compared too (S and 5, Z and 2, O and 0, I and 1, B and 8, G and 6). She passes when:
+- **How it is judged (Slice 5J): shape only.** Her letter, as a cloud of points, is compared with every character on its board, in every plan and every child-style shape (below), by the $P point-cloud recognizer (Vatavu, Anthony and Wobbrock, 2012; BSD license, credited in `src/pdollar.js`). Stroke count, order and direction make no difference. A few look-alikes from the other board are compared too (S and 5, Z and 2, O and 0, I and 1, B and 8, G and 6). A lowercase letter (Slice 9A) is compared with every lowercase letter and the capitals and digits that look like one (C O S U V W X Z P K Y J I, 0 1 2 5 6 9); capitals are never compared with lowercase. She passes when:
   - her letter is nearest the target (O and 0 count as each other, since children write them the same way); in a close call the letter whose lines lie closer to her ink wins, and the target gets a little benefit of the doubt;
   - it is near enough to count as a letter, and most of her ink lies along it (a scribble fails);
   - every part of the target has her ink near it (an A with no crossbar fails);
-  - her letter is 75% to 125% of the model's height. It may be up to 1.5 times wider or narrower than the model.
+  - her letter is 75% to 125% of the model's height (a lowercase letter: always its own height, small 0.5, tall or tail 1). It may be up to 1.5 times wider or narrower than the model;
+  - a lowercase letter sits where it belongs on the lines (below).
 - **Child-style shapes (Slice 5J part 2).** Six extra templates, used only for judging and never shown (`data/child-shapes.js`): M with its middle point at 0.6 or 0.72 (the model's reaches the grass line), a splayed M, N with a short diagonal (to 0.8) and right side, W with its middle peak down to 0.4, and B with a small top bump and a big bottom one. A letter nearest one of them is checked part by part against it; a missing part is shown as the model's part of the same name. No limit was loosened. Against crude test letters (wobbly, uneven, slanted, `tests/crude-letters.js`, `npm run crude-report`), 123 of 124 pass, and 140 of 144 crude wrong letters (C for G, F for E, P for R, and more) still fail.
 - **Habits coach, never fail.** Her start points, directions, stroke order and plan are read against each plan (Stage 3 tolerances) and logged. If they differ from the default plan she still passes, and Jugnu replays the usual way once on the model card.
-- **Mirrored.** A letter written the other way round passes. Jugnu then shows the right way round once on the card, and the letter goes on the practice-more list (reason "mirrored"). Reversals are a direction cue, never an error.
+- **Lowercase (Slice 9A).**
+  - *Same shapes.* l and I count as each other, like O and 0 (i's lines are that stick too, and j's are J; their dots are checked on their own). So does each lowercase letter that is its capital made smaller (c C, o O, s S, u U, v V, w W, x X, z Z, p P): it passes on shape, and the size check then asks a capital-sized one to be smaller ("Make it a little smaller.").
+  - *Turned letters.* b, d, p and q have no "written the other way round" shape: a mirrored or flipped one is another letter, so a d written for b fails with "Almost! That looks like d.", never the mirrored coaching. The same for n and u, and m and w, turned upside down. A turned letter is read as its partner ahead of a look-alike digit nearly as close (a p turned round is a q, not a 9), and a capital look-alike is named by its lowercase twin ("That looks like u").
+  - *Two more child-style shapes:* m with pointed tops and w with round bottoms (children write both; they also make an upside-down m read as w and an upside-down w as m).
+  - *Parts judged on their own ink.* Where two parts of a lowercase letter run over each other (u's stick comes back down its cup), each is judged only on the stretch that is its own. Capitals are judged as before.
+  - *Line position.* Where a lowercase letter sits is part of the letter (p and P have the same shape and height). After shape and size: a tail letter (g j p q y) needs ink at least 0.15 below the grass line; a tall letter (b d f h k l) needs ink at least 0.2 above the fence (t: 0.1); a small letter needs at least 70% of its ink between 0.15 above the fence and 0.15 below the grass (`POSITION` in `src/copy.js`). Capitals and digits are never checked.
+  - Against crude lowercase test letters (wobbly, slanted, a round left open, a stick a little away, every plan, `tests/crude-lower.js`), 186 of 186 pass.
+- **Mirrored.** A letter written the other way round passes (not b, d, p or q, above). Jugnu then shows the right way round once on the card, and the letter goes on the practice-more list (reason "mirrored"). Reversals are a direction cue, never an error.
 - **Pass:** a chime, sparkles along her strokes, and the round light comes on as for any round. When it is the last round, her own letter glows.
 - **Fail: why, first.** Before her letter fades, the screen shows why, with no red and no sound:
 
@@ -112,6 +121,7 @@ No plan runs any part the other way, except M and N from the bottom (their stem 
 | --- | --- | --- |
 | Looks like another letter | A small copy of her letter on a card beside the model; the part she left out glows gold on the model | "Almost! The leg is missing." or "Almost! That looks like V." |
 | Size | A dashed outline at the right size, standing on the lines where her letter is | "Make it bigger." / "Make it a little smaller." |
+| Line position (lowercase) | The guide lines it should reach or sit between glow gold: the grass and tail lines, the sky line and the fence, or the fence and the grass | "Let the tail go below the grass." / "Make the stick reach up high." / "Keep it between the fence and the grass." |
 | Missing stroke | Jugnu draws the missing part on the model | "Almost! The bar is missing." |
 | Not recognizable | Jugnu traces the whole model slowly | "Let's watch Jugnu write it." |
 
@@ -144,7 +154,7 @@ Letters come back on later days, so what she has learned stays learned (`src/rev
 
 - **What she sees.** On a board, today's due letters glow gently, with a small firefly light at the corner opposite the star. On the bookshelf, a book holding one of them glows softly. No text.
 - **A review** is one copy-it round (one round light), then the letter's find scene, pass or fail. A review never adds or takes away a star, and never touches a practice she left part way.
-- **Never homework.** At most 2 letters are due each day: most overdue first, ties in board order (ABC, 123, Urdu). They are picked the first time she sees the shelf or a board that day, and stay fixed all day; a finished review is not replaced by another.
+- **Never homework.** At most 2 letters are due each day: most overdue first, ties in board order (ABC capitals, ABC lowercase, 123, Urdu). They are picked the first time she sees the shelf or a board that day, and stay fixed all day; a finished review is not replaced by another.
 - **Days** are the tablet's calendar days. An overdue letter waits for her, and its next interval counts from the day she does the review.
 - **Stars from before Slice 5I** were added to the schedule once, due from the day after the update.
 
@@ -241,7 +251,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 
 - `index.html?setup=1`: her name and how to say it.
 - `recorder.html`: the stroke recorder, for hand-recorded characters.
-- `glyphs.html`: a review page for the generated characters (`npm run glyphs`), with each allowed stroke plan as a dashed card.
+- `glyphs.html`: a review page for the generated characters (`npm run glyphs`): capitals, digits and lowercase on the four lines, with each allowed stroke plan as a dashed card.
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
 - `voice.html` (Slice 6A): the voice recorder. See **Voice pack** below.
 - `?debug=1`: the scoring debug panel. `?char=X` goes straight to writing X. `?scene=X` opens X's scene.
@@ -265,7 +275,7 @@ Spoken prompts are switched off (`SPEECH_ON = false` in `src/audio.js`) until Sl
 
 ## Tracing engine
 
-Every character is an ordered list of strokes in line units: y = 0 is the sky line, 0.5 the fence, 1 the grass line and 1.3 the ground line. The capitals and digits are generated from exact lines and arcs (`data/glyphs.js`, `npm run glyphs`). `recorder.html` stays for hand-recorded overrides.
+Every character is an ordered list of strokes in line units: y = 0 is the sky line, 0.5 the fence, 1 the grass line and 1.5 the tail line (brown; where the tails of g j p q y end; Slice 9A, before it a ground line at 1.3). The four lines are evenly spaced and centred on the screen; the unit did not change, so capitals and digits kept their size (at 1280 x 626 the lines are at 55, 227, 399 and 571 px). The round lights are 44 px, 6 px from the top, above the sky line, and Jugnu perches below and to the left of a start dot on the sky line. The capitals, digits and lowercase letters are generated from exact lines and arcs (`data/glyphs.js`, `npm run glyphs`); lowercase files are `data/chars/lower-<id>.json`. `recorder.html` stays for hand-recorded overrides.
 
 **How the checks work** (`src/geometry.js`)
 
@@ -291,7 +301,7 @@ Every character is an ordered list of strokes in line units: y = 0 is the sky li
 
 ### English letters
 
-- **Capitals:** all 26 are built. **Lowercase:** Slice 9A, using the fence line as the x-height, with i and j getting `dot` strokes.
+- **Capitals:** all 26 are built. **Lowercase (Slice 9A):** all 26, in plain print to match the capitals (round parts true circles, sticks straight). Small letters sit between the fence and the grass, tall letters reach the sky (t a little short of it), tails reach the tail line. i and j have a `dot` stroke: a tap or tiny stroke at the dot's place (`scoreDot`), in tracing and copying. Each has a default stroke plan and the usual alternatives (the one-go plans run back up over a stick, as children draw them). Each lowercase letter uses its capital's find scene. The style may change once we have the school's handwriting sheet.
 - **Find words** start with the letter's **sound**, not its name. For example, I is insect, not ice cream, and E is egg, not eraser. X has no find pictures for now. See `finds.html` for every picture.
 - **Words level:** short words built from letters she knows (Slice 9C).
 
@@ -371,7 +381,8 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 | 5I | Practice and review: round 3 as a copy-it round judged on shape, reviews after 1, 3, 7 and 21 days, a practice-more list (built) |
 | 5J | Testing fixes: stroke plans, shape-only judging of copies, habits coached, failure reasons and parent lines (part 1 built); the fading helper, M and N from the bottom, direction coached, child-style templates (part 2A built); game instructions, show me, the U umpire (part 2B built) |
 | 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
-| 9A, 9B, 9C | Lowercase; numbers 10 to 20; a words level |
+| 9A | Lowercase on four lines (built) |
+| 9B, 9C | Numbers 10 to 20; a words level |
 | 10 | Urdu: dot strokes, the Urdu font, recorder support, Dot Detective |
 | 8 | Parent zone: lock, settings, progress, last attempts, weekly wrong starts, reset |
 | 7 | Install as an app: full screen, offline, pinned |

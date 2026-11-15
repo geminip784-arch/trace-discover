@@ -70,7 +70,7 @@ import {
   startRounds, markHelp, isHelp, finishRound, starEarned, roundLights, isCopyRound, finishCopy,
   startHelper, applyHelperCopy, strokeLogEntry,
 } from './progress.js';
-import { scoreCopy, copyStatus, copyLogEntry, copyShow, compareIds, boxOf, refBox } from './copy.js';
+import { scoreCopy, copyStatus, copyLogEntry, copyShow, compareIds, boxOf, refBox, POSITION_LINES } from './copy.js';
 import { traceNote, copyNote } from './notes.js';
 import {
   logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds, readHelper, saveHelper,
@@ -84,6 +84,8 @@ import { canLoad, charFile } from './session.js';
 const HOME = { x: 0.35, y: 0.65 };
 // Width of Jugnu's glowing trail when he draws a stroke himself, in line units.
 const TRAIL_WIDTH = 0.16;
+// Width of a guide line's gold glow when her lowercase letter is not where it belongs (Slice 9A), in line units.
+const LINE_GLOW_WIDTH = 0.03;
 // Width of the whole-letter glow at the end, in line units (its halo is 1.6 times this).
 // Like every drawn width, it never comes from the scoring tolerance.
 const LETTER_GLOW_WIDTH = 0.12;
@@ -413,6 +415,14 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     if (how === 'slow') return showOnCard(modelPaths(), CONFIG.copySlowMs);
     phase = 'held';
     const hers = boxOf(copy.strokes);
+    if (how === 'lines') {
+      // Slice 9A, lowercase: the guide lines her letter should reach or sit between glow gold.
+      const right = card ? card.lineEnd : layout.lineEnd;
+      for (const y of POSITION_LINES[result.reason] ?? []) {
+        const py = layout.top + y * layout.unit;
+        fx.partGlow([[layout.originX, py], [right, py]], LINE_GLOW_WIDTH * layout.unit, CONFIG.copyReasonMs);
+      }
+    }
     if (how === 'size' && hers) {
       // A dashed outline the model's size, standing on the lines (sky line to
       // grass line, where a letter this size belongs), lined up with her letter.
