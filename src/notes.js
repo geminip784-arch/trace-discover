@@ -26,6 +26,10 @@ export const COPY_NOTES = {
   'too-big': 'Make it a little smaller.',
   mirrored: 'It faces the other way. Watch Jugnu.',
   'usual-way': 'Well done! Here is the usual way.',
+  // Slice 9A: a lowercase letter not where it belongs on the lines.
+  'position-tail': 'Let the tail go below the grass.',
+  'position-tall': 'Make the stick reach up high.',
+  'position-small': 'Keep it between the fence and the grass.',
 };
 
 // "Almost! The bar is missing." / "Almost! That looks like R."

@@ -249,6 +249,18 @@
     .script-urdu .tile { font-family: 'Noto Naskh Arabic', 'Noto Sans Arabic', serif; font-weight: 700; font-size: calc(var(--size, 100px) * 0.5); }
     .script-urdu .glyph { padding-bottom: 0.1em; }
     .tile.bright { box-shadow: 0 5px 0 rgba(0, 0, 0, 0.12); }
+    /* Slice 9A: the ABC book's page switch, last in the grid. "A a": the page it
+       turns to big and bright, the page she is on small and faint. No star. */
+    .tile.page-switch { border: 5px dashed #E0B84A; background: #FFFDF5; color: #1565C0; gap: 0.06em; overflow: hidden; }
+    .page-switch span { line-height: 1; }
+    .page-switch .sw-cap, .page-switch .sw-low { font-size: 0.5em; color: #B8C2D6; }
+    .page-switch.to-lower .sw-low, .page-switch.to-upper .sw-cap { font-size: 0.78em; color: #1565C0; }
+    .page-switch .curl { position: absolute; right: -2px; bottom: -2px; width: 34%; height: 34%; pointer-events: none; }
+    .page-switch .curl svg { width: 100%; height: 100%; display: block; }
+    .tiles.turn-next { animation: page-next 0.35s ease-out; }
+    .tiles.turn-back { animation: page-back 0.35s ease-out; }
+    @keyframes page-next { from { transform: translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes page-back { from { transform: translateX(-60px); opacity: 0; } to { transform: none; opacity: 1; } }
     .tile.faint { opacity: 0.3; box-shadow: none; }
     .tile.picked { animation: pick 0.22s ease-out; }
     @keyframes pick { 50% { transform: scale(1.12); } }

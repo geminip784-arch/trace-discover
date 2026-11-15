@@ -21,8 +21,13 @@ export const URDU = [
 ].map(([id, glyph]) => ({ id, glyph }));
 
 // dir 'rtl': the board fills right to left, starting top right.
+// The ABC book has two pages (Slice 9A): capitals, then lowercase, switched by a
+// picture tile at the end of the grid. `tiles` is every letter of the book (both
+// pages); `pages` holds each page's tiles in board order.
+const UPPER = LATIN('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+const LOWER = LATIN('abcdefghijklmnopqrstuvwxyz');
 export const BOARDS = {
-  abc: { tiles: LATIN('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), dir: 'ltr', script: 'latin' },
+  abc: { tiles: [...UPPER, ...LOWER], pages: { upper: UPPER, lower: LOWER }, dir: 'ltr', script: 'latin' },
   num: { tiles: LATIN('0123456789'), dir: 'ltr', script: 'latin' },
   urdu: { tiles: URDU, dir: 'rtl', script: 'urdu' },
 };
@@ -33,11 +38,28 @@ export const TILE_COLORS = ['#1565C0', '#2E7D32', '#6A1B9A', '#AD1457', '#00695C
 
 export const tileColor = (index) => TILE_COLORS[index % TILE_COLORS.length];
 
-// A character's tile color on its board (her letter's color in a find scene), or null.
-export function tileColorOf(id) {
+// The pages of a book, in order ('upper', 'lower'); a book without pages has one, 'all'.
+export const pagesOf = (book) => Object.keys(BOARDS[book]?.pages ?? { all: true });
+// The page a character is on: 'lower' for a to z, 'upper' for the other ABC letters, 'all' elsewhere.
+export function pageOf(id) {
   for (const board of Object.values(BOARDS)) {
-    const i = board.tiles.findIndex((t) => t.id === id);
-    if (i >= 0) return tileColor(i);
+    for (const [page, tiles] of Object.entries(board.pages ?? {})) if (tiles.some((t) => t.id === id)) return page;
+  }
+  return 'all';
+}
+// The tiles of one page of a book (the whole book when it has no pages).
+export const pageTiles = (book, page = 'upper') => BOARDS[book]?.pages?.[page] ?? BOARDS[book]?.tiles ?? [];
+// The page to show: the state's, or the book's first.
+export const pageNow = (state) => state.page ?? pagesOf(state.book)[0];
+
+// A character's tile color on its board (her letter's color in a find scene), or
+// null. Colors count from the start of its page, so a has A's color.
+export function tileColorOf(id) {
+  for (const [book, board] of Object.entries(BOARDS)) {
+    for (const page of pagesOf(book)) {
+      const i = pageTiles(book, page).findIndex((t) => t.id === id);
+      if (i >= 0) return tileColor(i);
+    }
   }
   return null;
 }
@@ -50,13 +72,14 @@ export function bookOf(id) {
   return null;
 }
 
-// Every tile of a board with bright (tappable: it is in the manifest), star, and
-// due (one of today's reviews, src/review.js; only a bright tile can be due).
-export function boardTiles(book, manifest, stars = [], due = []) {
+// Every tile of a board page with bright (tappable: it is in the manifest), star,
+// and due (one of today's reviews, src/review.js; only a bright tile can be due).
+// `page`: 'upper' or 'lower' for the ABC book (Slice 9A); other books have one page.
+export function boardTiles(book, manifest, stars = [], due = [], page = pagesOf(book)[0]) {
   const recorded = new Set(manifest);
   const starred = new Set(stars);
   const dueSet = new Set(due);
-  return (BOARDS[book]?.tiles ?? []).map((t, i) => ({
+  return pageTiles(book, page).map((t, i) => ({
     ...t,
     color: tileColor(i),
     bright: recorded.has(t.id),
@@ -65,7 +88,18 @@ export function boardTiles(book, manifest, stars = [], due = []) {
   }));
 }
 
-// Every character on every board, ABC then 123 then Urdu: the order reviews break ties in.
+// The switch tile (Slice 9A): the page it turns to, and whether that page holds
+// one of today's due letters (then the switch glows too), or null for a book
+// with one page.
+export function pageSwitch(book, page, manifest, due = []) {
+  const pages = pagesOf(book);
+  if (pages.length < 2) return null;
+  const to = pages[(pages.indexOf(page) + 1) % pages.length];
+  const recorded = new Set(manifest);
+  return { to, due: pageTiles(book, to).some((t) => recorded.has(t.id) && due.includes(t.id)) };
+}
+
+// Every character on every board, ABC (capitals, then lowercase) then 123 then Urdu: the order reviews break ties in.
 export const BOARD_ORDER = Object.values(BOARDS).flatMap((b) => b.tiles.map((t) => t.id));
 
 // The books that hold at least one of today's due letters (they glow on the shelf).
@@ -141,7 +175,8 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 // A screen state is { screen, book?, char? }:
 //   door   the house front (first visit of the day, or ?door=1)
 //   shelf  the bookshelf (home)
-//   board  a letter board: book is 'abc', 'num' or 'urdu'
+//   board  a letter board: book is 'abc', 'num' or 'urdu'; page is 'lower' on the
+//          ABC book's lowercase page (Slice 9A), otherwise left out (the first page)
 //   games  the games book. Step 1 (no kind): a tile per kind of game. Step 2
 //          (kind is 'match', 'path', 'sort', 'odd' or 'missing'): that kind's sets
 //   play   one game from the games book: game is a tile's id ('numbers', 'path-rooms', ...)
@@ -161,6 +196,9 @@ export function startScreen({ lastVisit = null, today, forceDoor = false, char =
 }
 
 const SHELF = { screen: 'shelf' };
+// A board screen: the first page leaves `page` out, so its state stays { screen, book }.
+const boardState = (book, page) => (page && page !== pagesOf(book)[0] && pagesOf(book).includes(page)
+  ? { screen: 'board', book, page } : { screen: 'board', book });
 // The games menu: each kind of game and its sets (src/games.js GAME_ROWS;
 // tests/games-menu.test.js checks they agree). The ids are her saved stars.
 export const GAME_KINDS = {
@@ -180,10 +218,11 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 // (the same state comes back). Events:
 //   { type: 'openDoor' }                 door  -> shelf
 //   { type: 'openBook', book }           shelf -> board or games (locked books: no change)
+//   { type: 'turnPage' }                 board -> the book's other page (ABC only)
 //   { type: 'openChar', id, manifest, review } board -> write (faint characters: no change);
 //                                        review: true when the tile is due for review
 //   { type: 'openScene' }                write -> find (the same char and book)
-//   { type: 'letterDone' }               write or find -> its board (or the shelf)
+//   { type: 'letterDone' }               write or find -> its board, on the letter's page (or the shelf)
 //   { type: 'openToys' }                 shelf -> toys
 //   { type: 'openKind', kind }           games step 1 -> step 2 (that kind's sets)
 //   { type: 'openGame', game }           games step 2 -> play (only that kind's sets)
@@ -208,9 +247,15 @@ export function navigate(state, event) {
       if (event.book === 'drawing') return { screen: 'drawing' };
       return BOARDS[event.book] ? { screen: 'board', book: event.book } : state;
     }
+    case 'turnPage': {
+      if (screen !== 'board') return state;
+      const pages = pagesOf(state.book);
+      if (pages.length < 2) return state;
+      return boardState(state.book, pages[(pages.indexOf(pageNow(state)) + 1) % pages.length]);
+    }
     case 'openChar': {
       if (screen !== 'board') return state;
-      const onBoard = BOARDS[state.book].tiles.some((t) => t.id === event.id);
+      const onBoard = pageTiles(state.book, pageNow(state)).some((t) => t.id === event.id);
       if (!onBoard || !canLoad(event.id, event.manifest ?? [])) return state;
       const write = { screen: 'write', char: event.id, book: state.book };
       return event.review === true ? { ...write, review: true } : write;
@@ -219,7 +264,7 @@ export function navigate(state, event) {
       return screen === 'write' ? { screen: 'find', char: state.char, book: state.book } : state;
     case 'letterDone':
       if (screen !== 'write' && screen !== 'find') return state;
-      return state.book ? { screen: 'board', book: state.book } : SHELF;
+      return state.book ? boardState(state.book, pageOf(state.char)) : SHELF;
     case 'openToys':
       return screen === 'shelf' ? { screen: 'toys' } : state;
     case 'openKind':

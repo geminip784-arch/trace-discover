@@ -450,3 +450,16 @@ test('a find log entry: type find, the word or count, right or wrong, ms since t
   assert.deepEqual(findLogEntry({ char: '4', scene: 'number', step: 'group', count: 7, ok: false, ms: 50, now }),
     { type: 'find', time: '2026-11-03T10:00:00.000Z', char: '4', scene: 'number', step: 'group', count: 7, ok: false, ms: 50 });
 });
+
+// Slice 9A: each lowercase letter's find scene is its capital's.
+test('a lowercase letter opens its capital\'s scene: same pictures, same places', () => {
+  for (const ch of 'abcdefghijklmnopqrstuvwxyz') {
+    const L = ch.toUpperCase();
+    assert.equal(afterWriting(ch), afterWriting(L), ch);
+    assert.deepEqual(objectsFor(ch).map((o) => o.id), objectsFor(L).map((o) => o.id), ch);
+    if (!hasLetterScene(L)) { assert.equal(letterScene(ch), null, ch); continue; }
+    const seed = () => { let v = 7; return () => { v = (v * 16807) % 2147483647; return v / 2147483647; }; };
+    assert.deepEqual(letterScene(ch, seed()), letterScene(L, seed()), ch);
+  }
+  assert.equal(afterWriting('x'), 'letterDone'); // X has no pictures, so x has no scene either
+});

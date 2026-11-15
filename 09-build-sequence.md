@@ -98,11 +98,16 @@ Browser speech is only a fallback.
 - [ ] Every prompt is spoken, and the ear button replays it
 - [ ] Clips still play with Wi-Fi off
 
-### 9A — Lowercase
-Lowercase letters, generated like the capitals, with the fence line as the x-height. i and j get `dot` strokes. A lowercase board.
+### 9A — Lowercase (built)
+Built in two pull requests.
+1. **The letters:** a to z generated from exact lines and arcs in `data/glyphs.js` (plain print, true circles, straight sticks), with a default stroke plan and allowed alternatives for each. A fourth line: the brown tail line at 1.5 (it replaces the ground line at 1.3); capitals and digits keep their size. The dots on i and j are taps (`scoreDot`) in tracing and copying. `glyphs.html` shows them all.
+2. **In the app:** the ABC book has a capitals page and a lowercase page, switched by a picture-only "A a" tile at the end of the grid (120 px tiles). Rounds, helper levels, reviews and stars work as for capitals, and each lowercase letter uses its capital's find scene. Round 3 compares lowercase with the lowercase set plus look-alike capitals and digits; size is the model's own height; b d p q, n u and m w turned into each other read as the other letter; l and I count as one shape; and a gentle line-position check (tails below the grass, tall letters above the fence, small letters between the fence and the grass). Screenshots: `docs/screenshots/slice-9a/`.
 
 **Done when:**
-- [ ] Every lowercase letter plays all three rounds
+- [x] Every lowercase letter plays all three rounds
+- [ ] On the tablet: the page switch, a tail letter, b written as d, and P written for p behave as in the screenshots
+
+Note: **Slice 6B is parked** until we have the school's phonics programme. `voice.html` (6A) stays as it is.
 
 ### 9B — Numbers 10 to 20
 Two digits side by side, left digit first.
