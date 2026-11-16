@@ -7,8 +7,8 @@
 
 import { PLACES, BASKET } from '../data/finds.js';
 import {
-  HINT_MS, WORD_MS, letterScene, numberScene, makeGroup, groupWord, startCount, tapCount,
-  sceneFit, groupScale, countScale, COUNT_BOX, findLogEntry,
+  HINT_MS, WORD_MS, letterScene, numberScene, groupArt, groupWord, startCount, tapCount,
+  startCountOn, tapTens, nextFrame, countStep, sceneFit, groupScale, countScale, COUNT_BOX, findLogEntry,
 } from './finds.js';
 import { logAttempt, saveFind } from './storage.js';
 import { chime, letterChime, popSound, countTone, goldTone } from './audio.js';
@@ -46,7 +46,7 @@ function replay(el, cls) {
 // lastKind: the kind of her last counted group. onDone(): back to the board.
 // Returns { stop, pause, resume }, or null when the character has no scene.
 export function startScene(view, { char, color, lastKind = null, onDone = () => {}, rand = Math.random }) {
-  const isNumber = /^[0-9]$/.test(char);
+  const isNumber = /^\d+$/.test(char); // 1 to 9, and 10 to 20 (Slice 9B part 3)
   const scene = isNumber ? numberScene(Number(char), { lastKind, rand }) : letterScene(char, rand);
   if (!scene) return null;
 
@@ -184,8 +184,8 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
   function playNumber() {
     let chosen = false;
     const groups = scene.groups.map((g, i) => {
-      const art = makeGroup(g.kind, g.count, g.gold);
-      const k = groupScale(art.W, g.spot.maxW);
+      const art = groupArt(g.kind, g.count, g.gold); // 10 to 20: ten-frames
+      const k = Math.min(groupScale(art.W, g.spot.maxW), g.spot.maxH ? g.spot.maxH / art.H : Infinity);
       const el = document.createElement('div');
       el.className = 'sc-group';
       el.setAttribute('role', 'button');
@@ -243,6 +243,7 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
     }
 
     function startCounting(it, word) {
+      if (scene.frames) return startCountingOn(it, word);
       let state = startCount(it.count);
       it.el.classList.add('ready');
       for (const cell of it.el.querySelectorAll('.cnt')) {
@@ -263,6 +264,51 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
           if (cell.classList.contains('gold')) goldTone();
           if (state.done) counted(it, word);
         }, { signal: listening.signal });
+      }
+    }
+
+    // 10 to 20 (Slice 9B part 3): counting on. One tap on a full ten-frame
+    // counts ten (it glows and shows 10), then each extra counts on from 11.
+    function startCountingOn(it, word) {
+      let state = startCountOn(it.count);
+      it.el.classList.add('ready', 'counting-on');
+      const frameEls = [...it.el.querySelectorAll('.frame')];
+      const full = (f) => f < state.tens;
+      frameEls.forEach((fr, f) => { if (full(f)) fr.classList.add('full'); });
+      const tap = (target) => {
+        if (!alive) return;
+        const r = tapTens(state, target);
+        if (r.number === null) {
+          if (state.done) return;
+          // An extra before the ten: it does not count, and the frame to tap pulses.
+          const f = nextFrame(state);
+          if (f !== null && f !== undefined) replay(frameEls[f], 'pulse');
+          log({ step: 'count', count: state.frames.length * 10 + state.order.length, ok: false });
+          return;
+        }
+        state = r.state;
+        log({ step: 'count', count: r.number, ok: true });
+        countTone(countStep(r.number, it.count));
+        if (r.frame !== null) {
+          const fr = frameEls[r.frame];
+          fr.classList.add('counted-ten');
+          if (fr.querySelector('.gold')) goldTone();
+        } else {
+          const cell = it.el.querySelector(`.cnt[data-i="${target.item}"]`);
+          cell.querySelector('.num').textContent = String(r.number);
+          cell.classList.add('counted');
+          if (cell.classList.contains('gold')) goldTone();
+        }
+        if (state.done) counted(it, word);
+      };
+      frameEls.forEach((fr, f) => {
+        if (!full(f)) return;
+        fr.addEventListener('click', (e) => { e.stopPropagation(); tap({ frame: f }); }, { signal: listening.signal });
+      });
+      for (const cell of it.el.querySelectorAll('.cnt')) {
+        const i = Number(cell.dataset.i);
+        if (i < 10 * state.tens) continue; // a thing in a full frame: the frame takes the tap
+        cell.addEventListener('click', (e) => { e.stopPropagation(); tap({ item: i }); }, { signal: listening.signal });
       }
     }
 

@@ -89,7 +89,42 @@ export function letterScene(letter, rand = Math.random, objects = OBJECTS) {
 // ---------------------------------------------------------------------------
 // Numbers: pick the group, then count
 
-export const hasNumberScene = (id) => /^[1-9]$/.test(id);
+// 1 to 9 (Slice 5C), and 10 to 20 in ten-frames (Slice 9B part 3).
+export const hasNumberScene = (id) => /^([1-9]|1\d|20)$/.test(id);
+export const isTeen = (n) => Number.isInteger(n) && n >= 10 && n <= 20;
+
+// ---- 10 to 20 (Slice 9B part 3) ----
+// The things stand in ten-frames: two rows of five per ten, the first frame
+// filled first, then the extras in the second frame, row by row (17: a full
+// frame and 7 more). Every group shows both frames, the empty places faint, so
+// the three groups are drawn at the same size and she can see "ten and some more".
+// The three groups stand one above another (ROW_SPOTS), each as wide as fits.
+// The two wrong groups are also 10 to 20, and all three counts are at least
+// TEEN_APART apart.
+export const TEEN_APART = 3;
+export const FRAME = { cols: 5, rows: 2, gap: 28 }; // gap: between the two frames, in placemat units
+// Where the three placemats stand, on the 1280 x 640 stage, top to bottom.
+export const ROW_SPOTS = [
+  { x: 708, bottom: 212, maxW: 560, maxH: 190 },
+  { x: 708, bottom: 418, maxW: 560, maxH: 190 },
+  { x: 708, bottom: 624, maxW: 560, maxH: 190 },
+];
+
+// The two other counts for n (10 to 20): from 10 to 20, all three at least
+// `apart` from each other. Every allowed pair is equally likely.
+export function teenCounts(n, rand = Math.random, apart = TEEN_APART) {
+  const pairs = [];
+  for (let a = 10; a <= 20; a++) {
+    for (let b = a + apart; b <= 20; b++) {
+      if (Math.abs(a - n) >= apart && Math.abs(b - n) >= apart) pairs.push([a, b]);
+    }
+  }
+  return shuffle(pick(pairs, rand), rand);
+}
+
+// Which frame (0 or 1), row and column item i stands in.
+export const frameCell = (i) => ({ frame: Math.floor(i / 10), row: Math.floor((i % 10) / FRAME.cols), col: i % FRAME.cols });
+
 
 // What comes after she finishes writing a character: its find or count scene
 // ('openScene'), or, when it has none (a letter with fewer than 2 find
@@ -98,23 +133,27 @@ export const hasNumberScene = (id) => /^[1-9]$/.test(id);
 export const afterWriting = (id, objects = OBJECTS) =>
   (hasLetterScene(id, objects) || hasNumberScene(id) ? 'openScene' : 'letterDone');
 
-// { room, n, groups, right }: 3 placemats, one with n things (groups[right]) and
-// two with other counts from 1 to 9. The three counts differ, the three kinds
+// { room, n, groups, right, frames }: 3 placemats, one with n things
+// (groups[right]) and two with other counts: from 1 to 9 for 1 to 9; for 10 to
+// 20 (Slice 9B part 3) from 10 to 20, at least TEEN_APART apart, in ten-frames
+// (frames: true), one above another. The three counts differ, the three kinds
 // differ, and the n group's kind is never `lastKind` (her last number scene's).
 // group: { kind, count, gold (index of the golden item, or -1), spot }.
 export function numberScene(n, { lastKind = null, rand = Math.random } = {}) {
-  if (!Number.isInteger(n) || n < 1 || n > 9) return null;
+  if (!Number.isInteger(n) || n < 1 || n > 20) return null;
+  const frames = isTeen(n);
   const room = pick(Object.keys(ROOMS), rand);
-  const { pool, groups: spots } = ROOMS[room];
+  const { pool } = ROOMS[room];
+  const spots = frames ? ROW_SPOTS : ROOMS[room].groups;
   const kinds = [pick(pool.filter((k) => k !== lastKind), rand)];
   kinds.push(...shuffle(pool.filter((k) => k !== kinds[0]), rand).slice(0, 2));
-  const counts = [n, ...shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9].filter((c) => c !== n), rand).slice(0, 2)];
+  const counts = [n, ...(frames ? teenCounts(n, rand) : shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9].filter((c) => c !== n), rand).slice(0, 2))];
   const gold = rand() < GOLD_CHANCE ? Math.floor(rand() * n) : -1;
   const order = shuffle([0, 1, 2], rand); // which placemat each group goes on
   const groups = [0, 1, 2].map((i) => ({ kind: kinds[i], count: counts[i], gold: i === 0 ? gold : -1, spot: spots[order[i]] }));
-  // Left to right on screen.
-  groups.sort((a, b) => a.spot.x - b.spot.x);
-  return { room, n, groups, right: groups.findIndex((g) => g.count === n) };
+  // Left to right on screen (10 to 20: top to bottom).
+  groups.sort((a, b) => a.spot.x - b.spot.x || a.spot.bottom - b.spot.bottom);
+  return { room, n, groups, right: groups.findIndex((g) => g.count === n), frames };
 }
 
 // "4 cups", "1 cup".
@@ -146,6 +185,78 @@ export function makeGroup(kind, n, gold = -1, gapY = 32) {
   }
   return { svg: `${s}</svg>`, W, H };
 }
+
+// Ten-frames (Slice 9B part 3): `n` things (10 to 20) in two frames side by
+// side, each two rows of five, the empty places faint. Each frame is a
+// <g class="frame" data-f="..."> holding its outline, a hidden number (10 or 20,
+// shown when she counts a full frame with one tap) and its cells; every thing is
+// a <g class="cnt" data-i="..."> with a hidden number, as in makeGroup.
+// Returns { svg, W, H, frames: [{ x, w }] } (W x H units).
+export function makeTenFrames(kind, n, gold = -1, gapY = 32) {
+  const fw = FRAME.cols * CELL + 20;
+  const W = 2 * fw + FRAME.gap;
+  const H = FRAME.rows * (CELL + gapY) + 22;
+  const frames = [0, 1].map((f) => ({ x: f * (fw + FRAME.gap), w: fw }));
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" class="art tens" style="overflow:visible">`
+    + `<ellipse cx="${W / 2}" cy="${H - 2}" rx="${W / 2}" ry="10" fill="#000" opacity=".1"/>`;
+  frames.forEach(({ x }, f) => {
+    s += `<g class="frame" data-f="${f}">`
+      + `<rect class="frame-mat" x="${x}" y="${gapY - 14}" width="${fw}" height="${H - gapY + 8}" rx="22" fill="#FFFFFF" stroke="#F2C6D8" stroke-width="4"/>`
+      + `<text class="ten" x="${x + fw / 2}" y="${gapY - 22}" text-anchor="middle" font-size="40" font-weight="600" font-family="Fredoka, sans-serif" fill="#FFD43B" stroke="#2A2370" stroke-width="3.5" paint-order="stroke">${(f + 1) * 10}</text>`;
+    for (let k = 0; k < 10; k++) {
+      const i = f * 10 + k;
+      const { row, col } = frameCell(i);
+      const cx = x + 10 + col * CELL;
+      const cy = gapY + row * (CELL + gapY);
+      if (i >= n) {
+        s += `<rect class="slot" x="${cx + 6}" y="${cy + 6}" width="52" height="52" rx="12" fill="none" stroke="#E8D9E2" stroke-width="3" stroke-dasharray="7 6"/>`;
+        continue;
+      }
+      s += `<g transform="translate(${cx},${cy})"><g class="cnt${i === gold ? ' gold' : ''}" data-i="${i}">`
+        + `<rect width="64" height="64" fill="transparent"/><g transform="translate(2,2)">${THINGS[kind].art}</g>`
+        + '<text class="num" x="32" y="-6" text-anchor="middle" font-size="28" font-weight="600" font-family="Fredoka, sans-serif" fill="#FFD43B" stroke="#2A2370" stroke-width="3" paint-order="stroke"></text></g></g>';
+    }
+    s += '</g>';
+  });
+  return { svg: `${s}</svg>`, W, H, frames };
+}
+
+// A group's picture: ten-frames for 10 to 20, a placemat of rows of five below 10.
+export const groupArt = (kind, n, gold = -1) => (n >= 10 ? makeTenFrames(kind, n, gold) : makeGroup(kind, n, gold));
+
+// Counting on (Slice 9B part 3), for 10 to 20: a full ten-frame counts as ten
+// with one tap (it glows and shows 10, or 20 for the second full frame), then
+// she taps each extra and the count goes on from 11. A tap on an extra before
+// the full frames are counted does not count (the frame to tap pulses).
+// tapTens returns { state, number, frame }: frame is the frame that was
+// counted (number 10 or 20), or null; number is null when the tap did not count.
+// state.done: every thing is counted.
+export const startCountOn = (n) => ({ n, tens: Math.floor(n / 10), frames: [], order: [], done: false });
+export function tapTens(state, { frame = null, item = null } = {}) {
+  const none = { state, number: null, frame: null };
+  if (state.done) return none;
+  const f = frame ?? (Number.isInteger(item) && item >= 0 && item < state.n ? frameCell(item).frame : null);
+  // A tap on a full frame (on the frame, or on a thing in it).
+  if (f !== null && f < state.tens) {
+    if (state.frames.includes(f)) return none;
+    const frames = [...state.frames, f];
+    const number = frames.length * 10;
+    return { state: { ...state, frames, done: number === state.n }, number, frame: f };
+  }
+  // An extra: only once the full frames are counted.
+  if (!Number.isInteger(item) || item < 10 * state.tens || item >= state.n) return none;
+  if (state.frames.length < state.tens || state.order.includes(item)) return none;
+  const order = [...state.order, item];
+  const number = 10 * state.tens + order.length;
+  return { state: { ...state, order, done: number === state.n }, number, frame: null };
+}
+// The frame she should count next (it pulses after an early tap on an extra), or null.
+export const nextFrame = (state) => (state.frames.length < state.tens ? [0, 1].find((f) => f < state.tens && !state.frames.includes(f)) : null);
+
+// The counting note's step (src/audio.js countTone) for each number: 1 to 9 as
+// before, one step higher each tap. Counting on starts the ten at step 4 and
+// climbs half a step per extra, so 20 stays as low as 9 was.
+export const countStep = (number, n) => (n >= 10 ? 4 + (number - 10) / 2 : number);
 
 // Counting: she taps each item once; the numbers appear in the order she taps.
 // tapCount returns { state, number }: number is the one to show on that item,
@@ -192,13 +303,13 @@ export function cleanFinds(list) {
   if (!Array.isArray(list)) return [];
   return list.filter((e) => (e && typeof e === 'object')
     && ((typeof e.o === 'string' && OBJECTS.some((o) => o.id === e.o))
-      || (typeof e.g === 'string' && THINGS[e.g] && Number.isInteger(e.n) && e.n >= 1 && e.n <= 9)));
+      || (typeof e.g === 'string' && THINGS[e.g] && Number.isInteger(e.n) && e.n >= 1 && e.n <= 20))); // 10 to 20: Slice 9B
 }
 
 // The picture of one saved find on her shelf, or null. Pictures kept out of
 // find scenes (ice cream, eraser) still show, so nothing she found disappears.
 export function findArt(entry, objects = OBJECTS) {
-  if (entry?.g) return THINGS[entry.g] ? makeGroup(entry.g, entry.n, entry.gold ? 0 : -1).svg : null;
+  if (entry?.g) return THINGS[entry.g] ? groupArt(entry.g, entry.n, entry.gold ? 0 : -1).svg : null;
   return objects.find((o) => o.id === entry?.o)?.art ?? null;
 }
 

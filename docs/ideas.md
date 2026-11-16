@@ -143,3 +143,9 @@ counting thing), fairy (Jugnu is the only character).
 - **[later]** A 17 with the 1's flag left out says "Almost! That looks like I." (her 1 is read as I, as a single 1 with no flag is). Fine for now; if it confuses, name the digit's missing flag instead.
 - **[later]** The split between digits (`NUMBER_SPLIT` in `src/copy.js`) was set on drawn test numbers. Check her real `copy` log entries for 10 to 20 after a week: a number she wrote well that fails with `missing-digit` means the split needs a smaller `minAspect`.
 - **[6B]** The new note lines ("The 1 comes first.", "The 7 is missing.", "The slant of the 7 is missing.", "That looks like 13.") and the number names ten to twenty appear on `voice.html` as Missing by themselves.
+
+## Slice 9B part 3: count scenes for 10 to 20
+
+- **[later]** The three stacked placemats stand in the same place in every room (`ROW_SPOTS` in `src/finds.js`), over the room's furniture (the classroom's chalkboard sits behind the top one). The mats are opaque, so it reads well; if a room looks crowded, give each room its own row spots.
+- **[6B]** Counting on says "ten" for the frame and then "eleven", "twelve"... once the voice pack plays (the number clips `number-10` ... `number-20` are in the script).
+- **[later]** Missing piece, match and the other games stay at 1 to 9. A "numbers to things" set for 10 to 20 in ten-frames would be a natural next game.
