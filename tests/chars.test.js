@@ -90,9 +90,7 @@ test('data/chars/index.json lists exactly the recorded character files', () => {
   const ids = files.map((f) => fileChar(f.slice(0, -'.json'.length)));
   for (const id of manifest) assert.ok(ids.includes(id), `${id} is in the manifest but data/chars/${charFile(id)}.json is missing`);
   for (const id of ids) assert.ok(manifest.includes(id), `data/chars/${charFile(id)}.json exists but ${id} is not in the manifest`);
-  // Numbers 10 to 20 (Slice 9B) are in the manifest, so ?char=17 and glyphs.html can
-  // load them, but go on the 123 board only in the second part of the slice.
-  for (const id of manifest) assert.ok(bookOf(id) || /^(1\d|20)$/.test(id), `${id} is on one of the boards`);
+  for (const id of manifest) assert.ok(bookOf(id), `${id} is on one of the boards`);
 });
 
 // Character ids are plain ASCII, so file names never hold Urdu letters. An Urdu

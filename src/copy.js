@@ -27,6 +27,7 @@ import { candidatesFor, nextStrokes, pickCandidate, variantLabel, planCount, pla
 import { cloudOf, mirrorStrokes, matchDistance } from './pdollar.js';
 import { BOARDS, pageOf, pageTiles } from './session.js';
 import { CHILD_SHAPES } from '../data/child-shapes.js';
+import { MARGIN } from '../data/glyphs.js';
 
 // Her letter's size, as a share of the model's height.
 export const COPY_SIZE = { min: 0.75, max: 1.25 };
@@ -82,10 +83,18 @@ export const TURNED = {
   n: ['u'], u: ['n'], m: ['w', 'W'], w: ['m'],
 };
 
+// Numbers 10 to 20 (Slice 9B part 2): a character file with `digits`.
+export const isNumber = (char) => Array.isArray(char?.digits);
+const isTwoDigit = (id) => /^\d\d$/.test(id);
+
 // The characters her letter is compared with: its board page, then its look-alikes.
+// A digit is compared with the digits 0 to 9 only (never 10 to 20, which share
+// its board), so its judging is as before Slice 9B. A number 10 to 20 loads its
+// digits' lists: each digit is judged on its own (scoreNumber).
 export function compareIds(id) {
+  if (isTwoDigit(id)) return [...new Set(id.split('').flatMap(compareIds))];
   const entry = Object.entries(BOARDS).find(([, b]) => b.tiles.some((t) => t.id === id));
-  const ids = entry ? pageTiles(entry[0], pageOf(id)).map((t) => t.id) : [id];
+  const ids = entry ? pageTiles(entry[0], pageOf(id)).map((t) => t.id).filter((t) => !isTwoDigit(t)) : [id];
   const extra = isLower(id) ? LOWER_LOOKALIKES : (LOOKALIKES[id] ?? []);
   return [...new Set([...ids, ...extra])];
 }
@@ -167,8 +176,9 @@ const side = (box, tall) => (tall ? box.h : box.w);
 export function fitLetter(strokes, char, size = COPY_SIZE, cfg = DEFAULTS, extra = []) {
   const ref = refBox(char);
   const hers = boxOf(strokes);
-  // A lowercase letter is always measured on its height (Slice 9A): small, tall or tail.
-  const tall = ref.h >= ref.w || char.case === 'lower';
+  // A lowercase letter is always measured on its height (Slice 9A): small, tall
+  // or tail. So is a number 10 to 20 (Slice 9B), though it is wider than tall.
+  const tall = ref.h >= ref.w || char.case === 'lower' || isNumber(char);
   const refSide = side(ref, tall);
   const herSide = hers ? side(hers, tall) : 0;
   if (!hers || herSide < cfg.minLength) return { scale: null, size: 0, sizeOk: false, strokes, extra };
@@ -539,6 +549,7 @@ export function readHabits(fitted, char, stage = COPY_STAGE, cfg = DEFAULTS) {
 //   'position-tail' | 'position-tall' | 'position-small'  lowercase only (Slice 9A):
 //                    not where it belongs on the lines (checkPosition)
 export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE, cfg = DEFAULTS, others = [], match = COPY_MATCH, position = POSITION } = {}) {
+  if (isNumber(char)) return scoreNumber(strokes, char, { stage, size, cfg, others, match });
   const all = usableStrokes(strokes, char, cfg);
   // i and j (Slice 9A): her dots are checked on their own, after the shape;
   // the shape and the size are judged on her lines alone.
@@ -620,6 +631,141 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
   return { ...out, ok: true };
 }
 
+// ---- numbers 10 to 20 (Slice 9B part 2) ----
+// A number is judged digit by digit. Her strokes are split into a left and a
+// right part by where they are (splitDigits), and each part is judged as that
+// digit, exactly as a single digit is (scoreCopy against the digits 0 to 9 and
+// their look-alikes): shape, every part, and size. Both must be right, and the
+// whole number must be the right size (75% to 125% of the model's height).
+// A reversed digit passes and is coached, as a single one is. Habits (start,
+// direction, order: the right digit first is a habit) are read on the whole
+// number, against its plans, and never fail it.
+// Reasons, besides a digit's own (its look-alike named as the whole number:
+// 17 with a 3 for its 7 "looks like 13"; its missing part named with its digit:
+// "the slant of the 7"):
+//   'missing-digit'  only one digit there (missingDigit: the one left out)
+//   'swapped-digits' the two digits the wrong way round (21 for 12)
+
+export const NUMBER_SPLIT = {
+  minGap: 0.05,     // a gap this share of her height between strokes splits the two digits
+  minAspect: 0.6,   // with no gap: her ink narrower than this share of the model's width over height is one digit
+};
+
+// Her strokes split into the left digit and the right one: { left, right }, or
+// { one } when they make a single digit. Strokes go by the middle of their box,
+// left to right; the cut is at the widest gap between them. With no gap (the
+// digits touch), a letter as wide as a number is cut where both halves read best
+// as the two digits; a narrow one is a single digit.
+export function splitDigits(strokes, char, digitChars, opts = {}, split = NUMBER_SPLIT) {
+  const box = boxOf(strokes);
+  if (!box) return { one: strokes };
+  const sorted = strokes.map((pts) => ({ pts, b: boxOf([pts]) })).sort((a, b) => a.b.cx - b.b.cx);
+  let best = null;
+  for (let k = 1; k < sorted.length; k++) {
+    const leftEnd = Math.max(...sorted.slice(0, k).map((s) => s.b.x1));
+    const rightStart = Math.min(...sorted.slice(k).map((s) => s.b.x0));
+    if (!best || rightStart - leftEnd > best.gap) best = { k, gap: rightStart - leftEnd };
+  }
+  const cut = (k) => ({ left: sorted.slice(0, k).map((s) => s.pts), right: sorted.slice(k).map((s) => s.pts) });
+  if (best && best.gap >= split.minGap * box.h) return cut(best.k);
+  const model = refBox(char);
+  if (sorted.length < 2 || box.w / Math.max(box.h, 1e-9) < split.minAspect * (model.w / model.h)) return { one: strokes };
+  // Touching digits: the cut whose halves are nearest their two digits.
+  let pick = null;
+  for (let k = 1; k < sorted.length; k++) {
+    const { left, right } = cut(k);
+    const d = recognize(left, digitChars[0], [], opts.match).best.distance + recognize(right, digitChars[1], [], opts.match).best.distance;
+    if (!pick || d < pick.d) pick = { k, d };
+  }
+  return cut(pick.k);
+}
+
+// Which digit (0 left, 1 right) stroke k of plan p of a number belongs to: by
+// where its middle is, left or right of the right digit's place.
+function digitOfStroke(char, p, k) {
+  const b = boxOf([planStrokes(char, p)[k].points]);
+  return b.cx >= char.digits[1].x + MARGIN ? 1 : 0;
+}
+
+// A digit's strokes moved to where it stands in the number (line units).
+const placed = (strokes, dx) => strokes.map((s) => ({ ...s, points: s.points.map(([x, y]) => [x + dx, y]) }));
+
+// One part of a digit, as the number's part to show: its points moved into the
+// number, its name with its digit ("slant of the 7"), and `digit` (0 left, 1 right).
+function digitPart(missing, i, char) {
+  if (!missing) return null;
+  const dx = char.digits[i].x;
+  const name = missing.part ? `${missing.part} of the ${char.digits[i].id}` : null;
+  return { ...missing, plan: null, stroke: null, part: name, digit: i, points: missing.points.map(([x, y]) => [x + dx, y]) };
+}
+
+// The whole digit `i` as a part to show (a missing digit): every stroke of its default plan.
+function wholeDigit(i, char, digitChars) {
+  const paths = placed(digitChars[i].strokes, char.digits[i].x).map((s) => s.points);
+  return { plan: null, stroke: null, part: char.digits[i].id, digit: i, points: paths.flat(), paths, coverage: 0 };
+}
+
+const SIZE_REASONS = ['too-small', 'too-big'];
+
+export function scoreNumber(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE, cfg = DEFAULTS, others = [], match = COPY_MATCH } = {}) {
+  const used = usableStrokes(strokes, char, cfg);
+  const fit = fitLetter(used, char, size, cfg);
+  const habits = fit.scale === null
+    ? { plan: 0, strokes: [], starts: [], directions: [], order: 'usual', usual: true }
+    : readHabits(fit.strokes, char, stage, cfg);
+  const out = {
+    ok: false, reason: null, scale: fit.scale, size: fit.size, sizeOk: fit.sizeOk,
+    match: null, lookalike: null, missing: null, mirrored: false, habits, strokes: habits.strokes, digits: [],
+  };
+  if (fit.scale === null) return { ...out, reason: 'no-letter' };
+  const digitChars = char.digits.map((d) => others.find((o) => o.id === d.id));
+  if (digitChars.some((d) => !d)) throw new Error(`scoreNumber: load the digits of ${char.id} (compareIds)`);
+  const othersOf = (d) => compareIds(d.id).filter((id) => id !== d.id).map((id) => others.find((o) => o.id === id)).filter(Boolean);
+  const judge = (part, i) => scoreCopy(part, digitChars[i], { stage, size, cfg, others: othersOf(digitChars[i]), match });
+  const numberMatch = (r, distance) => ({ id: char.id, plan: habits.plan, child: null, mirrored: r?.mirrored === true, distance });
+
+  const split = splitDigits(used, char, digitChars, { match });
+  if (split.one) {
+    // One digit: the one left out is the one her ink is not (17 written as 7: the 1).
+    const [a, b] = [0, 1].map((i) => judge(split.one, i));
+    const gone = b.ok && !a.ok ? 0 : a.ok && !b.ok ? 1
+      : (b.match?.distance ?? Infinity) < (a.match?.distance ?? Infinity) ? 0 : 1;
+    const there = gone === 0 ? b : a;
+    return { ...out, reason: 'missing-digit', missing: wholeDigit(gone, char, digitChars), match: there.match, digits: gone === 0 ? [null, b] : [a, null] };
+  }
+  const rs = [judge(split.left, 0), judge(split.right, 1)];
+  out.digits = rs;
+  const shapeFail = (r) => !r.ok && !SIZE_REASONS.includes(r.reason);
+  const [l, r] = char.digits.map((d) => d.id);
+  // The two digits the wrong way round: each part looks like the other digit.
+  if (l !== r && rs.every(shapeFail) && rs[0].lookalike === r && rs[1].lookalike === l) {
+    return { ...out, reason: 'swapped-digits', lookalike: `${r}${l}`, first: l, match: numberMatch(null, Math.max(...rs.map((x) => x.match?.distance ?? 0))) };
+  }
+  const bad = rs.findIndex(shapeFail);
+  if (bad >= 0) {
+    const x = rs[bad];
+    // A digit too little to read on its own (17 with the 7's slant left out: a
+    // flat bar): her whole number, laid over the model, shows the part she left out.
+    if ((x.reason === 'no-letter' || x.reason === 'unrecognized') && shapeFail(rs[1 - bad]) === false) {
+      const gone = partCoverage(used, char, cfg, match).find((p) => p.coverage < match.coverMin);
+      if (gone) {
+        const i = digitOfStroke(char, gone.plan, gone.stroke);
+        const { points } = planStrokes(char, gone.plan)[gone.stroke];
+        return { ...out, reason: 'missing-stroke', match: x.match ?? numberMatch(null, null),
+          missing: { plan: gone.plan, stroke: gone.stroke, part: `${gone.part} of the ${char.digits[i].id}`, digit: i, points, coverage: Math.round(gone.coverage * 1000) / 1000 } };
+      }
+    }
+    // A look-alike digit names the number it makes (17 with a 3: "13"); a letter keeps its name (S).
+    const lookalike = x.lookalike && /^\d$/.test(x.lookalike) ? (bad === 0 ? `${x.lookalike}${r}` : `${l}${x.lookalike}`) : x.lookalike;
+    return { ...out, reason: x.reason, lookalike, missing: digitPart(x.missing, bad, char), match: x.match };
+  }
+  if (!fit.sizeOk) return { ...out, reason: fit.size < size.min ? 'too-small' : 'too-big', match: numberMatch(null, 0) };
+  const small = rs.find((x) => !x.ok);
+  if (small) return { ...out, reason: small.reason, match: small.match };
+  out.mirrored = rs.some((x) => x.mirrored);
+  return { ...out, ok: true, match: numberMatch(out, Math.max(...rs.map((x) => x.match?.distance ?? 0))) };
+}
+
 // The line-position reason for her lowercase letter ('position-tail',
 // 'position-tall' or 'position-small'), or null when it sits well (and for
 // capitals and digits). `lines`: her strokes in letter units, as she wrote them.
@@ -676,7 +822,8 @@ function modelPart(gone, char) {
 export function copyShow(result) {
   if (result.ok) return result.mirrored ? 'right-way' : result.habits.usual ? 'none' : 'usual-way';
   switch (result.reason) {
-    case 'looks-like': return 'beside';
+    case 'looks-like': case 'swapped-digits': return 'beside';
+    case 'missing-digit': return 'part';
     case 'missing-stroke': return 'part';
     case 'too-small': case 'too-big': return 'size';
     case 'position-tail': case 'position-tall': case 'position-small': return 'lines';

@@ -33,9 +33,11 @@ export const COPY_NOTES = {
 };
 
 // "Almost! The bar is missing." / "Almost! That looks like R."
-const plural = (part) => / and /.test(part) || /s$/.test(part);
+// A number's part (Slice 9B) is named with its digit: "the bumps of the 3 are missing".
+const plural = (part) => { const own = part.split(' of the ')[0]; return / and /.test(own) || /s$/.test(own); };
 const missingLine = (part) => `Almost! The ${part} ${plural(part) ? 'are' : 'is'} missing.`;
 const looksLine = (id) => `Almost! That looks like ${id}.`;
+const firstLine = (id) => `Almost! The ${id} comes first.`;
 
 // The line for a judged copy, or null for a usual pass (nothing to say).
 // A failed copy always has a line.
@@ -47,6 +49,9 @@ export function copyNote(result) {
   const part = result.missing?.part;
   if (result.reason === 'looks-like') return part ? missingLine(part) : looksLine(result.lookalike);
   if (result.reason === 'missing-stroke') return part ? missingLine(part) : 'Almost! A line is missing.';
+  // Numbers 10 to 20 (Slice 9B): "Almost! The 7 is missing." / "Almost! The 1 comes first."
+  if (result.reason === 'missing-digit') return part ? missingLine(part) : 'Almost! A number is missing.';
+  if (result.reason === 'swapped-digits') return firstLine(result.first);
   return COPY_NOTES[result.reason] ?? "Let's watch Jugnu write it.";
 }
 

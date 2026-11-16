@@ -47,11 +47,11 @@ test('startScreen: ?char=X goes straight to writing X, returning to its board', 
 // ---------------------------------------------------------------------------
 // The boards
 
-test('ABC is A to Z then a to z (two pages) and 123 is 0 to 9, left to right', () => {
+test('ABC is A to Z then a to z (two pages) and 123 is 0 to 20, left to right', () => {
   assert.equal(BOARDS.abc.tiles.map((t) => t.glyph).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz');
   assert.equal(BOARDS.abc.pages.upper.map((t) => t.glyph).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
   assert.equal(BOARDS.abc.pages.lower.map((t) => t.glyph).join(''), 'abcdefghijklmnopqrstuvwxyz');
-  assert.equal(BOARDS.num.tiles.map((t) => t.glyph).join(''), '0123456789');
+  assert.deepEqual(BOARDS.num.tiles.map((t) => t.glyph), Array.from({ length: 21 }, (_, k) => String(k))); // Slice 9B: 0 to 20
   assert.equal(BOARDS.abc.dir, 'ltr');
   assert.equal(BOARDS.num.dir, 'ltr');
 });
@@ -299,7 +299,10 @@ test('books that hold a due letter glow; board order is ABC, 123, Urdu', () => {
   assert.deepEqual(BOARD_ORDER.slice(0, 3), ['A', 'B', 'C']);
   assert.equal(BOARD_ORDER[26], 'a');
   assert.equal(BOARD_ORDER[52], '0');
-  assert.equal(BOARD_ORDER[62], 'ur-alif-madd');
+  assert.equal(BOARD_ORDER[62], '10'); // Slice 9B: 10 to 20 after 9
+  assert.equal(BOARD_ORDER[72], '20');
+  assert.equal(BOARD_ORDER[73], 'ur-alif-madd');
+  assert.deepEqual(booksWithDue(['17']), ['num']);
 });
 
 test('tapping a due tile opens a review; any other tile, a practice', () => {

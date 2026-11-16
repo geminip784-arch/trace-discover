@@ -134,6 +134,12 @@ counting thing), fairy (Jugnu is the only character).
 
 ## Slice 9B part 1: the numbers 10 to 20
 
-- **[9B part 2]** On the full screen (installed app, about 1280 x 800), the lines are bigger and 20 written at 125% (the most the size check allows) does not fit the writing room left of the model card (it needs 2.01 line units, there are 1.67). Every number fits at its own size, and on Chrome's 1280 x 626 everything fits. Part 2 makes the lines a little smaller for a wide number; `tests/card.test.js` lets only 20 on the full screen off until then.
-- **[9B part 2]** The 123 board in rows of ten (0 to 9, 10 to 19, 20) gives tiles of about 95 px in the board's 1060 px, not 110: still above 88 px.
+- ✅ **[9B part 2]** On the full screen (installed app, about 1280 x 800), the lines are bigger and 20 written at 125% (the most the size check allows) does not fit the writing room left of the model card (it needs 2.01 line units, there are 1.67). Every number fits at its own size, and on Chrome's 1280 x 626 everything fits. Part 2 makes the lines a little smaller for a wide number; `tests/card.test.js` lets only 20 on the full screen off until then.
+- ✅ **[9B part 2]** The 123 board in rows of ten (0 to 9, 10 to 19, 20) gives tiles of about 95 px in the board's 1060 px, not 110: still above 88 px.
 - **[6B]** Number names ten to twenty for the voice pack (`number-10` ... `number-20`), alongside the round-3 note lines part 2 adds.
+
+## Slice 9B part 2: numbers on the board and in round 3
+
+- **[later]** A 17 with the 1's flag left out says "Almost! That looks like I." (her 1 is read as I, as a single 1 with no flag is). Fine for now; if it confuses, name the digit's missing flag instead.
+- **[later]** The split between digits (`NUMBER_SPLIT` in `src/copy.js`) was set on drawn test numbers. Check her real `copy` log entries for 10 to 20 after a week: a number she wrote well that fails with `missing-digit` means the split needs a smaller `minAspect`.
+- **[6B]** The new note lines ("The 1 comes first.", "The 7 is missing.", "The slant of the 7 is missing.", "That looks like 13.") and the number names ten to twenty appear on `voice.html` as Missing by themselves.
