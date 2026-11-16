@@ -115,8 +115,17 @@ Two digits side by side, left digit first.
 **Done when:**
 - [ ] 10 to 20 play all three rounds, and count scenes reach 20
 
-### 9C — Words level
-Short words made of letters she has starred.
+### 9C — Write my name
+Her name (from the setup page, written "Sara": a capital, then lowercase) on the four lines as one word, in its own book, first on the shelf. Built in two pull requests.
+1. **The name book and rounds 1 and 2 (built):** the name book with her name on its cover and one big name tile (a grey parent line when no name is set, when it has characters other than a to z, or when it is too long for one line). The lines shrink to fit the name and keep that size in every round; every tolerance is at least 45 px on screen. Round 1 traces letter by letter with the full track and start dots, each letter lighting up gold; round 2 the whole name with the thinner track. When Jugnu draws a stroke, only that letter is traced again, once. A `name` log entry per round. The setup page shows how the name will be written, or why it cannot be. Changing the name starts its practice again. Screenshots: `docs/screenshots/slice-9c/`.
+2. **Round 3 and the reward:** the copy-it round for the whole name (her strokes assigned to letters by position, each letter judged as on its own), the name glowing letter by letter, a name card with a gold star on her shelf of finds, and reviews.
+
+**Done when:**
+- [ ] She traces her name letter by letter, then the whole name, then copies it
+- [ ] Her name card is on her shelf of finds
+
+### 9D — Words level
+Short words made of letters she has starred (moved from 9C). They can join her name in the name book.
 
 **Done when:**
 - [ ] She can trace a three-letter word letter by letter, then see its picture

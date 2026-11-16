@@ -33,7 +33,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - Strokes must be drawn in order, in one of the character's allowed stroke plans (`plans` in the character file, from `data/glyphs.js`; Slice 5J). Stroke k of her plan is compared with stroke k of that plan. The default plan (`strokes`) is what the model card and Jugnu show.
 - The copy-it round (round 3) judges the whole letter by shape with the $P recognizer (`src/pdollar.js`, BSD license; keep its credit). Start, direction and order there are habits: logged and coached, never failed. Child-style templates (`data/child-shapes.js`, Slice 5J part 2) let crude but recognizable letters pass; they are never shown to her.
 - Round 3 has a fading helper per character (`HELPER` in `src/progress.js`, saved in `td.helper`): level 1 a dotted ghost and the first start dot, level 2 start dots only, level 3 nothing.
-- Thresholds live in `DEFAULTS.stages`. Do not change them unless I ask.
+- Thresholds live in `DEFAULTS.stages`. Do not change them unless I ask. Her name (Slice 9C) uses `withMinLeeway`: no tolerance narrower than 45 px on screen; `DEFAULTS` itself is unchanged.
 - Run `npm test` after any change to `src/geometry.js`.
 
 ## Child-screen rules (every screen she sees)
@@ -56,7 +56,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - Before writing code: restate the slice goal, list the files you will create or change, and wait for my OK.
 - Keep one module per concern in `src/`. Pure-logic modules (no DOM, no storage, no audio) are marked *pure* and are tested in `tests/`.
   - Shell: `screens.js` (every screen and its animations), `session.js` (*pure*: boards, books, navigation), `art.js` (the shell's SVG pictures), `music.js` (background tunes), `storage.js` (localStorage), `audio.js` (chimes and speech).
-  - Tracing: `input.js` (single-pointer tracking), `render.js` (lines, tracks, ink), `game.js` (one character's rounds on screen), `progress.js` (*pure*: strokes, help and rounds), `copy.js` (*pure*: the copy-it round's whole-letter judging), `pdollar.js` (*pure*: the $P point-cloud recognizer), `notes.js` (*pure*: the parent-facing lines), `review.js` (*pure*: reviews on later days and the practice-more list), `variants.js` (*pure*: accepted joined versions and stroke plans), `geometry.js` (*pure*: scoring), `jugnu.js` (Jugnu on screen), `debug.js` (the `?debug=1` panel).
+  - Tracing: `input.js` (single-pointer tracking), `render.js` (lines, tracks, ink), `game.js` (one character's rounds on screen), `name-game.js` (her name's rounds on screen, Slice 9C), `name.js` (*pure*: her name as she writes it, its layout and log entry), `progress.js` (*pure*: strokes, help and rounds), `copy.js` (*pure*: the copy-it round's whole-letter judging), `pdollar.js` (*pure*: the $P point-cloud recognizer), `notes.js` (*pure*: the parent-facing lines), `review.js` (*pure*: reviews on later days and the practice-more list), `variants.js` (*pure*: accepted joined versions and stroke plans), `geometry.js` (*pure*: scoring), `jugnu.js` (Jugnu on screen), `debug.js` (the `?debug=1` panel).
   - Find and count: `scene.js` (on screen), `finds.js` (*pure*: what a scene holds).
   - Games book: `games.js` (*pure*: every game's rules), `match.js`, `path.js`, `sort.js`, `odd.js`, `missing.js` (each game on screen).
   - Drawing book: `drawing.js` (*pure*: levels and dots), `dots.js` (dot to dot on screen), `paper.js` (free drawing), `strokes.js` (crayon and eraser ink), `hold.js` (press-and-hold buttons).

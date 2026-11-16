@@ -143,3 +143,11 @@ counting thing), fairy (Jugnu is the only character).
 - **[later]** A 17 with the 1's flag left out says "Almost! That looks like I." (her 1 is read as I, as a single 1 with no flag is). Fine for now; if it confuses, name the digit's missing flag instead.
 - **[later]** The split between digits (`NUMBER_SPLIT` in `src/copy.js`) was set on drawn test numbers. Check her real `copy` log entries for 10 to 20 after a week: a number she wrote well that fails with `missing-digit` means the split needs a smaller `minAspect`.
 - **[6B]** The new note lines ("The 1 comes first.", "The 7 is missing.", "The slant of the 7 is missing.", "That looks like 13.") and the number names ten to twenty appear on `voice.html` as Missing by themselves.
+
+## Slice 9C part 1: her name's book, rounds 1 and 2
+
+- **[9C part 2]** After round 2 the practice ends for now (no round 3, star or review). Part 2 adds the copy-it round, the reward, the name card on her shelf of finds and reviews; `name-game.js` then stops treating round 3 as the end.
+- **[later]** The 45 px floor covers the start radius, path tolerance and dot radius. A dot (i, j) must also be a tap no longer than `DOT_MAX` (0.2 units, about 23 px at the smallest lines); if her dots on a long name are often not counted, give `DOT_MAX` a px floor too.
+- **[later]** In rounds 1 and 2 only the letter she traces now is scored, so a neighbour's track (r's stem next to a's stick) can never take her stroke. Neighbouring tracks touch on long names; that is only how they look.
+- **[6B]** A spoken "Let's write your name!" (a private `{name}` clip) when the name book opens, and her name said letter by letter at the end.
+- **[8]** The parent zone could show the name book's `name` log entries: which letters of her name needed help.

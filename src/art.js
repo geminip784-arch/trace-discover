@@ -68,9 +68,18 @@ const LOCK = '<g transform="translate(70 170)"><circle r="20" fill="#fff" opacit
 
 // What sits in each cover's white circle (centre 70, 92; radius 46). Text is the
 // characters themselves (allowed on child screens); the rest are pictures.
-function symbol(book) {
+// Her name's book (Slice 9C): `word` is her name, already checked to be a to z only
+// (src/name.js nameOf); without one, the four little writing lines.
+const escapeText = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const LITTLE_LINES = '<g stroke-linecap="round"><line x1="40" y1="74" x2="100" y2="74" stroke="#5bb8ff" stroke-width="3"/><line x1="40" y1="92" x2="100" y2="92" stroke="#9aa0b8" stroke-width="2.5" stroke-dasharray="5 4"/><line x1="40" y1="110" x2="100" y2="110" stroke="#4cc25a" stroke-width="3"/><line x1="40" y1="122" x2="100" y2="122" stroke="#b9834d" stroke-width="3.5"/></g>';
+
+// The four little lines on their own: the name tile's picture when there is no name to write.
+export const NAME_LINES = `<svg ${NS} viewBox="30 60 80 70" aria-hidden="true">${LITTLE_LINES}</svg>`;
+
+function symbol(book, word = '') {
   const latin = (t, c, size) => `<text x="70" y="${92 + size * 0.36}" text-anchor="middle" font-family="Fredoka, 'Baloo 2', system-ui, sans-serif" font-weight="600" font-size="${size}" fill="${c}">${t}</text>`;
   switch (book.id) {
+    case 'name': return word ? latin(escapeText(word), book.spine, Math.min(32, 168 / word.length)) : LITTLE_LINES;
     case 'abc': return latin('ABC', book.spine, 32);
     case 'num': return latin('123', book.spine, 34);
     case 'urdu': return `<text x="70" y="104" text-anchor="middle" direction="rtl" font-family="'Noto Naskh Arabic', 'Noto Sans Arabic', serif" font-weight="700" font-size="38" fill="${book.spine}">آ ب</text>`;
@@ -84,7 +93,7 @@ function symbol(book) {
 
 // One book standing face-out, 140 x 200: a solid cover, a darker spine on the
 // left, a white circle holding its symbol, and a lock when it is closed.
-export function bookCover(book) {
+export function bookCover(book, { word = '' } = {}) {
   return `<svg ${NS} viewBox="0 0 140 200" aria-hidden="true">
   <rect x="0" y="0" width="140" height="200" rx="10" fill="${book.color}"/>
   <rect x="0" y="0" width="22" height="200" rx="8" fill="${book.spine}"/>
@@ -92,7 +101,7 @@ export function bookCover(book) {
   <rect x="30" y="12" width="100" height="5" rx="2.5" fill="#fff" opacity=".35"/>
   <rect x="30" y="183" width="100" height="5" rx="2.5" fill="#fff" opacity=".35"/>
   <circle cx="76" cy="92" r="46" fill="#fff"/>
-  <g transform="translate(6 0)">${symbol(book)}</g>
+  <g transform="translate(6 0)">${symbol(book, word)}</g>
   ${book.open ? '' : LOCK}
 </svg>`;
 }

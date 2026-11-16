@@ -9,26 +9,28 @@
 
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, boardGrid, localDay,
-  startScreen, navigate, tuneFor, bookOf, tileColorOf, BOARD_ORDER, booksWithDue, pageNow, pageSwitch,
+  startScreen, navigate, tuneFor, bookOf, tileColorOf, BOARD_ORDER, booksWithDue, pageNow, pageSwitch, NAME_BOOK,
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
-  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore,
+  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, readProfile,
 } from './storage.js';
 import {
   enrolStars, pickToday, dueToday, recordPractice, recordReview, reviewLogEntry, isDay,
 } from './review.js';
 import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
-import { startGame } from './game.js';
-import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, bookCover } from './art.js';
+import { startGame, loadChar } from './game.js';
+import { startNameGame } from './name-game.js';
+import { NAME_ID, nameOf, nameWidth, nameFits } from './name.js';
+import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
 import { GAME_KINDS, gamesOf, kindStars, gameTile, kindOf } from './games.js';
-import { gameNote } from './notes.js';
+import { gameNote, nameNote } from './notes.js';
 import { MENU, KIND_MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
@@ -162,7 +164,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const { screen } = state;
     document.body.dataset.screen = screen;
     els.home.hidden = screen === 'door' || screen === 'shelf';
-    els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper'].includes(screen);
+    els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper', NAME_BOOK].includes(screen);
     els.music.hidden = screen === 'door';
     if (els.showme) els.showme.hidden = screen !== 'play';
     showGameNote(screen === 'play' ? gameNote(kindOf(state.game)) : null);
@@ -180,6 +182,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     if (screen === 'door') drawDoor(view);
     else if (screen === 'shelf') drawShelf(view);
     else if (screen === 'board') drawBoard(view, extra.newStar);
+    else if (screen === NAME_BOOK) drawNameBook(view, extra.newStar);
     else if (screen === 'games') drawGames(view, extra.newGameStar);
     else if (screen === 'play') drawPlay(view);
     else if (screen === 'drawing') drawDrawingMenu(view, extra.newDrawStar);
@@ -226,7 +229,9 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       el.className = `book${book.open ? '' : ' locked'}${book.open && glowing.includes(book.id) ? ' due' : ''}`;
       el.setAttribute('role', 'button');
       el.setAttribute('aria-label', book.id);
-      el.innerHTML = `<div class="pages"></div><div class="cover">${bookCover(book)}</div>`;
+      // Her name's book (Slice 9C) carries her name on its cover, when it is one she can write.
+      const word = book.id === NAME_BOOK ? nameOf(readProfile().name).word : '';
+      el.innerHTML = `<div class="pages"></div><div class="cover">${bookCover(book, { word })}</div>`;
       el.addEventListener('click', () => {
         if (busy) return;
         if (!book.open) return wiggle(el);
@@ -344,6 +349,57 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     grid.style.setProperty('--gap', `${BOARD_BOX.gap}px`);
   }
   window.addEventListener('resize', sizeBoard);
+
+  // ---- her name's book (Slice 9C) ----
+  // One big tile with her name, written as she will write it ("Sara"). With no
+  // name she can write (none set, a character other than a to z, or too long for
+  // one line), the tile is faint and wiggles, and one grey line at the top tells
+  // a grown-up what to do on the setup page.
+  function drawNameBook(view, newStar) {
+    const mine = state;
+    const n = nameOf(readProfile().name);
+    view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}
+      <div class="board"><div class="name-tile tile faint" role="button" aria-label="name"></div></div>`;
+    const tile = view.querySelector('.name-tile');
+    tile.style.setProperty('--c', '#B87A00');
+    if (n.ok) {
+      tile.style.setProperty('--len', n.word.length);
+      const glyph = document.createElement('span');
+      glyph.className = 'glyph';
+      glyph.textContent = n.word; // a to z only (nameOf)
+      tile.appendChild(glyph);
+    } else tile.innerHTML = NAME_LINES;
+    if (readStars().includes(NAME_ID)) {
+      const star = document.createElement('span');
+      star.className = `star${newStar === NAME_ID ? ' new' : ''}`;
+      star.innerHTML = STAR;
+      tile.appendChild(star);
+    }
+    let ready = false;
+    const say = (reason) => showGameNote(nameNote(reason));
+    if (!n.ok) say(n.reason);
+    else {
+      // The name fits on one line? Its letters' own files give their widths.
+      Promise.all(n.letters.map((id) => loadChar(id, manifest))).then((chars) => {
+        if (state !== mine) return;
+        if (chars.some((c) => !c)) return; // a letter file is missing: stays faint
+        if (!nameFits(nameWidth(chars))) return say('too-long');
+        ready = true;
+        tile.classList.replace('faint', 'bright');
+      });
+    }
+    tile.addEventListener('click', () => {
+      if (busy) return;
+      if (!ready) return wiggle(tile, 'shake');
+      busy = true;
+      popSound();
+      tile.classList.add('picked');
+      setTimeout(() => {
+        busy = false;
+        go(navigate(state, { type: 'openName', ready: true }));
+      }, TILE_PICK_MS);
+    });
+  }
 
   // ---- the games book (Slices 5D, 5F and 5H; the two-step menu) ----
   // Step 1: a big picture tile per kind of game (src/games.js GAME_KINDS), with
@@ -569,6 +625,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   // ---- writing ----
   async function startWriting() {
     const mine = state;
+    if (state.char === NAME_ID) return startNameWriting(mine);
     const running = await startGame(els, {
       charId: state.char,
       manifest,
@@ -594,6 +651,28 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       if (upright) {
         // Pausing holds every animation on the page: take the picture away for
         // that moment, so its own animation starts again when it comes back.
+        els.turn.hidden = true;
+        game.pause?.();
+        els.turn.hidden = false;
+      }
+    }
+  }
+
+  // Her name (Slice 9C part 1: rounds 1 and 2; round 3, the star and reviews come in part 2).
+  async function startNameWriting(mine) {
+    const n = nameOf(readProfile().name);
+    const running = await startNameGame(els, {
+      letters: n.ok ? n.letters : [],
+      manifest,
+      debugOn,
+      onDone: () => {
+        if (state === mine) go(navigate(state, { type: 'letterDone' }));
+      },
+    });
+    if (state !== mine) running.stop();
+    else {
+      game = running;
+      if (upright) {
         els.turn.hidden = true;
         game.pause?.();
         els.turn.hidden = false;

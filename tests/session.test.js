@@ -145,9 +145,9 @@ test('gridFor picks the column count with the biggest tiles', () => {
 // ---------------------------------------------------------------------------
 // The bookshelf
 
-test('seven books in order; ABC, 123, Urdu, Games and Drawing open, the rest locked', () => {
-  assert.deepEqual(BOOKS.map((b) => b.id), ['abc', 'num', 'urdu', 'shapes', 'games', 'drawing', 'stories']);
-  assert.deepEqual(BOOKS.filter((b) => b.open).map((b) => b.id), ['abc', 'num', 'urdu', 'games', 'drawing']); // Slice 5E opens Drawing
+test('eight books in order, her name first; name, ABC, 123, Urdu, Games and Drawing open, the rest locked', () => {
+  assert.deepEqual(BOOKS.map((b) => b.id), ['name', 'abc', 'num', 'urdu', 'shapes', 'games', 'drawing', 'stories']); // Slice 9C: her name first
+  assert.deepEqual(BOOKS.filter((b) => b.open).map((b) => b.id), ['name', 'abc', 'num', 'urdu', 'games', 'drawing']); // Slice 5E opens Drawing
   assert.equal(isBookOpen('shapes'), false);
   assert.equal(isBookOpen('nope'), false);
 });
