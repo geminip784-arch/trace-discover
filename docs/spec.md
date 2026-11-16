@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.7 · Nov 16, 2026 · describes the app as built through Slice 9C part 1 (her name's book and its first two rounds; before it, Slice 9B part 2: the numbers 10 to 20 on the 123 board and in all three rounds; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.8 · Nov 16, 2026 · describes the app as built through Slice 9C part 1 (her name's book and its first two rounds; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -202,6 +202,8 @@ After a letter's last round, a place appears with 7 objects standing in it. The 
 
 After a number from 1 to 9, three placemats appear, each holding a different count of small things (eggs, cups, flowers…). She taps the mat with her number of things. It moves to the middle, and she taps each item once to count it; the numbers appear in the order she taps. Sometimes one item is golden. 0 has no count scene.
 
+**10 to 20 (Slice 9B part 3): ten-frames and counting on.** The things stand in ten-frames: two rows of five per ten, the first frame filled first, then the extras in the second frame row by row, its empty places faint (17: a full frame and 7 more). Every group shows both frames, so the three are drawn at the same size. The three placemats stand one above another, each as wide as fits (560 px at 1280 x 626, at least 88 px tall). The two wrong groups are also 10 to 20, and all three counts are at least 3 apart (`TEEN_APART`). The chosen group moves to the middle (each thing about 108 px), and she counts on: one tap on the full ten-frame counts ten (it glows gold and shows 10; for 20 the second full frame shows 20), then each extra counts on from 11. A tap on an extra before the ten does not count, and the frame pulses. The counting note climbs half a step per extra, so 20 is no higher than 9. Her shelf of finds keeps groups up to 20, drawn in ten-frames.
+
 Every find and every counted group joins her collection.
 
 ### Her shelf of finds
@@ -327,7 +329,7 @@ Every character is an ordered list of strokes in line units: y = 0 is the sky li
 
 ### Numbers
 
-- 0 to 9 are built, and 1 to 9 have count scenes. **10 to 20 (Slice 9B part 1)** are generated from the digit glyphs (`NUMBERS` in `data/glyphs.js`): the left digit, then the right digit moved right so that a quarter of a line (`NUMBER_GAP`, 0.25 line units) separates their ink, both at full height. Stroke order is the left digit first. Every plan is one of the left digit's plans followed by one of the right digit's (17: four plans, the 1 and the 7 each in one go or two). Each file also lists its `digits` and how far each is moved, for the copy-it round. Since part 2 they are on the 123 board and play all three rounds; their count scenes come in part 3.
+- 0 to 9 are built, and 1 to 9 have count scenes. **10 to 20 (Slice 9B part 1)** are generated from the digit glyphs (`NUMBERS` in `data/glyphs.js`): the left digit, then the right digit moved right so that a quarter of a line (`NUMBER_GAP`, 0.25 line units) separates their ink, both at full height. Stroke order is the left digit first. Every plan is one of the left digit's plans followed by one of the right digit's (17: four plans, the 1 and the 7 each in one go or two). Each file also lists its `digits` and how far each is moved, for the copy-it round. Since part 2 they are on the 123 board and play all three rounds; since part 3 they have count scenes (ten-frames and counting on, above).
 - Mirror-image numbers are common at this age. The app treats them as a direction cue, never as an error.
 - Optional later: Urdu numerals (۰ ۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹), which need their own font and stroke model.
 

@@ -65,8 +65,8 @@ test('stars, due reviews and opening a tile work for 10 to 20 as for 0 to 9', ()
   assert.deepEqual(navigate(board, { type: 'openChar', id: '17', manifest: MANIFEST }), { screen: 'write', char: '17', book: 'num' });
   assert.deepEqual(navigate(board, { type: 'openChar', id: '12', manifest: MANIFEST, review: true }), { screen: 'write', char: '12', book: 'num', review: true });
   assert.deepEqual(navigate({ screen: 'write', char: '17', book: 'num' }, { type: 'letterDone' }), board);
-  // No count scene for 10 to 20 until part 3: back to the board and its star.
-  assert.equal(afterWriting('17'), 'letterDone');
+  // Its count scene comes next (Slice 9B part 3).
+  assert.equal(afterWriting('17'), 'openScene');
 });
 
 test('reviews: a starred 17 is scheduled, comes due and is picked in board order (after 9)', () => {
