@@ -504,3 +504,51 @@ Object.assign(GLYPHS, LOWERCASE);
 
 // Lowercase letters that look the same in a mirror (checked like the capitals).
 MIRROR_SYMMETRIC.push('i', 'l', 'o', 't', 'v', 'w', 'x');
+
+// ---- Numbers 10 to 20 (Slice 9B) ----
+// Two digits side by side, built from the digit glyphs above: the left digit's
+// strokes, then the right digit's moved right, so stroke order is always left
+// digit first. The right digit's ink starts NUMBER_GAP after the left digit's
+// ink ends (the same gap for every number, whatever the digits' widths). Both
+// digits keep their height. Every plan is one plan of the left digit followed by
+// one plan of the right (every pairing; the default pairs the two defaults).
+// `digits` says which digits a number is made of and how far each is moved
+// (x, line units): the copy-it round (Slice 9B part 2) judges each digit on its own.
+
+export const NUMBER_GAP = 0.25; // line units between the two digits' ink
+export const NUMBER_IDS = Array.from({ length: 11 }, (_, k) => String(10 + k));
+
+// The leftmost and rightmost x of a glyph's ink (every plan has the same shape; the default is measured).
+function inkSpan(glyph) {
+  const xs = [];
+  for (const s of glyph.strokes) {
+    for (const p of s.pieces) {
+      if (p.type === 'line') for (const [x] of p.points) xs.push(x);
+      else {
+        const steps = Math.max(8, Math.ceil(Math.abs(p.to - p.from) / 0.25));
+        for (let i = 0; i <= steps; i++) xs.push(arcPoint(p.cx, p.cy, p.rx, p.ry, p.from + ((p.to - p.from) * i) / steps)[0]);
+      }
+    }
+  }
+  return { left: Math.min(...xs), right: Math.max(...xs) };
+}
+
+// How far a number's right digit is moved right: its ink starts NUMBER_GAP after
+// the left digit's ink ends (3's ink, for one, starts a little right of MARGIN).
+export const numberShift = (id) => inkSpan(GLYPHS[id[0]]).right + NUMBER_GAP - inkSpan(GLYPHS[id[1]]).left;
+
+const shiftPiece = (p, dx) => (p.type === 'line'
+  ? { ...p, points: p.points.map(([x, y]) => [x + dx, y]) }
+  : { ...p, cx: p.cx + dx });
+const shiftStroke = (s, dx) => ({ ...s, pieces: s.pieces.map((p) => shiftPiece(p, dx)) });
+
+export function numberGlyph(id) {
+  const [left, right] = id.split('');
+  const dx = numberShift(id);
+  const pairs = plansOf(GLYPHS[left]).flatMap((a) => plansOf(GLYPHS[right]).map((b) => [...a, ...b.map((s) => shiftStroke(s, dx))]));
+  const [strokes, ...plans] = pairs;
+  return { digits: [{ id: left, x: 0 }, { id: right, x: Math.round(dx * 1000) / 1000 }], strokes, ...(plans.length ? { plans } : {}) };
+}
+
+export const NUMBERS = Object.fromEntries(NUMBER_IDS.map((id) => [id, numberGlyph(id)]));
+Object.assign(GLYPHS, NUMBERS);

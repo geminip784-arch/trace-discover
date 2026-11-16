@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.5 · Nov 15, 2026 · describes the app as built through Slice 9A (lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.6 · Nov 16, 2026 · describes the app as built through Slice 9B part 1 (the numbers 10 to 20 as characters; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -307,7 +307,7 @@ Every character is an ordered list of strokes in line units: y = 0 is the sky li
 
 ### Numbers
 
-- 0 to 9 are built, and 1 to 9 have count scenes. 10 to 20 come in Slice 9B (two digits side by side, left digit first).
+- 0 to 9 are built, and 1 to 9 have count scenes. **10 to 20 (Slice 9B part 1)** are generated from the digit glyphs (`NUMBERS` in `data/glyphs.js`): the left digit, then the right digit moved right so that a quarter of a line (`NUMBER_GAP`, 0.25 line units) separates their ink, both at full height. Stroke order is the left digit first. Every plan is one of the left digit's plans followed by one of the right digit's (17: four plans, the 1 and the 7 each in one go or two). Each file also lists its `digits` and how far each is moved, for the copy-it round. They are on `glyphs.html` for review; the 123 board, the rounds and the count scenes follow in parts 2 and 3.
 - Mirror-image numbers are common at this age. The app treats them as a direction cue, never as an error.
 - Optional later: Urdu numerals (۰ ۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹), which need their own font and stroke model.
 

@@ -102,13 +102,15 @@ const strokeFile = (s) => (s.kind === 'dot'
 
 // The character file object for one glyph: the recorder's format, with each
 // stroke's part name, plus anyOrder (before strokes) when the glyph has one,
-// and its other stroke plans (Slice 5J, after strokes) when it has any.
+// its digits (Slice 9B, numbers 10 to 20, before strokes), and its other stroke
+// plans (Slice 5J, after strokes) when it has any.
 export function glyphCharacter(id, glyph) {
   const strokes = glyph.strokes.map(strokeFile);
   const built = buildCharacter(id, strokes);
   const { strokes: plain, ...head } = built;
   const out = { ...head };
   if (glyph.anyOrder) out.anyOrder = glyph.anyOrder;
+  if (glyph.digits) out.digits = glyph.digits;
   out.strokes = plain.map((st, k) => ({ kind: st.kind, part: strokes[k].part, points: st.points }));
   if (glyph.plans?.length) out.plans = glyph.plans.map((plan) => ({ strokes: plan.map(strokeFile) }));
   return out;

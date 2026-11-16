@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { GLYPHS, OVERRIDES, MIRROR_SYMMETRIC, MARGIN, plansOf, LOWERCASE, LOW } from '../data/glyphs.js';
+import { GLYPHS, OVERRIDES, MIRROR_SYMMETRIC, MARGIN, plansOf, LOWERCASE, LOW, NUMBER_IDS } from '../data/glyphs.js';
 import { STROKE_ORDER } from '../data/stroke-order.js';
 import { CHAR_IDS } from '../src/recording.js';
 import { charFile } from '../src/session.js';
@@ -24,7 +24,7 @@ const isDot = (s) => s.kind === 'dot';
 
 // ---- the definitions ----
 
-test('every capital, digit and lowercase letter has a definition, and nothing else', () => {
+test('every capital, digit, lowercase letter and number 10 to 20 has a definition, and nothing else', () => {
   assert.deepEqual(Object.keys(GLYPHS).sort(), [...CHAR_IDS].sort());
 });
 
@@ -207,10 +207,16 @@ const AGREED_PLANS = {
   z: [['zigzag'], ['top', 'slant', 'bottom']],
 };
 
+// Numbers 10 to 20 (Slice 9B): every plan of the left digit, each followed by
+// every plan of the right digit (tests/numbers.test.js checks the strokes themselves).
+const digitPlans = (d) => plansOf(GLYPHS[d]).map((p) => p.map((s) => s.part));
+const numberPlans = (id) => digitPlans(id[0]).flatMap((a) => digitPlans(id[1]).map((b) => [...a, ...b]));
+
 test('the stroke plans are the agreed ones, and every other character has only its default', () => {
   for (const id of CHAR_IDS) {
     const plans = plansOf(GLYPHS[id]).map((p) => p.map((s) => s.part));
-    if (AGREED_PLANS[id]) assert.deepEqual(plans, AGREED_PLANS[id], id);
+    if (NUMBER_IDS.includes(id)) assert.deepEqual(plans, numberPlans(id), id);
+    else if (AGREED_PLANS[id]) assert.deepEqual(plans, AGREED_PLANS[id], id);
     else assert.equal(plans.length, 1, `${id} has only its default plan`);
   }
 });
@@ -235,7 +241,7 @@ const sameShape = (a, b, tol) => {
 test('every plan has the same shape as the default (within 0.01), except the two noted', () => {
   // R's bump-and-leg stops its way back where the leg leaves (0.14 short of the stem),
   // and 9's circle-and-stem leaves out the stem's short top above the circle.
-  const NOTED = { R: 0.15, 9: 0.26 };
+  const NOTED = { R: 0.15, 9: 0.26, 19: 0.26 }; // 19: its 9
   for (const id of CHAR_IDS) {
     const plans = plansOf(GLYPHS[id]).map((p) => p.map(strokePath));
     for (let p = 1; p < plans.length; p++) {
@@ -257,7 +263,9 @@ test('no plan runs a part the other way: each plan stroke follows the default in
   // B's default stroke runs back along the middle to the stem and out again, so
   // its middle line is in it both ways; its 3-stroke plan is checked by hand below.
   // m's default runs back up between its arches in the same way, so it is left out too.
-  for (const id of CHAR_IDS.filter((c) => c !== 'B' && c !== 'm')) {
+  // Numbers (Slice 9B) are left out: each of their strokes is exactly a stroke of
+  // one of its digits' plans (tests/numbers.test.js), and those are checked here.
+  for (const id of CHAR_IDS.filter((c) => c !== 'B' && c !== 'm' && !NUMBER_IDS.includes(c))) {
     const plans = plansOf(GLYPHS[id]).map((p) => p.map(strokePath));
     const ink = plans[0];
     for (let p = 1; p < plans.length; p++) {
@@ -341,7 +349,7 @@ test('the files in data/chars/ are up to date with data/glyphs.js (run npm run g
   for (const id of GENERATED) assert.equal(read(`${charFile(id)}.json`), characterText(glyphCharacter(id, GLYPHS[id])), id);
 });
 
-test('data/chars/index.json lists all 62 characters: capitals, digits, then lowercase', () => {
+test('data/chars/index.json lists all 73 characters: capitals, digits, lowercase, then 10 to 20', () => {
   assert.deepEqual(JSON.parse(read('index.json')), CHAR_IDS);
 });
 
@@ -349,9 +357,11 @@ test('the file format is the recorder\'s: same fields in the same order', () => 
   // Plus, since Slice 5J, each stroke's part name and the other stroke plans after the strokes.
   const letter = ['id', 'script', 'case', 'family', 'direction', 'width', 'strokes'];
   const digit = ['id', 'script', 'family', 'direction', 'width', 'strokes'];
+  // Slice 9B: a number 10 to 20 also says which digits it is made of, before its strokes.
+  const number = ['id', 'script', 'family', 'direction', 'width', 'digits', 'strokes'];
   for (const id of GENERATED) {
     const keys = Object.keys(load(id)).filter((k) => k !== 'plans');
-    assert.deepEqual(keys, /\d/.test(id) ? digit : letter, id);
+    assert.deepEqual(keys, NUMBER_IDS.includes(id) ? number : /\d/.test(id) ? digit : letter, id);
     for (const s of load(id).strokes) assert.deepEqual(Object.keys(s), ['kind', 'part', 'points'], id);
   }
   assert.deepEqual(Object.keys(load('T')), ['id', 'script', 'case', 'family', 'direction', 'width', 'strokes', 'plans']);
@@ -449,7 +459,12 @@ test('join gaps: where she may draw two strokes in one go', (t) => {
   // The joins are on purpose: a corner (L, 7, 1, 4), a curve running into its bar (G),
   // or K's arm and leg meeting at the stem (Slice 5J).
   // Lowercase: k's arm and leg, and u's cup running into its stick.
-  assert.deepEqual(joined, { G: ['1-2'], K: ['2-3'], L: ['1-2'], 1: ['1-2'], 4: ['2-3'], 7: ['1-2'], k: ['2-3'], u: ['1-2'] });
+  // Numbers (Slice 9B): only their digits' own joins; the two digits never join.
+  assert.deepEqual(joined, {
+    G: ['1-2'], K: ['2-3'], L: ['1-2'], 1: ['1-2'], 4: ['2-3'], 7: ['1-2'], k: ['2-3'], u: ['1-2'],
+    10: ['1-2'], 11: ['1-2', '3-4'], 12: ['1-2'], 13: ['1-2'], 14: ['1-2', '4-5'], 15: ['1-2'],
+    16: ['1-2'], 17: ['1-2', '3-4'], 18: ['1-2'], 19: ['1-2'],
+  });
 });
 
 // ---- lowercase (Slice 9A) ----
