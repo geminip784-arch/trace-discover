@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { computeLayout, letterOffset, modelCard, cardMarkers, CARD, BOARD } from '../src/render.js';
+import { computeLayout, letterOffset, modelCard, cardMarkers, fitUnit, CARD, BOARD } from '../src/render.js';
 import { charFile } from '../src/session.js';
 
 const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
@@ -17,7 +17,7 @@ const BUTTONS_RIGHT = 136;
 
 const cardFor = (id, w, h) => {
   const char = load(id);
-  const full = computeLayout(w, h);
+  const full = computeLayout(w, h, char.width); // as src/game.js lays it out
   const layout = { ...full, lineEnd: modelCard(full, 0, char).lineEnd };
   const offset = letterOffset(layout, char.width);
   return { char, full, layout, offset, card: modelCard(full, offset, char) };
@@ -48,12 +48,28 @@ test('the writing lines leave room for her widest letter at 125%', () => {
     for (const id of MANIFEST) {
       const { char, layout } = cardFor(id, w, h);
       const room = (layout.lineEnd - Math.max(layout.originX, BUTTONS_RIGHT)) / layout.unit;
-      // Slice 9B part 1: 20 at 125% does not fit the full screen's bigger lines yet
-      // (part 2 fits the lines to a wide number). Every number fits at its own size.
-      const scale = id === '20' && h === 800 ? 1 : 1.25;
-      assert.ok(room > scale * char.width + 0.25, `${id}: ${room}`);
+      assert.ok(room >= 1.25 * char.width + 0.25 - 1e-9, `${id}: ${room}`);
     }
   }
+});
+
+test('Slice 9B: only a character too wide to copy at 125% gets smaller lines (20 on the full screen)', () => {
+  const smaller = [];
+  for (const [w, h] of SCREENS) {
+    for (const id of MANIFEST) {
+      const { char } = cardFor(id, w, h);
+      const plain = computeLayout(w, h);
+      const fitted = computeLayout(w, h, char.width);
+      if (fitted.unit < plain.unit) smaller.push(`${id} ${w}x${h}`);
+      else assert.deepEqual(fitted, plain, id);
+    }
+  }
+  assert.deepEqual(smaller, ['20 1280x800']);
+  const twenty = computeLayout(1280, 800, load('20').width);
+  assert.ok(Math.abs(twenty.unit - fitUnit(1280, load('20').width)) < 1e-9);
+  assert.ok(twenty.unit > 0.85 * computeLayout(1280, 800).unit, `20 stays big: ${twenty.unit}`);
+  // The four lines stay centred.
+  assert.ok(Math.abs(twenty.top + 0.75 * twenty.unit - 400) < 1e-9);
 });
 
 test('toMain puts the card letter inside the card', () => {

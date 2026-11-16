@@ -8,7 +8,7 @@
 // float on the left.
 
 import {
-  BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, gridFor, localDay,
+  BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, boardGrid, localDay,
   startScreen, navigate, tuneFor, bookOf, tileColorOf, BOARD_ORDER, booksWithDue, pageNow, pageSwitch,
 } from './session.js';
 import {
@@ -338,7 +338,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     if (!grid) return;
     const n = grid.children.length;
     const space = boardSpace(window.innerWidth, window.innerHeight);
-    const { cols, size } = gridFor(n, space.w, space.h, BOARD_BOX.gap);
+    const { cols, size } = boardGrid(state.book, n, space.w, space.h, BOARD_BOX.gap); // 123: rows of ten (Slice 9B)
     grid.style.setProperty('--cols', cols);
     grid.style.setProperty('--size', `${size}px`);
     grid.style.setProperty('--gap', `${BOARD_BOX.gap}px`);

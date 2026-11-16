@@ -5,6 +5,7 @@ import { SCRIPT, SCRIPT_IDS, CATEGORIES, PARTS, LOOKALIKE_IDS, clipById, clipFor
 import { OBJECTS, THINGS } from '../data/finds.js';
 import { TRACE_NOTES, COPY_NOTES, GAME_NOTES, copyNote } from '../src/notes.js';
 import { LINES } from '../src/audio.js';
+import { GLYPHS, plansOf } from '../data/glyphs.js';
 import { exportScript, wordsFor } from '../src/voice.js';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -46,8 +47,9 @@ test('letter sounds follow the standard pure sounds', () => {
   assert.match(SOUNDS.y.hint, /yo-yo/);
 });
 
-test('every number 0 to 9 has a clip', () => {
-  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+test('every number 0 to 20 has a clip', () => {
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
   words.forEach((w, d) => assert.equal(clipById(`number-${d}`)?.words, w));
 });
 
@@ -80,13 +82,19 @@ test('every line src/notes.js can show has a clip with exactly those words', () 
     ...LOOKALIKE_IDS.map((id) => copyNote({ ok: false, reason: 'looks-like', lookalike: id })),
     copyNote({ ok: true, mirrored: true }),
     copyNote({ ok: true, habits: { usual: false } }),
+    // Numbers 10 to 20 (Slice 9B): every line a number's copy can show (src/copy.js scoreNumber).
+    ...[...'0123456789'].flatMap((d) => [
+      copyNote({ ok: false, reason: 'missing-digit', missing: { part: d } }),
+      copyNote({ ok: false, reason: 'swapped-digits', first: d }),
+      ...[...new Set(plansOf(GLYPHS[d]).flat().map((s) => s.part))].map((part) => copyNote({ ok: false, reason: 'missing-stroke', missing: { part: `${part} of the ${d}` } })),
+    ]),
   ]);
   for (const line of lines) assert.ok(clipForText(line), `no clip for "${line}"`);
 });
 
 test('the parts list covers every part name, and look-alikes cover every letter and digit', () => {
   for (const p of ['bar', 'stem', 'tail', 'bumps', 'circle and stem']) assert.ok(PARTS.includes(p), p);
-  assert.equal(LOOKALIKE_IDS.length, 36);
+  assert.equal(LOOKALIKE_IDS.length, 47); // A to Z, 0 to 9, and 10 to 20 (Slice 9B)
 });
 
 test("Jugnu's prompts are all there", () => {

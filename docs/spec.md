@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.6 · Nov 16, 2026 · describes the app as built through Slice 9B part 1 (the numbers 10 to 20 as characters; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.6 · Nov 16, 2026 · describes the app as built through Slice 9B part 2 (the numbers 10 to 20 on the 123 board and in all three rounds; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -43,7 +43,7 @@ The home button (top of the left column) always returns here. The back button go
 
 Each board is a grid of large tiles, one per character, each in its own color. No tile color is red, and each one is dark enough to read on white.
 
-- **ABC**: two pages, A to Z and a to z (Slice 9A). **123**: 0 to 9. **Urdu**: the 39 letters in qaida order, filling from the top right.
+- **ABC**: two pages, A to Z and a to z (Slice 9A). **123** (Slice 9B part 2): 0 to 20 in rows of ten, 0 to 9 on the first row, 10 to 19 on the second and 20 on the third, so each teen sits under its ones digit; the tiles are 95 px at 1280 x 626 and at 1280 x 800. **Urdu**: the 39 letters in qaida order, filling from the top right.
 - **The ABC book's page switch (Slice 9A).** The book opens on the capitals page. The last place in the grid is a switch tile: a picture of "A a", the page it turns to big and bright, the page she is on small and faint, on a white tile with a dashed gold edge and a folded page corner (no text, no star). A tap turns the page: a pop, and the tiles slide across. With 26 letters and the switch, the tiles are 120 px at 1280 x 626 (7 columns, 4 rows). Each lowercase letter has its capital's color. When a letter on the other page is due for review today, the switch glows and carries the firefly light too. After a letter and its scene she comes back to that letter's page.
 - A tile is bright (tappable) when its character file exists in `data/chars/index.json`. Today every capital, digit and lowercase letter is bright. Urdu tiles stay faint until Slice 10.
 - A character she has finished with no help from Jugnu shows a gold star on its tile.
@@ -113,6 +113,12 @@ No plan runs any part the other way, except M and N from the bottom (their stem 
   - *Parts judged on their own ink.* Where two parts of a lowercase letter run over each other (u's stick comes back down its cup), each is judged only on the stretch that is its own. Capitals are judged as before.
   - *Line position.* Where a lowercase letter sits is part of the letter (p and P have the same shape and height). After shape and size: a tail letter (g j p q y) needs ink at least 0.15 below the grass line; a tall letter (b d f h k l) needs ink at least 0.2 above the fence (t: 0.1); a small letter needs at least 70% of its ink between 0.15 above the fence and 0.15 below the grass (`POSITION` in `src/copy.js`). Capitals and digits are never checked.
   - Against crude lowercase test letters (wobbly, slanted, a round left open, a stick a little away, every plan, `tests/crude-lower.js`), 186 of 186 pass.
+- **Numbers 10 to 20 (Slice 9B part 2): each digit judged on its own.** Her strokes are split into a left and a right digit at the widest gap between them (with no gap, a number-wide letter is cut where both halves read best as the two digits; a narrow one is a single digit). Each half is judged exactly as that digit is on its own (shape, every part, size), and the whole number must be 75% to 125% of the model's height. Both digits must be right. A digit is compared with 0 to 9 and its look-alike only, never with 10 to 20, so single digits are judged as before. Habits are read on the whole number: the right digit first passes, and Jugnu shows the usual way. A reversed digit passes and is coached. Why a number did not count:
+  - a wrong digit: "Almost! That looks like 13." (the number it makes), or the part of the digit that is missing: "Almost! The slant of the 7 is missing.";
+  - the digits swapped (21 for 12; a whole number turned round in a mirror too): "Almost! The 1 comes first." Her number shows beside the model;
+  - a digit left out: "Almost! The 7 is missing." Jugnu draws that digit on the model card;
+  - too small or too big: as for any letter.
+- **Wide numbers on the full screen (Slice 9B part 2).** The lines shrink a little for a character too wide to write at 125% beside the model card (`fitUnit` in `src/render.js`): only 20 on the full screen (1280 x 800), whose unit goes from 440 to 388 px. It keeps that size in all three rounds. Every other character keeps its size.
 - **Mirrored.** A letter written the other way round passes (not b, d, p or q, above). Jugnu then shows the right way round once on the card, and the letter goes on the practice-more list (reason "mirrored"). Reversals are a direction cue, never an error.
 - **Pass:** a chime, sparkles along her strokes, and the round light comes on as for any round. When it is the last round, her own letter glows.
 - **Fail: why, first.** Before her letter fades, the screen shows why, with no red and no sound:
@@ -307,7 +313,7 @@ Every character is an ordered list of strokes in line units: y = 0 is the sky li
 
 ### Numbers
 
-- 0 to 9 are built, and 1 to 9 have count scenes. **10 to 20 (Slice 9B part 1)** are generated from the digit glyphs (`NUMBERS` in `data/glyphs.js`): the left digit, then the right digit moved right so that a quarter of a line (`NUMBER_GAP`, 0.25 line units) separates their ink, both at full height. Stroke order is the left digit first. Every plan is one of the left digit's plans followed by one of the right digit's (17: four plans, the 1 and the 7 each in one go or two). Each file also lists its `digits` and how far each is moved, for the copy-it round. They are on `glyphs.html` for review; the 123 board, the rounds and the count scenes follow in parts 2 and 3.
+- 0 to 9 are built, and 1 to 9 have count scenes. **10 to 20 (Slice 9B part 1)** are generated from the digit glyphs (`NUMBERS` in `data/glyphs.js`): the left digit, then the right digit moved right so that a quarter of a line (`NUMBER_GAP`, 0.25 line units) separates their ink, both at full height. Stroke order is the left digit first. Every plan is one of the left digit's plans followed by one of the right digit's (17: four plans, the 1 and the 7 each in one go or two). Each file also lists its `digits` and how far each is moved, for the copy-it round. Since part 2 they are on the 123 board and play all three rounds; their count scenes come in part 3.
 - Mirror-image numbers are common at this age. The app treats them as a direction cue, never as an error.
 - Optional later: Urdu numerals (۰ ۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹), which need their own font and stroke model.
 

@@ -20,7 +20,8 @@ const ALL = JSON.parse(readFileSync(new URL('../data/chars/index.json', import.m
 const CHARS = Object.fromEntries(ALL.map((id) => [id, load(id)]));
 // The characters on the boards. Lowercase (Slice 9A) joins the ABC board, and
 // these judging tests, in the second part of the slice, where its judging is set up.
-const IDS = ALL.filter((id) => bookOf(id));
+// Single characters: numbers 10 to 20 are judged digit by digit (tests/numbers-copy.test.js).
+const IDS = ALL.filter((id) => bookOf(id) && !/^\d\d$/.test(id));
 const othersOf = (id) => compareIds(id).map((i) => CHARS[i]);
 // As the game does: her strokes against the character, with its board and look-alikes.
 const judge = (id, strokes) => scoreCopy(strokes, CHARS[id], { others: othersOf(id) });

@@ -270,7 +270,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   function applyLayout() {
     const w = els.area.clientWidth || window.innerWidth;
     const h = els.area.clientHeight || window.innerHeight;
-    const full = computeLayout(w, h);
+    const full = computeLayout(w, h, char.width); // a wide number gets smaller lines (Slice 9B)
     if (isCopy()) {
       // The writing lines stop short of the model card at their right end.
       layout = { ...full, lineEnd: modelCard(full, 0, char).lineEnd };
@@ -411,7 +411,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // Resolves false if stopped.
   async function showWhy(result) {
     const how = copyShow(result);
-    if (how === 'part') return showOnCard([markPath(result.missing.points)]);
+    // A missing digit (Slice 9B) is several strokes: `paths`, all drawn.
+    if (how === 'part') return showOnCard((result.missing.paths ?? [result.missing.points]).map((pts) => markPath(pts)));
     if (how === 'slow') return showOnCard(modelPaths(), CONFIG.copySlowMs);
     phase = 'held';
     const hers = boxOf(copy.strokes);
@@ -442,7 +443,9 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
       const oy = box.y + (box.h - h) / 2;
       const lines = copy.strokes.map((pts) => pts.map(([x, y]) => [ox + (x - hers.x0) * scale, oy + (y - hers.y0) * scale]));
       fx.beside(lines, box, CARD.letter.width * card.k, CONFIG.copyReasonMs);
-      if (result.missing) fx.partGlow(markPath(result.missing.points).map(card.toMain).map(toPx), CARD.letter.width * card.k, CONFIG.copyReasonMs);
+      for (const pts of result.missing ? result.missing.paths ?? [result.missing.points] : []) {
+        fx.partGlow(markPath(pts).map(card.toMain).map(toPx), CARD.letter.width * card.k, CONFIG.copyReasonMs);
+      }
     }
     await wait(CONFIG.copyReasonMs);
     return alive;

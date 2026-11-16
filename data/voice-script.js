@@ -35,7 +35,10 @@ export const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, 
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const DIGITS = '0123456789'.split('');
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+  'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+// Slice 9B: the numbers 10 to 20 (names, and "That looks like 13.").
+const TEENS = Array.from({ length: 11 }, (_, k) => String(10 + k));
 
 // How to say a letter's name, when it is not obvious.
 const NAME_HINTS = { H: 'Say "aitch".', W: 'Say "double-u".', Y: 'Say "why".', Z: 'Say "zed" or "zee", the way you say it at home.' };
@@ -78,7 +81,7 @@ export const SOUNDS = {
 export const PARTS = [...new Set(Object.values(GLYPHS).flatMap((g) => plansOf(g).flat().map((s) => s.part)).filter(Boolean))].sort();
 
 // Every character a copy can be taken for ("Almost! That looks like R.").
-export const LOOKALIKE_IDS = [...LETTERS, ...DIGITS];
+export const LOOKALIKE_IDS = [...LETTERS, ...DIGITS, ...TEENS];
 
 // Jugnu's lines: the extra prompts first, then every line in src/audio.js LINES
 // except `picture` ("B is for ball!"), which Slice 6B puts together from the
@@ -147,6 +150,17 @@ function noteClips() {
     const hint = /\d/.test(id) ? `Say the number: "${NUMBER_WORDS[Number(id)]}".` : `Say the letter name: "${id}".`;
     add(`looks-like-${slug(id)}`, copyNote({ ok: false, reason: 'looks-like', lookalike: id }), hint);
   }
+  // Numbers 10 to 20 (Slice 9B): a digit left out, the digits swapped, and a
+  // digit's part left out ("Almost! The slant of the 7 is missing.").
+  DIGITS.forEach((d, i) => {
+    const say = `Say the number: "${NUMBER_WORDS[i]}".`;
+    add(`digit-missing-${d}`, copyNote({ ok: false, reason: 'missing-digit', missing: { part: d } }), say);
+    add(`digit-first-${d}`, copyNote({ ok: false, reason: 'swapped-digits', first: d }), say);
+    const parts = [...new Set(plansOf(GLYPHS[d]).flat().map((s) => s.part))];
+    for (const part of parts) {
+      add(`missing-${slug(part)}-of-${d}`, copyNote({ ok: false, reason: 'missing-stroke', missing: { part: `${part} of the ${d}` } }), `${kind} ${say}`);
+    }
+  });
   return out;
 }
 
@@ -160,7 +174,7 @@ function buildScript() {
     const s = SOUNDS[L.toLowerCase()];
     push({ id: `sound-${L.toLowerCase()}`, words: s.words, hint: s.hint, category: 'sounds' });
   }
-  DIGITS.forEach((d, i) => push({ id: `number-${d}`, words: NUMBER_WORDS[i], hint: `The number ${d}.`, category: 'numbers' }));
+  [...DIGITS, ...TEENS].forEach((d) => push({ id: `number-${d}`, words: NUMBER_WORDS[Number(d)], hint: `The number ${d}.`, category: 'numbers' }));
   for (const o of OBJECTS) {
     push({ id: `find-${o.id}`, words: o.word, hint: `Starts with the ${o.letter} sound. Just the word.`, category: 'finds' });
   }

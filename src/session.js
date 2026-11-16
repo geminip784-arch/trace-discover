@@ -24,11 +24,14 @@ export const URDU = [
 // The ABC book has two pages (Slice 9A): capitals, then lowercase, switched by a
 // picture tile at the end of the grid. `tiles` is every letter of the book (both
 // pages); `pages` holds each page's tiles in board order.
+// The 123 book (Slice 9B part 2): 0 to 20 in rows of ten (`cols`), so each
+// teen sits under its ones digit (17 under 7) and 20 under 0.
 const UPPER = LATIN('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+const NUMBERS = [...LATIN('0123456789'), ...Array.from({ length: 11 }, (_, k) => String(10 + k)).map((id) => ({ id, glyph: id }))];
 const LOWER = LATIN('abcdefghijklmnopqrstuvwxyz');
 export const BOARDS = {
   abc: { tiles: [...UPPER, ...LOWER], pages: { upper: UPPER, lower: LOWER }, dir: 'ltr', script: 'latin' },
-  num: { tiles: LATIN('0123456789'), dir: 'ltr', script: 'latin' },
+  num: { tiles: NUMBERS, dir: 'ltr', script: 'latin', cols: 10 },
   urdu: { tiles: URDU, dir: 'rtl', script: 'urdu' },
 };
 
@@ -139,6 +142,17 @@ export function gridFor(n, w, h, gap = 12, max = 190) {
   }
   return { cols: best.cols, rows: best.rows, size: best.size };
 }
+
+// The tile size (CSS px) for n tiles in a fixed number of columns (the 123
+// book's rows of ten), in a w x h box: { cols, rows, size }.
+export function gridForCols(n, cols, w, h, gap = 12, max = 190) {
+  const rows = Math.ceil(n / cols);
+  return { cols, rows, size: Math.floor(Math.min((w - gap * (cols - 1)) / cols, (h - gap * (rows - 1)) / rows, max)) };
+}
+
+// A board page's grid: the book's fixed columns, or the best fit (gridFor).
+export const boardGrid = (book, n, w, h, gap = 12) => (BOARDS[book]?.cols
+  ? gridForCols(n, BOARDS[book].cols, w, h, gap) : gridFor(n, w, h, gap));
 
 // ---------------------------------------------------------------------------
 // The bookshelf

@@ -33,10 +33,27 @@ export const INK = {
   dimAlpha: 0.35, // off the path, or a stroke that started in the wrong place
 };
 
+// The button column on the left (src/session.js BOARD_BOX.left): her writing room starts right of it.
+export const BUTTONS_RIGHT = 136;
+// How big a copy may be (src/copy.js COPY_SIZE.max), and room to spare beside it, in units.
+export const COPY_ROOM = { size: 1.25, spare: 0.25 };
+
+// The biggest unit (px) at which a character `charWidth` units wide, written
+// at COPY_ROOM.size, still fits between the buttons and the copy round's model
+// card (Slice 9B part 2: 20 on the full screen). The other rounds use the same
+// unit, so the character keeps its size through all three rounds.
+export function fitUnit(width, charWidth) {
+  const units = COPY_ROOM.size * charWidth + COPY_ROOM.spare + PAD_UNITS
+    + CARD.scale * (charWidth + 2 * CARD.pad) + CARD.gap;
+  return (width - BUTTONS_RIGHT) / units;
+}
+
 // Pure maths, no DOM: sizes for a viewport of width x height CSS px.
-export function computeLayout(width, height) {
+// charWidth (optional, line units): the lines shrink for a character too wide
+// to copy at full size (fitUnit); no capital, digit or lowercase letter is.
+export function computeLayout(width, height, charWidth = 0) {
   const capped = Math.min(height, MAX_HEIGHT);
-  const unit = UNIT_SHARE * capped;
+  const unit = Math.min(UNIT_SHARE * capped, charWidth > 0 ? fitUnit(width, charWidth) : Infinity);
   const areaWidth = width;
   return {
     unit,
