@@ -436,8 +436,9 @@ test('the collection keeps the newest 500 finds and only well-formed ones', () =
   for (let i = 0; i < 505; i++) list = addFind(list, { o: 'egg', i });
   assert.equal(list.length, 500);
   assert.equal(list[0].i, 5);
-  assert.deepEqual(cleanFinds([{ o: 'egg' }, { o: 'nope' }, { g: 'cup', n: 4, gold: true }, { g: 'cup', n: 12 }, null, 'x']),
-    [{ o: 'egg' }, { g: 'cup', n: 4, gold: true }]);
+  // Counted groups of 1 to 20 (10 to 20 since Slice 9B part 3); 21 is not a group she can count.
+  assert.deepEqual(cleanFinds([{ o: 'egg' }, { o: 'nope' }, { g: 'cup', n: 4, gold: true }, { g: 'cup', n: 12 }, { g: 'cup', n: 21 }, null, 'x']),
+    [{ o: 'egg' }, { g: 'cup', n: 4, gold: true }, { g: 'cup', n: 12 }]);
   assert.deepEqual(cleanFinds('nope'), []);
   assert.equal(lastGroupKind([{ g: 'cup', n: 2 }, { o: 'egg' }, { g: 'star', n: 3 }, { o: 'ink' }]), 'star');
   assert.equal(lastGroupKind([{ o: 'egg' }]), null);

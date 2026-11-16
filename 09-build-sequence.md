@@ -113,7 +113,7 @@ Note: **Slice 6B is parked** until we have the school's phonics programme. `voic
 Two digits side by side, left digit first.
 
 **Done when:**
-- [ ] 10 to 20 play all three rounds, and count scenes reach 20
+- [x] 10 to 20 play all three rounds, and count scenes reach 20
 
 ### 9C — Words level
 Short words made of letters she has starred.
