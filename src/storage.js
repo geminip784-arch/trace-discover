@@ -389,3 +389,34 @@ export function savePracticeMore(list, store = activeStore()) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Her name (Slice 9C). Its practice is saved under one id (src/name.js NAME_ID)
+// like any character's: rounds, helper, star, review and the practice-more list.
+// A changed name is a new word: resetName clears all of that, so she starts it
+// fresh. Returns true when everything was cleared.
+export function resetName(id, store = activeStore()) {
+  try {
+    const stars = readStars(store);
+    if (stars.includes(id)) store.setItem(STARS_KEY, JSON.stringify(stars.filter((s) => s !== id)));
+    clearRounds(id, store);
+    const helper = readAllHelper(store);
+    if (Object.hasOwn(helper, id)) {
+      delete helper[id];
+      store.setItem(HELPER_KEY, JSON.stringify(helper));
+    }
+    const reviews = readReviews(store);
+    const letters = { ...reviews.letters };
+    delete letters[id];
+    saveReviews({
+      ...reviews,
+      letters,
+      graduated: reviews.graduated.filter((g) => g !== id),
+      today: reviews.today ? { ...reviews.today, ids: reviews.today.ids.filter((x) => x !== id) } : null,
+    }, store);
+    savePracticeMore(readPracticeMore(store).filter((e) => e.id !== id), store);
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -67,8 +67,9 @@ export function tileColorOf(id) {
   return null;
 }
 
-// The board each character is on, or null.
+// The board each character is on ('name' for her name, Slice 9C), or null.
 export function bookOf(id) {
+  if (id === NAME_BOOK) return NAME_BOOK;
   for (const [book, board] of Object.entries(BOARDS)) {
     if (board.tiles.some((t) => t.id === id)) return book;
   }
@@ -159,7 +160,10 @@ export const boardGrid = (book, n, w, h, gap = 12) => (BOARDS[book]?.cols
 
 // Books in shelf order, left to right. `open: false` books are faint with a
 // lock: a tap makes them wiggle and does nothing else.
+// Slice 9C: her name's book stands first.
+export const NAME_BOOK = 'name';
 export const BOOKS = [
+  { id: NAME_BOOK, color: '#F9A825', spine: '#B87A00', open: true },
   { id: 'abc', color: '#E53935', spine: '#A82420', open: true },
   { id: 'num', color: '#1E88E5', spine: '#135FA6', open: true },
   { id: 'urdu', color: '#43A047', spine: '#2C7330', open: true },
@@ -200,6 +204,8 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   write  the tracing game for char; book is the board she returns to (or null);
 //          review: true for a review (one copy-it round, src/review.js)
 //   find   the find or count scene after the last round of char (same book)
+//   name   her name's book (Slice 9C): one tile with her name. Writing her name
+//          is { screen: 'write', char: 'name', book: 'name' }
 //   toys   her shelf of finds, from the toy box on the bookshelf
 
 // The first screen. ?char=X goes straight to writing X; ?door=1 always shows the door.
@@ -235,8 +241,10 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //   { type: 'turnPage' }                 board -> the book's other page (ABC only)
 //   { type: 'openChar', id, manifest, review } board -> write (faint characters: no change);
 //                                        review: true when the tile is due for review
+//   { type: 'openName', ready }          name -> write her name (ready: false, no name to write: no change)
 //   { type: 'openScene' }                write -> find (the same char and book)
-//   { type: 'letterDone' }               write or find -> its board, on the letter's page (or the shelf)
+//   { type: 'letterDone' }               write or find -> its board, on the letter's page (or the shelf);
+//                                        her name -> the name book
 //   { type: 'openToys' }                 shelf -> toys
 //   { type: 'openKind', kind }           games step 1 -> step 2 (that kind's sets)
 //   { type: 'openGame', game }           games step 2 -> play (only that kind's sets)
@@ -246,7 +254,7 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //   { type: 'pictureDone' }              dots -> drawing
 //   { type: 'back' }                     play -> games step 2; games step 2 -> step 1;
 //                                        dots or paper -> drawing;
-//                                        games step 1, drawing or toys -> shelf
+//                                        games step 1, drawing, toys or the name book -> shelf
 //   { type: 'home' }                     any screen -> shelf
 export function navigate(state, event) {
   const { screen } = state;
@@ -259,6 +267,7 @@ export function navigate(state, event) {
       if (screen !== 'shelf' || !isBookOpen(event.book)) return state;
       if (event.book === 'games') return { screen: 'games' };
       if (event.book === 'drawing') return { screen: 'drawing' };
+      if (event.book === NAME_BOOK) return { screen: NAME_BOOK };
       return BOARDS[event.book] ? { screen: 'board', book: event.book } : state;
     }
     case 'turnPage': {
@@ -274,10 +283,13 @@ export function navigate(state, event) {
       const write = { screen: 'write', char: event.id, book: state.book };
       return event.review === true ? { ...write, review: true } : write;
     }
+    case 'openName':
+      return screen === NAME_BOOK && event.ready === true ? { screen: 'write', char: NAME_BOOK, book: NAME_BOOK } : state;
     case 'openScene':
       return screen === 'write' ? { screen: 'find', char: state.char, book: state.book } : state;
     case 'letterDone':
       if (screen !== 'write' && screen !== 'find') return state;
+      if (state.book === NAME_BOOK) return { screen: NAME_BOOK };
       return state.book ? boardState(state.book, pageOf(state.char)) : SHELF;
     case 'openToys':
       return screen === 'shelf' ? { screen: 'toys' } : state;
@@ -298,7 +310,7 @@ export function navigate(state, event) {
       if (screen === 'play') return setsOf(state.game);
       if (screen === 'games' && state.kind) return { screen: 'games' };
       if (screen === 'dots' || screen === 'paper') return { screen: 'drawing' };
-      return screen === 'games' || screen === 'drawing' || screen === 'toys' ? SHELF : state;
+      return ['games', 'drawing', 'toys', NAME_BOOK].includes(screen) ? SHELF : state;
     default:
       return state;
   }
@@ -307,7 +319,7 @@ export function navigate(state, event) {
 // Which background tune plays on a screen: none at the door; a calm, quiet one while she writes.
 export function tuneFor(screen) {
   if (screen === 'shelf' || screen === 'toys') return 'shelf';
-  if (['board', 'find', 'games', 'play', 'drawing', 'dots', 'paper'].includes(screen)) return 'board';
+  if (['board', 'name', 'find', 'games', 'play', 'drawing', 'dots', 'paper'].includes(screen)) return 'board';
   if (screen === 'write') return 'write';
   return null;
 }

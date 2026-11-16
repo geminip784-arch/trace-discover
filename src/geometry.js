@@ -131,3 +131,24 @@ export function createLiveTracker(ref, stage = 1, cfg = DEFAULTS) {
     },
   };
 }
+
+// ---- A floor on the leeway, in screen px (Slice 9C) ----
+// The tolerances above are line units, so smaller lines (her name, Slice 9C)
+// would make them narrower on screen. withMinLeeway gives a copy of `cfg` whose
+// startRadius, tolerance and dotRadius are each at least `minPx` screen px at
+// `unit` px per line unit. Nothing is ever made narrower, and DEFAULTS itself is
+// never changed. Single letters do not use it.
+export const MIN_LEEWAY_PX = 45;
+export function withMinLeeway(cfg, unit, minPx = MIN_LEEWAY_PX) {
+  const floor = minPx / unit;
+  const stages = {};
+  for (const [k, s] of Object.entries(cfg.stages)) {
+    stages[k] = {
+      ...s,
+      startRadius: Math.max(s.startRadius, floor),
+      tolerance: Math.max(s.tolerance, floor),
+      dotRadius: Math.max(s.dotRadius, floor),
+    };
+  }
+  return { ...cfg, stages };
+}

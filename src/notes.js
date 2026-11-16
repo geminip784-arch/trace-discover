@@ -66,3 +66,12 @@ export const GAME_NOTES = {
 };
 
 export const gameNote = (kind) => GAME_NOTES[kind] ?? null;
+
+// Her name's book (Slice 9C): one grey line on the name page when there is no
+// name to write yet (src/name.js nameOf reasons, and 'too-long'). For a grown-up.
+export const NAME_NOTES = {
+  none: 'Add her name on the setup page (index.html?setup=1).',
+  unsupported: 'Her name can use the letters a to z only. See the setup page.',
+  'too-long': 'Her name is too long for one line. See the setup page.',
+};
+export const nameNote = (reason) => NAME_NOTES[reason] ?? null;

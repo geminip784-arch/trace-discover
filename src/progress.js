@@ -236,3 +236,30 @@ export function applyHelperCopy(state, { ok, hinted = false }, h = HELPER) {
   if (s.level <= h.start) return { ...s, fails: 0 };
   return { level: s.level - 1, passes: 0, fails: 0 };
 }
+
+// ---------------------------------------------------------------------------
+// Her name (Slice 9C): the tracing rounds go letter by letter
+//
+// In rounds 1 and 2 she traces her name one letter at a time, in order. Each
+// letter's strokes use the rules above (applyLift, applyPlanPass). When a letter
+// is finished and Jugnu drew one of its strokes, only that letter is traced
+// again, once (the round does not start again). If Jugnu helps a second time,
+// the letter counts with help, so she is never stuck. Any help means no gold star.
+// The state: { letter (the one to trace now), done: [bool], retraced: [bool] }.
+
+export const startNameRound = (n) => ({ letter: 0, done: noneDone(n), retraced: noneDone(n) });
+
+// Letter `letter` is finished. assisted: Jugnu drew one of its strokes.
+// Returns { state, again, roundDone }: again: trace this letter once more.
+export function finishNameLetter(np, { assisted }) {
+  const i = np.letter;
+  if (assisted && !np.retraced[i]) {
+    const retraced = [...np.retraced];
+    retraced[i] = true;
+    return { state: { ...np, retraced }, again: true, roundDone: false };
+  }
+  const done = [...np.done];
+  done[i] = true;
+  const letter = firstUnfinished(done);
+  return { state: { ...np, done, letter }, again: false, roundDone: letter >= done.length };
+}

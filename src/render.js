@@ -287,7 +287,9 @@ const GAME_TRACK = {
   arrow: { color: '#2F4BD6', size: 0.042 },
 };
 
-export function drawStageTrack(svg, layout, char, offset, { stage, done }) {
+// markers: false draws the track alone, with no start dots (her name, Slice 9C:
+// only the letter she traces now has them).
+export function drawStageTrack(svg, layout, char, offset, { stage, done, markers: withMarkers = true }) {
   const { unit } = layout;
   const look = trackLook(stage);
   const px = letterToPx(layout, offset);
@@ -352,7 +354,7 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done }) {
   });
 
   // Small numbers first, the next stroke's dot last, so nothing covers it.
-  const markers = startMarkers(char, done, stage);
+  const markers = withMarkers ? startMarkers(char, done, stage) : [];
   markers.sort((a, b) => (a.kind === 'small' ? 0 : 1) - (b.kind === 'small' ? 0 : 1));
   const ring = MARKERS.ring * unit;
   for (const m of markers) {

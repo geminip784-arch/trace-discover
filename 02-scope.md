@@ -24,7 +24,7 @@ Goal: a version she plays daily for two weeks, so we learn whether she enjoys it
 4. **6** Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word
 5. **9A** Lowercase
 6. **9B** Numbers 10 to 20
-7. **9C** Words level
+7. **9C** Write my name; **9D** Words level
 8. **10** Urdu: dot strokes, the Urdu font, recorder support, Dot Detective
 9. **8** Parent zone: lock, settings, progress, last attempts, weekly wrong starts, reset
 10. **7** Install as an app

@@ -149,3 +149,11 @@ counting thing), fairy (Jugnu is the only character).
 - **[later]** The three stacked placemats stand in the same place in every room (`ROW_SPOTS` in `src/finds.js`), over the room's furniture (the classroom's chalkboard sits behind the top one). The mats are opaque, so it reads well; if a room looks crowded, give each room its own row spots.
 - **[6B]** Counting on says "ten" for the frame and then "eleven", "twelve"... once the voice pack plays (the number clips `number-10` ... `number-20` are in the script).
 - **[later]** Missing piece, match and the other games stay at 1 to 9. A "numbers to things" set for 10 to 20 in ten-frames would be a natural next game.
+
+## Slice 9C part 1: her name's book, rounds 1 and 2
+
+- **[9C part 2]** After round 2 the practice ends for now (no round 3, star or review). Part 2 adds the copy-it round, the reward, the name card on her shelf of finds and reviews; `name-game.js` then stops treating round 3 as the end.
+- **[later]** The 45 px floor covers the start radius, path tolerance and dot radius. A dot (i, j) must also be a tap no longer than `DOT_MAX` (0.2 units, about 23 px at the smallest lines); if her dots on a long name are often not counted, give `DOT_MAX` a px floor too.
+- **[later]** In rounds 1 and 2 only the letter she traces now is scored, so a neighbour's track (r's stem next to a's stick) can never take her stroke. Neighbouring tracks touch on long names; that is only how they look.
+- **[6B]** A spoken "Let's write your name!" (a private `{name}` clip) when the name book opens, and her name said letter by letter at the end.
+- **[8]** The parent zone could show the name book's `name` log entries: which letters of her name needed help.

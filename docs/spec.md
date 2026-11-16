@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.6 · Nov 16, 2026 · describes the app as built through Slice 9B (the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.8 · Nov 16, 2026 · describes the app as built through Slice 9C part 1 (her name's book and its first two rounds; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -35,9 +35,23 @@ The first time she opens the app each day (by the tablet's own date), she sees t
 
 ### Bookshelf (home)
 
-Seven books stand on a shelf, left to right: **ABC**, **123**, **Urdu**, **Shapes**, **Games**, **Drawing**, **Stories**. Shapes and Stories are faint with a lock: a tap makes them wiggle and does nothing else (they come in Slices 11 and 12). Tapping an open book opens its cover, then its screen. A toy box on the shelf opens her shelf of finds.
+Eight books stand on a shelf, left to right: **her name** (Slice 9C), **ABC**, **123**, **Urdu**, **Shapes**, **Games**, **Drawing**, **Stories**. Shapes and Stories are faint with a lock: a tap makes them wiggle and does nothing else (they come in Slices 11 and 12). Tapping an open book opens its cover, then its screen. A toy box on the shelf opens her shelf of finds.
 
 The home button (top of the left column) always returns here. The back button goes one step up. The music button turns the music on or off.
+
+### Her name's book (Slice 9C part 1)
+
+The first book on the shelf is hers: her name is on its cover (with no name set, four little writing lines). It opens to one big tile with her name, written as she will write it: a capital first letter and the rest lowercase, whatever the setup page holds ("sara" and "SARA" are both "Sara"). Her name lives only on the tablet (`td.profile`); the code, tests and docs only ever use made-up names.
+
+- **When it cannot open.** The tile is faint and shakes, and one grey parent line at the top says why: no name set ("Add her name on the setup page"), a character other than a to z ("Her name can use the letters a to z only"), or too long for one line. The setup page says the same under the name field, naming each character it cannot use (space, hyphen, é...), or shows how the name will be written.
+- **On the lines.** The whole name sits on the four lines as one word. Each letter is its own character file, with its own glyph and plans, box after box, so the spacing is normal print spacing. The name is centred in her writing room, right of the button column, so no letter is under a button. The lines shrink to fit it and keep that size in all three rounds: one unit is the smallest of a single letter's unit, the size that leaves room above the lines for round 3's model card (2.3 units of height below the round lights), and the size at which her room is 1.2 times the name's width (`NAME_FIT` in `src/name.js`). Sara: 242 px at 1280 x 626 and 317 px at 1280 x 800; an 8-letter name such as Muhammad: 148 px; the widest 8 letters possible: 114 px. **Longer names:** the rule is the width, not the count: a name fits while its unit is at least 112 px on her tablet (most 9 to 11 letter names do); a wider one gets the "too long" line.
+- **Never stricter than a single letter.** Smaller lines would narrow the tolerances on screen, so for her name every start radius, path tolerance and dot radius is at least 45 px (`withMinLeeway` in `src/geometry.js`). The thresholds in `DEFAULTS.stages` are unchanged, and single letters do not use the floor.
+- **Round 1:** the full track of the whole name. Letter by letter, in order: the letter she traces now has its numbered start dot and arrow, and Jugnu flies each stroke first. Each letter is scored exactly as on its own (any allowed plan; a stroke traced the other way counts and is coached after the round). A finished letter lights up gold, with a chime.
+- **Round 2:** the thinner track; only the next start dot of the letter she traces now.
+- **Never stuck:** Jugnu demonstrates after 3 misses on a stroke and draws it after 5. Then only that letter is traced again, once; if Jugnu has to help again, it counts with help and she moves on. Any help means no gold star.
+- **For now** (round 3 comes in part 2): after round 2 her whole name glows letter by letter and she goes back to the name book. No star or review yet.
+- **Changing the name** on the setup page starts its practice again: rounds, helper, star, review and practice-more entry are cleared, since it is a new word.
+- **Log:** each tracing round adds a `name` entry with each letter's result (ok, helped, misses, wrong starts, strokes traced the other way). Its strokes are logged as usual, marked `in: 'name'`.
 
 ### Character boards: ABC, 123 and Urdu
 
@@ -257,7 +271,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 
 ### Parent tools (built so far)
 
-- `index.html?setup=1`: her name and how to say it.
+- `index.html?setup=1`: her name and how to say it. Since Slice 9C it shows how her name book will write the name, or why it cannot.
 - `recorder.html`: the stroke recorder, for hand-recorded characters.
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`): capitals, digits and lowercase on the four lines, with each allowed stroke plan as a dashed card.
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
@@ -311,7 +325,7 @@ Every character is an ordered list of strokes in line units: y = 0 is the sky li
 
 - **Capitals:** all 26 are built. **Lowercase (Slice 9A):** all 26, in plain print to match the capitals (round parts true circles, sticks straight). Small letters sit between the fence and the grass, tall letters reach the sky (t a little short of it), tails reach the tail line. i and j have a `dot` stroke: a tap or tiny stroke at the dot's place (`scoreDot`), in tracing and copying. Each has a default stroke plan and the usual alternatives (the one-go plans run back up over a stick, as children draw them). Each lowercase letter uses its capital's find scene. The style may change once we have the school's handwriting sheet.
 - **Find words** start with the letter's **sound**, not its name. For example, I is insect, not ice cream, and E is egg, not eraser. X has no find pictures for now. See `finds.html` for every picture.
-- **Words level:** short words built from letters she knows (Slice 9C).
+- **Her name (Slice 9C)** and a **words level:** short words built from letters she knows (Slice 9D).
 
 ### Numbers
 
@@ -390,7 +404,7 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 | 5J | Testing fixes: stroke plans, shape-only judging of copies, habits coached, failure reasons and parent lines (part 1 built); the fading helper, M and N from the bottom, direction coached, child-style templates (part 2A built); game instructions, show me, the U umpire (part 2B built) |
 | 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
 | 9A | Lowercase on four lines (built) |
-| 9B, 9C | Numbers 10 to 20; a words level |
+| 9B, 9C, 9D | Numbers 10 to 20; write my name; a words level |
 | 10 | Urdu: dot strokes, the Urdu font, recorder support, Dot Detective |
 | 8 | Parent zone: lock, settings, progress, last attempts, weekly wrong starts, reset |
 | 7 | Install as an app: full screen, offline, pinned |

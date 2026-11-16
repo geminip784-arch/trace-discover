@@ -262,6 +262,14 @@
     @keyframes page-next { from { transform: translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
     @keyframes page-back { from { transform: translateX(-60px); opacity: 0; } to { transform: none; opacity: 1; } }
     .tile.faint { opacity: 0.3; box-shadow: none; }
+    /* Slice 9C: her name's book. One big tile with her name, as wide as it needs
+       (the letters keep a readable size for names up to 8 letters and more). */
+    .view-name { background: #FFF1C9; }
+    .name-tile { min-width: 280px; height: 200px; padding: 0 40px; border-width: 8px; border-radius: 48px;
+      font-family: Fredoka, system-ui, sans-serif; font-weight: 600;
+      font-size: clamp(56px, calc(720px / var(--len, 4)), 130px); }
+    .name-tile > svg { width: 200px; height: 175px; }
+    .name-tile .star { width: 72px; height: 72px; top: -22px; right: -22px; }
     .tile.picked { animation: pick 0.22s ease-out; }
     @keyframes pick { 50% { transform: scale(1.12); } }
     .tile.shake { animation: shake 0.4s; }

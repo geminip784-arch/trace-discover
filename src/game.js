@@ -95,7 +95,7 @@ const CARD_TRAIL_WIDTH = 0.2;
 const PLAIN_INK = { dim: false, glow: true };
 
 // Only ids in the manifest are ever requested.
-async function loadChar(id, manifest) {
+export async function loadChar(id, manifest) {
   if (!canLoad(id, manifest)) return null;
   try {
     const res = await fetch(`data/chars/${encodeURIComponent(charFile(id))}.json`);
@@ -109,7 +109,7 @@ async function loadChar(id, manifest) {
 
 // Every running animation on the page (effects, pictures, ink fades): pause them
 // all while her finger is down, and play them again when she lifts.
-function pauseAnimations() {
+export function pauseAnimations() {
   const paused = [];
   for (const a of document.getAnimations?.() ?? []) {
     if (a.playState === 'running') {
