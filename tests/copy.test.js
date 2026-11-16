@@ -55,7 +55,8 @@ test('the scoring tolerances are untouched', () => {
 });
 
 test('every capital and digit stands sky line to grass line, so its size is measured against that', () => {
-  for (const id of MANIFEST.filter((c) => !/^[a-z]$/.test(c))) {
+  // Numbers 10 to 20 are wider than tall; Slice 9B part 2 judges each digit on its own.
+  for (const id of MANIFEST.filter((c) => !/^[a-z]$/.test(c) && c.length === 1)) {
     const b = refBox(load(id));
     assert.ok(Math.abs(b.y0) < 0.005 && Math.abs(b.y1 - 1) < 0.005, `${id}: ${b.y0}..${b.y1}`);
     assert.ok(b.h >= b.w, `${id} is taller than wide`);

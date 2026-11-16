@@ -11,6 +11,7 @@ export const CHAR_GROUPS = [
   { name: 'Capitals', ids: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('') },
   { name: 'Digits', ids: '0123456789'.split('') },
   { name: 'Lowercase', ids: 'abcdefghijklmnopqrstuvwxyz'.split('') }, // Slice 9A
+  { name: 'Numbers', ids: Array.from({ length: 11 }, (_, k) => String(10 + k)) }, // Slice 9B: 10 to 20
 ];
 export const CHAR_IDS = CHAR_GROUPS.flatMap((g) => g.ids);
 export const SMOOTH_PASSES = 3;   // Chaikin corner-cutting passes for the Smooth button
@@ -139,7 +140,7 @@ export function charWidth(strokes) {
 
 // The character file object (same fields as data/chars/L.example.json, minus picture and note).
 export function buildCharacter(id, strokes, direction = 'ltr') {
-  const isDigit = /^[0-9]$/.test(id);
+  const isDigit = /^[0-9]+$/.test(id); // 0 to 9, and 10 to 20 (Slice 9B)
   const char = { id, script: isDigit ? 'digit' : 'latin' };
   if (!isDigit) char.case = /^[a-z]$/.test(id) ? 'lower' : 'upper';
   char.family = strokeOrderOf(id)?.family ?? 'straight';

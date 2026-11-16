@@ -35,6 +35,8 @@ function join(...pieces) {
 
 const s = (say, ...pieces) => ({ say, path: join(...pieces) });
 
+import { NUMBER_IDS, numberShift, MARGIN } from './glyphs.js';
+
 export const STROKE_ORDER = {
   A: { family: 'straight', width: 0.8, strokes: [
     s('slant from the top down to the bottom left', [[0.4, 0], [0.08, 1]]),
@@ -302,5 +304,21 @@ export const STROKE_ORDER = {
     s('stem down the right side', [[0.58, 0], [0.58, 1]]),
   ] },
 };
+
+// Numbers 10 to 20 (Slice 9B): the left digit's strokes, then the right digit's,
+// moved right as data/glyphs.js moves them. Family: the digits' own when they
+// share one, otherwise mixed.
+for (const id of NUMBER_IDS) {
+  const [left, right] = id.split('').map((d) => STROKE_ORDER[d]);
+  const dx = numberShift(id);
+  const r3 = (v) => Math.round(v * 1000) / 1000;
+  const strokes = [
+    ...left.strokes.map((st) => ({ say: `the ${id[0]}: ${st.say}`, path: st.path })),
+    ...right.strokes.map((st) => ({ say: `the ${id[1]}: ${st.say}`, path: st.path.map(([x, y]) => [r3(x + dx), y]) })),
+  ];
+  // Width as a character file measures it: rightmost x plus the left margin.
+  const width = r3(Math.max(...strokes.flatMap((st) => st.path.map((q) => q[0]))) + MARGIN);
+  STROKE_ORDER[id] = { family: left.family === right.family ? left.family : 'mixed', width, strokes };
+}
 
 export const FAMILIES = ['straight', 'curved', 'mixed'];

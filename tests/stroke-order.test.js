@@ -11,15 +11,15 @@ import { charFile } from '../src/session.js';
 const dir = new URL('../data/chars/', import.meta.url);
 const manifest = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
 
-test('every A to Z and 0 to 9 has a stroke list', () => {
+test('every A to Z, 0 to 9, a to z and 10 to 20 has a stroke list', () => {
   for (const id of CHAR_IDS) assert.ok(STROKE_ORDER[id], id);
-  assert.equal(Object.keys(STROKE_ORDER).length, 62); // A to Z, 0 to 9, a to z (Slice 9A)
+  assert.equal(Object.keys(STROKE_ORDER).length, 73); // A to Z, 0 to 9, a to z (Slice 9A), 10 to 20 (Slice 9B)
 });
 
 test('each entry has a family, a width and strokes with words and a rough path', () => {
   for (const [id, c] of Object.entries(STROKE_ORDER)) {
     assert.ok(FAMILIES.includes(c.family), `${id} family ${c.family}`);
-    assert.ok(c.width > 0 && c.width <= 1.2, `${id} width`);
+    assert.ok(c.width > 0 && c.width <= (id.length === 2 ? 1.5 : 1.2), `${id} width`); // two digits (Slice 9B): up to 1.5
     assert.ok(c.strokes.length >= 1, id);
     for (const [k, s] of c.strokes.entries()) {
       assert.equal(typeof s.say, 'string', `${id} stroke ${k + 1}`);
