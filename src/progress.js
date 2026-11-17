@@ -120,26 +120,32 @@ export function strokeLogEntry({ char, stage, pick, result, variant, counted, as
 // ---------------------------------------------------------------------------
 // Practice rounds
 //
-// Each character takes ROUNDS rounds. The round sets the stage: the last round
-// is Stage 3, the first half of the others Stage 1, the rest Stage 2
-// (3 rounds: 1, 2, 3). The stage never drops inside a round.
+// Slice 5K: practising a character is ROUNDS tracing rounds, then the star and
+// the find scene. The round sets the stage: the first half Stage 1 (the full
+// track and Jugnu's demonstrations), the rest Stage 2 (a thinner track and the
+// next start dot); 2 rounds: 1, 2. The stage never drops inside a round.
 // A round counts only when she drew every stroke herself: if Jugnu drew one,
 // the round starts again. Jugnu's help is that assist, or a demonstration after
-// her misses in a Stage 2 or 3 round (Stage 1 demonstrations are the lesson).
+// her misses in a Stage 2 round (Stage 1 demonstrations are the lesson).
 // A gold star needs a whole practice with no help at all.
+//
+// The copy-it round (Stage 3, below) is no longer part of a practice: it is
+// what a review is, on a later day (src/review.js). Copying from memory a day
+// or more after tracing shows what she has kept; straight after tracing it only
+// shows what she has just seen.
 
-export const ROUNDS = 3;            // practice rounds per character: 3 to 5
-export const MIN_ROUNDS = 3;
-export const MAX_ROUNDS = 5;
+export const ROUNDS = 2;            // practice rounds per character: 2 to 4
+export const MIN_ROUNDS = 2;
+export const MAX_ROUNDS = 4;
+export const COPY_STAGE = 3;        // the copy-it round's stage (reviews only)
 
 export const roundCount = (n = ROUNDS) =>
   Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, Math.round(Number(n)) || MIN_ROUNDS));
 
-// The stage of round r (0-based) out of `rounds`.
+// The stage of practice round r (0-based) out of `rounds`: 1 or 2.
 export function stageForRound(r, rounds = ROUNDS) {
   const n = roundCount(rounds);
-  if (r >= n - 1) return 3;
-  return r < Math.ceil((n - 1) / 2) ? 1 : 2;
+  return r < Math.ceil(n / 2) ? 1 : 2;
 }
 
 // Where a character's practice stands: { round (0-based, the one to play), helped }.
@@ -148,6 +154,18 @@ export function startRounds(saved, rounds = ROUNDS) {
   const n = roundCount(rounds);
   const ok = Number.isInteger(saved?.round) && saved.round >= 0 && saved.round < n;
   return ok ? { round: saved.round, helped: saved.helped === true } : { round: 0, helped: false };
+}
+
+// Slice 5K: practices saved before round 3 moved to reviews. A saved practice
+// whose round is `rounds` or more had finished every tracing round (it was
+// waiting in the old round 3), so it counts as finished. `all` is td.rounds as
+// saved: { [id]: { round, helped } }. Returns [{ id, helped }], in saved order.
+export function finishedEarlier(all, rounds = ROUNDS) {
+  if (!all || typeof all !== 'object' || Array.isArray(all)) return [];
+  const n = roundCount(rounds);
+  return Object.entries(all)
+    .filter(([, v]) => Number.isInteger(v?.round) && v.round >= n)
+    .map(([id, v]) => ({ id, helped: v.helped === true }));
 }
 
 // Jugnu helped: no gold star for this practice.
@@ -166,40 +184,36 @@ export function finishRound(rp, { assisted }, rounds = ROUNDS) {
 
 export const starEarned = (rp) => !rp.helped;
 
-// What each round light shows: 'done', 'now' or 'next'.
-export const roundLights = (rp, rounds = ROUNDS) =>
-  Array.from({ length: roundCount(rounds) }, (_, i) => (i < rp.round ? 'done' : i === rp.round ? 'now' : 'next'));
+// What each round light shows: 'done', 'now' or 'next'. n lights (a review: 1).
+export const roundLights = (rp, n = ROUNDS) =>
+  Array.from({ length: Math.max(1, Math.round(Number(n)) || 1) }, (_, i) => (i < rp.round ? 'done' : i === rp.round ? 'now' : 'next'));
 
 // ---------------------------------------------------------------------------
-// The copy-it round (Slice 5I)
+// The copy-it round (Slice 5I; reviews only since Slice 5K)
 //
-// The last round (Stage 3) is the copy-it round: she writes the whole letter on
+// A review is one copy-it round (Stage 3): she writes the whole letter on
 // empty lines beside a model card, and the whole letter is judged (src/copy.js).
-// A pass ends the round as any round does. A fail lets her try again; after
-// CONFIG.copyTries failed copies the round still counts as done, with help (no
-// gold star), so she is never stuck.
+// A pass ends the review. A fail lets her try again; after CONFIG.copyTries
+// failed copies the review still ends, with help, so she is never stuck.
+// The state is { round, helped } as for a practice, with one round.
 
-export const isCopyRound = (r, rounds = ROUNDS) => stageForRound(r, rounds) === 3;
+export const startReview = () => ({ round: 0, helped: false });
 
 // One judged copy. `fails` is the failed copies so far in this round.
 // Returns { state, fails, again, allDone, helpedOut }:
 //   again: she tries the copy once more; helpedOut: the round ended with help.
-export function finishCopy(rp, { ok, fails = 0 }, rounds = ROUNDS, cfg = CONFIG) {
-  if (ok) {
-    const r = finishRound(rp, { assisted: false }, rounds);
-    return { state: r.state, fails, again: false, allDone: r.allDone, helpedOut: false };
-  }
+export function finishCopy(rp, { ok, fails = 0 }, cfg = CONFIG) {
+  if (ok) return { state: { ...rp, round: rp.round + 1 }, fails, again: false, allDone: true, helpedOut: false };
   const n = fails + 1;
   if (n < cfg.copyTries) return { state: rp, fails: n, again: true, allDone: false, helpedOut: false };
-  const round = rp.round + 1;
-  return { state: { ...rp, round, helped: true }, fails: n, again: false, allDone: round >= roundCount(rounds), helpedOut: true };
+  return { state: { ...rp, round: rp.round + 1, helped: true }, fails: n, again: false, allDone: true, helpedOut: true };
 }
 
 // ---------------------------------------------------------------------------
 // The fading helper in the copy-it round (Slice 5J part 2)
 //
-// Each character has its own helper level for round 3, kept across sittings
-// (td.helper) and used by reviews too:
+// Each character has its own helper level for the copy-it round, kept across
+// sittings (td.helper). Since Slice 5K only reviews use it:
 //   1  a faint dotted ghost of the letter on the lines, and the first stroke's start dot
 //   2  the start dots only
 //   3  nothing (the empty lines and the model card)
@@ -240,7 +254,7 @@ export function applyHelperCopy(state, { ok, hinted = false }, h = HELPER) {
 // ---------------------------------------------------------------------------
 // Her name (Slice 9C): the tracing rounds go letter by letter
 //
-// In rounds 1 and 2 she traces her name one letter at a time, in order. Each
+// In the tracing rounds she traces her name one letter at a time, in order. Each
 // letter's strokes use the rules above (applyLift, applyPlanPass). When a letter
 // is finished and Jugnu drew one of its strokes, only that letter is traced
 // again, once (the round does not start again). If Jugnu helps a second time,

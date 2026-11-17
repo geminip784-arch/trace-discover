@@ -41,7 +41,7 @@ export const COPY_ROOM = { size: 1.25, spare: 0.25 };
 // The biggest unit (px) at which a character `charWidth` units wide, written
 // at COPY_ROOM.size, still fits between the buttons and the copy round's model
 // card (Slice 9B part 2: 20 on the full screen). The other rounds use the same
-// unit, so the character keeps its size through all three rounds.
+// unit, so the character keeps its size through every round.
 export function fitUnit(width, charWidth) {
   const units = COPY_ROOM.size * charWidth + COPY_ROOM.spare + PAD_UNITS
     + CARD.scale * (charWidth + 2 * CARD.pad) + CARD.gap;

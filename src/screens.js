@@ -15,6 +15,7 @@ import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
   readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, readProfile, saveNameCard,
+  finishOldPractices,
 } from './storage.js';
 import {
   enrolStars, pickToday, dueToday, recordPractice, recordReview, reviewLogEntry, isDay,
@@ -110,6 +111,10 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     savePracticeMore(out.list);
     if (isReview) logAttempt(reviewLogEntry(out.entry));
   }
+
+  // Slice 5K: practices saved part way through the old round 3 count as
+  // finished (storage.js finishOldPractices). Once each; nothing earned is lost.
+  finishOldPractices(todayNow(), { nameId: NAME_ID });
 
   // ---- buttons ----
   els.home.innerHTML = ICONS.home;
@@ -670,7 +675,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     }
   }
 
-  // Her name (Slice 9C part 1: rounds 1 and 2; round 3, the star and reviews come in part 2).
+  // Her name (Slice 9C): rounds 1 and 2, the star and her name card; a review is the copy-it round.
   async function startNameWriting(mine) {
     const n = nameOf(readProfile().name);
     const running = await startNameGame(els, {

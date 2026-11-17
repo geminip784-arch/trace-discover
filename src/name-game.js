@@ -7,6 +7,9 @@
 // shrink to fit it and keep that size in every round. Each letter is its own
 // character file, with its own glyph and stroke plans, placed box after box.
 //
+// Slice 5K: practising her name is rounds 1 and 2 only; then the star and her
+// name card. The copy-it round below is what a review is, on a later day.
+//
 // Rounds 1 and 2 (PR 1 of Slice 9C) go letter by letter, in order:
 //   round 1  the full track of the whole name; the letter she traces now has its
 //            numbered start dot and arrow, and Jugnu flies each of its strokes first
@@ -21,7 +24,7 @@
 // tolerance is at least 45 px (src/geometry.js withMinLeeway). Long names are
 // never stricter than single letters.
 //
-// Round 3 (Slice 9C part 2), the copy-it round: the lines are empty and her name
+// The copy-it round (Slice 9C part 2; reviews only since Slice 5K): the lines are empty and her name
 // stands on a model card above them, each letter with its numbered start dots
 // and arrows. Jugnu writes it once on the card, then she writes her whole name
 // anywhere on the lines. It is judged NAME_WAIT_MS after her last lift
@@ -31,7 +34,7 @@
 // A fail shows why first, the letter it is about glowing on the card (or Jugnu
 // drawing what is missing, a dashed outline at the right size, or the guide
 // lines glowing), then her name fades and she writes it again. After 3 failed
-// copies the round counts as done, with help. The fading helper (its own level,
+// copies the review ends, with help. The fading helper (its own level,
 // saved under 'name' in td.helper): level 1 the dotted ghost of her name and the
 // first start dot, level 2 a start dot for each letter not begun, level 3 nothing.
 // Habits (stroke order, the letters' order, a letter the other way round) never
@@ -41,8 +44,8 @@
 // onDone({ id: 'name', star, helped, failedCopies, wrongStarts, mirrored, review }):
 // the shell saves the star, the review schedule and her name card.
 //
-// A review (`review: true`) is round 3 alone, with one round light, and never
-// touches her saved rounds.
+// A review (`review: true`) is the copy-it round alone, with one round light,
+// and never touches her saved rounds.
 
 import {
   drawLines, drawStageTrack, createInk, createFx, letterToPx, pxToLetter, START_DOT_RADIUS, trackLook, markPath,
@@ -54,8 +57,8 @@ import {
   variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar, scoreMark,
 } from './variants.js';
 import {
-  CONFIG, ROUNDS, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
-  startRounds, markHelp, isHelp, finishRound, roundLights, isCopyRound, strokeLogEntry,
+  CONFIG, ROUNDS, COPY_STAGE, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
+  startRounds, startReview, markHelp, isHelp, finishRound, roundLights, strokeLogEntry,
   startNameRound, finishNameLetter, finishCopy, starEarned, startHelper, applyHelperCopy,
 } from './progress.js';
 import { traceNote, nameCopyNote } from './notes.js';
@@ -75,8 +78,8 @@ const TRAIL_WIDTH = 0.16;            // Jugnu's trail when he draws a stroke him
 const LETTER_GLOW_WIDTH = 0.12;      // a letter's glow when it is done, line units
 const LETTER_GLOW_MS = 900;          // one letter lights up this long
 const NAME_GLOW_STEP_MS = 220;       // at the end, each letter of her name starts glowing this long after the one before
-const NAME_WAIT_MS = 3000;           // round 3: her name is judged this long after her last lift
-const NAME_DEMO_MS = 700;            // round 3: Jugnu writes each stroke of her name on the card this fast
+const NAME_WAIT_MS = 3000;           // the copy round (reviews): her name is judged this long after her last lift
+const NAME_DEMO_MS = 700;            // the copy round (reviews): Jugnu writes each stroke of her name on the card this fast
 const CARD_TRAIL_WIDTH = 0.2;        // Jugnu's trail on the card, card units
 const LINE_GLOW_WIDTH = 0.03;        // a guide line's gold glow (line position reasons), line units
 const STARTED_NEAR = 0.3;            // level 2: a stroke starting this near a letter's start dot begins that letter
@@ -88,7 +91,7 @@ const PLAIN_INK = { dim: false, glow: true };
 // Returns { pause, resume, stop }.
 export async function startNameGame(els, { letters, manifest = [], debugOn = false, review = false, onDone = () => {} }) {
   const loaded = await Promise.all(letters.map((id) => loadChar(id, manifest)));
-  // Round 3 compares each letter with its board, its look-alikes and its twin in the other case.
+  // The copy round (reviews) compares each letter with its board, its look-alikes and its twin in the other case.
   const compared = [...new Set(letters.flatMap(nameCompareIds))];
   const byId = new Map((await Promise.all(compared.map(async (id) => [id, await loadChar(id, manifest)]))).filter(([, c]) => c));
   const othersOf = (id) => nameCompareIds(id).map((x) => byId.get(x)).filter(Boolean);
@@ -111,16 +114,16 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   const debug = debugOn ? createDebugPanel(0) : null;
   setProfile(readProfile());
 
-  const rounds = roundCount(ROUNDS);
-  // A review starts at round 3 and never reads or saves her rounds.
-  let rp = review ? { round: rounds - 1, helped: false } : startRounds(readRounds(NAME_ID), rounds);
+  // A practice: rounds 1 and 2. A review: one copy-it round, which never reads or saves her rounds.
+  const rounds = review ? 1 : roundCount(ROUNDS);
+  let rp = review ? startReview() : startRounds(readRounds(NAME_ID), rounds);
   const keepRounds = (fn) => { if (!review) fn(); };
-  const isCopy = () => isCopyRound(rp.round, rounds);
-  let card = null;    // round 3: the model card for this screen, else null
-  let copy = null;    // round 3: { strokes, ids, fails, hinted }
+  const isCopy = () => review;
+  let card = null;    // the copy round (reviews): the model card for this screen, else null
+  let copy = null;    // the copy round (reviews): { strokes, ids, fails, hinted }
   let helper = startHelper(readHelper(NAME_ID));
   const sitting = { failedCopies: 0, wrongStarts: 0, mirrored: 0 };
-  const stage = () => stageForRound(rp.round, rounds);
+  const stage = () => (review ? COPY_STAGE : stageForRound(rp.round, rounds));
 
   let np = startNameRound(placed.length);        // which letter now, and which are done
   const cur = () => placed[np.letter];
@@ -177,7 +180,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
 
   function updateDebug(result = null) {
     if (debug && card) {
-      debug.message(`name  round 3  copy it  helper ${helper.level} (passes ${helper.passes}, fails ${helper.fails})  failed copies ${copy?.fails ?? 0}/${CONFIG.copyTries}` +
+      debug.message(`name  review  copy it  helper ${helper.level} (passes ${helper.passes}, fails ${helper.fails})  failed copies ${copy?.fails ?? 0}/${CONFIG.copyTries}` +
         `  help ${rp.helped ? 'yes (no star)' : 'no'}\nunit ${layout.unit.toFixed(0)} px` +
         (result ? `\n${result.ok ? 'PASS' : `not ok: ${result.reason} (letter ${result.letter === null ? '-' : result.letter + 1})`}  order ${result.habits.order}\n` +
           result.letters.map((x) => `  ${x.id}: ${x.ok ? 'ok' : x.reason}  strokes ${x.strokes}  distance ${x.distance ?? '-'}${x.lookalike ? `  looks like ${x.lookalike}` : ''}`).join('\n') : ''));
@@ -190,9 +193,8 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
 
   function drawLights(lit = -1) {
     if (!els.rounds) return;
-    const first = review ? rounds - 1 : 0; // a review shows only its one round's light
-    els.rounds.replaceChildren(...roundLights(rp, rounds).slice(first).map((kind, j) => {
-      const i = j + first;
+    // A review shows its one round's light.
+    els.rounds.replaceChildren(...roundLights(rp, rounds).map((kind, i) => {
       const el = document.createElement('i');
       el.className = `rl ${kind}${i === lit ? ' lit' : ''}`;
       return el;
@@ -202,7 +204,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
 
   // The whole name's track: done letters gold, the letter she traces now with its
   // start dots (in the plan her strokes follow), the letters still to come without.
-  // Round 3: letters she has begun (a stroke started near its start dot), for level 2's dots.
+  // The copy round: letters she has begun (a stroke started near its start dot), for level 2's dots.
   function started() {
     return placed.map((c) => {
       const [sx, sy] = c.strokes[0].points[0];
@@ -379,18 +381,18 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     letterInk = placed.map(() => []);
     progress = freshLetter();
     following = startPlans(cur());
-    applyLayout(); // round 3 lays the screen out round its model card
+    applyLayout();
     phase = 'trace';
     beginStroke();
   }
 
-  // ---- round 3: the copy-it round ----
+  // ---- the copy-it round (reviews only, Slice 5K) ----
 
   const namePaths = () => placed.flatMap((c) => c.strokes.map((s) => markPath(s.points)));
 
   async function beginCopy() {
     copy = { strokes: [], ids: [], fails: 0, hinted: false };
-    progress = { ...progress, stage: 3 };
+    progress = { ...progress, stage: COPY_STAGE };
     redraw();
     updateDebug();
     speak('copy');
@@ -467,7 +469,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     const result = scoreName(copy.strokes, placed, loaded, { othersOf });
     showNote(nameCopyNote(result, letters));
     if (result.reason === 'unfinished') return hintName(result);
-    const r = finishCopy(rp, { ok: result.ok, fails: copy.fails }, rounds);
+    const r = finishCopy(rp, { ok: result.ok, fails: copy.fails });
     logAttempt(nameCopyLogEntry({ result, attempt: copy.fails + 1, helper: helper.level, helped: r.helpedOut, review }));
     helper = applyHelperCopy(helper, { ok: result.ok, hinted: copy.hinted });
     saveHelper(NAME_ID, helper);
@@ -501,7 +503,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   }
 
   // ---- the reward ----
-  // Her name glows letter by letter (her own writing in round 3, the model if
+  // Her name glows letter by letter (her own writing in a review, the model if
   // Jugnu helped her out), Jugnu flies loops over it, then the shell takes over.
   async function finishName(her = null) {
     phase = 'held';
@@ -566,7 +568,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     };
   }
 
-  let attemptPoints = null; // round 3: her stroke now
+  let attemptPoints = null; // the copy round (reviews): her stroke now
   function startStroke(p) {
     hush();
     cancelLater();

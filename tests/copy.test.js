@@ -12,7 +12,7 @@ import {
   copyStatus as statusAlone, copyLogEntry, usableStrokes, compareIds, copyShow,
 } from '../src/copy.js';
 import { DEFAULTS } from '../src/geometry.js';
-import { CONFIG, finishCopy, isCopyRound } from '../src/progress.js';
+import { CONFIG, finishCopy, startReview } from '../src/progress.js';
 import { charFile } from '../src/session.js';
 
 const load = (id) => JSON.parse(readFileSync(new URL(`../data/chars/${charFile(id)}.json`, import.meta.url), 'utf8'));
@@ -218,31 +218,35 @@ test('the wait after her last lift is 2 seconds for a whole letter, 5 for an unf
   assert.equal(CONFIG.copyTries, 3);
 });
 
-test('the last round is the copy round', () => {
-  assert.deepEqual([0, 1, 2].map((r) => isCopyRound(r, 3)), [false, false, true]);
-  assert.deepEqual([0, 1, 2, 3, 4].map((r) => isCopyRound(r, 5)), [false, false, false, false, true]);
+test('Slice 5K: the copy round is a review on its own: one round, and practices never reach it', () => {
+  assert.deepEqual(startReview(), { round: 0, helped: false });
+  for (const f of ['../src/game.js', '../src/name-game.js']) {
+    const src = readFileSync(new URL(f, import.meta.url), 'utf8');
+    assert.match(src, /const isCopy = \(\) => review;/);
+    assert.match(src, /const rounds = review \? 1 : roundCount\(ROUNDS\);/);
+  }
 });
 
-test('finishCopy: a pass ends the round as any round does', () => {
-  const r = finishCopy({ round: 2, helped: false }, { ok: true, fails: 1 }, 3);
-  assert.deepEqual(r.state, { round: 3, helped: false });
+test('finishCopy: a pass ends the review', () => {
+  const r = finishCopy({ round: 0, helped: false }, { ok: true, fails: 1 });
+  assert.deepEqual(r.state, { round: 1, helped: false });
   assert.equal(r.allDone, true);
   assert.equal(r.helpedOut, false);
 });
 
-test('finishCopy: a fail lets her try again, and the third fail ends the round with help (no star)', () => {
-  const rp = { round: 2, helped: false };
-  const a = finishCopy(rp, { ok: false, fails: 0 }, 3);
+test('finishCopy: a fail lets her try again, and the third fail ends the review with help', () => {
+  const rp = { round: 0, helped: false };
+  const a = finishCopy(rp, { ok: false, fails: 0 });
   assert.equal(a.again, true);
   assert.equal(a.fails, 1);
   assert.deepEqual(a.state, rp);
-  const b = finishCopy(rp, { ok: false, fails: 1 }, 3);
+  const b = finishCopy(rp, { ok: false, fails: 1 });
   assert.equal(b.again, true);
-  const c = finishCopy(rp, { ok: false, fails: 2 }, 3);
+  const c = finishCopy(rp, { ok: false, fails: 2 });
   assert.equal(c.again, false);
   assert.equal(c.helpedOut, true);
   assert.equal(c.allDone, true);
-  assert.deepEqual(c.state, { round: 3, helped: true });
+  assert.deepEqual(c.state, { round: 1, helped: true });
 });
 
 test('the copy log entry is a "copy" type with the shape match, the size, the habits and every stroke', () => {
@@ -354,8 +358,8 @@ test('only stray taps: the hint shows stroke 1', () => {
 
 test('a hint is not a failed copy: only a judged copy moves the count (finishCopy)', () => {
   // The game calls finishCopy only when it judges; a hint changes no state.
-  const rp = { round: 2, helped: false };
-  const two = finishCopy(rp, { ok: false, fails: 1 }, 3);
+  const rp = { round: 0, helped: false };
+  const two = finishCopy(rp, { ok: false, fails: 1 });
   assert.equal(two.fails, 2);
   assert.equal(two.again, true);
 });

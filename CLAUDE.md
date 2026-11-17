@@ -31,8 +31,9 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - `scoreDot(child, refPoint, stage)` checks a dot tap.
 - `createLiveTracker(ref, stage)` gives live `onPath`, `wrongWay` and `progress` while her finger moves.
 - Strokes must be drawn in order, in one of the character's allowed stroke plans (`plans` in the character file, from `data/glyphs.js`; Slice 5J). Stroke k of her plan is compared with stroke k of that plan. The default plan (`strokes`) is what the model card and Jugnu show.
-- The copy-it round (round 3) judges the whole letter by shape with the $P recognizer (`src/pdollar.js`, BSD license; keep its credit). Start, direction and order there are habits: logged and coached, never failed. Child-style templates (`data/child-shapes.js`, Slice 5J part 2) let crude but recognizable letters pass; they are never shown to her.
-- Round 3 has a fading helper per character (`HELPER` in `src/progress.js`, saved in `td.helper`): level 1 a dotted ghost and the first start dot, level 2 start dots only, level 3 nothing.
+- Practising a character (or her name) is rounds 1 and 2, then the star and the find scene (Slice 5K). The star needs both rounds without Jugnu's help. The copy-it round is used only in reviews, on the 1, 3, 7, 21-day schedule: copying from memory on a later day.
+- The copy-it round (reviews only) judges the whole letter by shape with the $P recognizer (`src/pdollar.js`, BSD license; keep its credit). Start, direction and order there are habits: logged and coached, never failed. Child-style templates (`data/child-shapes.js`, Slice 5J part 2) let crude but recognizable letters pass; they are never shown to her.
+- The copy-it round has a fading helper per character (`HELPER` in `src/progress.js`, saved in `td.helper`): level 1 a dotted ghost and the first start dot, level 2 start dots only, level 3 nothing.
 - Thresholds live in `DEFAULTS.stages`. Do not change them unless I ask. Her name (Slice 9C) uses `withMinLeeway`: no tolerance narrower than 45 px on screen; `DEFAULTS` itself is unchanged.
 - Run `npm test` after any change to `src/geometry.js`.
 - Her real name must never be in a tracked file: `tests/privacy.test.js` checks every file against a hash of it. Use made-up names ("Sara") everywhere.
@@ -41,7 +42,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - She never needs to read. All prompts are audio, pictures and Jugnu. An ear button replays the last prompt.
 - No text for her. The one kind of text allowed: short parent-facing lines (game instructions, and why a stroke or a copy did not count) in small type at the top of the screen, beside the visual reaction they describe (`src/notes.js`). Kind words only: never a diagnostic word.
 - At most 3 choices per question or prompt. Menus (the bookshelf and the character boards) are exempt. Child touch targets at least 88 CSS px.
-- Never red, never a buzzer, never erase her whole letter, never snap her ink onto the path. One exception: after a failed copy in the copy-it round, her letter fades so she can write a fresh copy, once the reason has been shown.
+- Never red, never a buzzer, never erase her whole letter, never snap her ink onto the path. One exception: after a failed copy in the copy-it round (a review), her letter fades so she can write a fresh copy, once the reason has been shown.
 - Wrong direction (rounds 1 and 2, Slice 5J part 2): a stroke traced along the track the other way, from its far end, counts. Her ink keeps glowing, it is logged as a habit, and after the letter Jugnu flies it the usual way once. Off path: the trail dims and she carries on; it does not count. Wrong start: the start dot pulses.
 - Ink must follow her finger with no visible lag. Draw inside `requestAnimationFrame` and use `getCoalescedEvents()` when the browser offers it.
 - Kid-proofing: `touch-action: none` on the writing area; `overscroll-behavior: none` on `html` and `body` (stops pull-to-refresh); block the context menu and text selection.

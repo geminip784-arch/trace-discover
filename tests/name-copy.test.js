@@ -10,7 +10,7 @@ import { compareIds } from '../src/copy.js';
 import { nameCopyNote } from '../src/notes.js';
 import { nameHelperMarks } from '../src/render.js';
 import { charFile, navigate, REVIEW_ORDER, BOARD_ORDER, booksWithDue } from '../src/session.js';
-import { finishCopy, startHelper, applyHelperCopy, starEarned } from '../src/progress.js';
+import { finishCopy, finishRound, startHelper, applyHelperCopy, starEarned } from '../src/progress.js';
 import { recordPractice, recordReview, pickToday, dueToday, emptyReviews, cleanPracticeMore } from '../src/review.js';
 import { cleanFinds, addNameCard, isNameCard, NAME_CARD as CARD_ENTRY } from '../src/finds.js';
 import { nameCardArt } from '../src/art.js';
@@ -281,20 +281,28 @@ test('the helper level moves with her name\'s copies as with a letter\'s', () =>
 });
 
 // ---------------------------------------------------------------------------
-// Round 3's tries, the star and reviews
+// The review's tries (the copy-it round is reviews only since Slice 5K)
 
-test('the star: a whole practice with no help; 3 failed copies end the round with help', () => {
-  let rp = { round: 2, helped: false };
+test('a review: a pass ends it clean; 3 failed copies end it with help', () => {
+  const rp = { round: 0, helped: false };
   let r = finishCopy(rp, { ok: true, fails: 0 });
   assert.equal(r.allDone, true);
-  assert.equal(starEarned(r.state), true);
+  assert.equal(r.state.helped, false);
   r = finishCopy(rp, { ok: false, fails: 0 });
   assert.equal(r.again, true);
   r = finishCopy(rp, { ok: false, fails: 2 });
   assert.equal(r.helpedOut, true);
-  assert.equal(starEarned(r.state), false);
-  rp = { round: 2, helped: true }; // Jugnu helped in round 1 or 2
-  assert.equal(starEarned(finishCopy(rp, { ok: true, fails: 0 }).state), false);
+  assert.equal(r.state.helped, true);
+});
+
+test('Slice 5K: practising her name is is rounds 1 and 2, then the star: no help, no copy round', () => {
+  let rp = { round: 0, helped: false };
+  let r = finishRound(rp, { assisted: false });
+  r = finishRound(r.state, { assisted: false });
+  assert.equal(r.allDone, true);
+  assert.equal(starEarned(r.state), true);
+  rp = { round: 1, helped: true }; // Jugnu helped in round 1 or 2
+  assert.equal(starEarned(finishRound(rp, { assisted: false }).state), false);
 });
 
 test('her name comes back for review on the usual schedule, first in the order', () => {
@@ -315,12 +323,12 @@ test('her name comes back for review on the usual schedule, first in the order',
   assert.deepEqual(cleanPracticeMore(bad.list).map((e) => e.id), [NAME_ID]);
 });
 
-test('a due name opens as a review: round 3 alone', () => {
+test('a due name opens as a review: the copy-it round alone', () => {
   const book = { screen: 'name' };
   assert.deepEqual(navigate(book, { type: 'openName', ready: true, review: true }), { screen: 'write', char: 'name', book: 'name', review: true });
   assert.deepEqual(navigate(book, { type: 'openName', ready: true }), { screen: 'write', char: 'name', book: 'name' });
   const src = readFileSync(new URL('../src/name-game.js', import.meta.url), 'utf8');
-  assert.match(src, /review \? \{ round: rounds - 1, helped: false \}/);
+  assert.match(src, /review \? startReview\(\)/);
   assert.match(src, /keepRounds\(\(\) => saveRounds/);
 });
 

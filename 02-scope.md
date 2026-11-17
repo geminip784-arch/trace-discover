@@ -20,7 +20,7 @@ Goal: a version she plays daily for two weeks, so we learn whether she enjoys it
 
 1. **5G** Housekeeping and find pictures ✅
 2. **5H** Game variety and the Missing piece game
-3. **5I** Practice and review: round 3 as a copy-it round judged on shape at 75 to 125% size, reviews after 1, 3 and 7 days, a practice-more list, an optional "again?"
+3. **5I** Practice and review: round 3 as a copy-it round judged on shape at 75 to 125% size, reviews after 1, 3 and 7 days, a practice-more list, an optional "again?" Since 5K the copy-it round is used only in reviews; a practice is rounds 1 and 2.
 4. **6** Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word
 5. **9A** Lowercase
 6. **9B** Numbers 10 to 20
