@@ -127,3 +127,17 @@ export const TURN = `<svg ${NS} viewBox="0 0 600 400" aria-hidden="true">
   </g>
   <image class="turn-jugnu" href="assets/jugnu.svg" x="20" y="200" width="170" height="170"/>
 </svg>`;
+
+// Her name card on her shelf of finds (Slice 9C part 2): her name on the four
+// little lines, on a cream card with a gold edge, and a gold star when she
+// earned the name's star. `word` is already checked to be a to z only
+// (src/name.js nameOf); it is escaped all the same. 220 x 120, two places wide.
+export function nameCardArt(word, star = false) {
+  const size = Math.min(56, 300 / Math.max(word.length, 1));
+  return `<svg ${NS} viewBox="0 0 220 120" aria-hidden="true">
+  <rect x="6" y="10" width="208" height="102" rx="18" fill="#FFFDF5" stroke="#E0B84A" stroke-width="6"/>
+  <g stroke-linecap="round"><line x1="22" y1="36" x2="198" y2="36" stroke="#5bb8ff" stroke-width="2.5"/><line x1="22" y1="60" x2="198" y2="60" stroke="#9aa0b8" stroke-width="2" stroke-dasharray="5 4"/><line x1="22" y1="84" x2="198" y2="84" stroke="#4cc25a" stroke-width="2.5"/><line x1="22" y1="98" x2="198" y2="98" stroke="#b9834d" stroke-width="3"/></g>
+  <text x="110" y="84" text-anchor="middle" font-family="Fredoka, system-ui, sans-serif" font-weight="600" font-size="${size}" fill="#1D2B8F">${escapeText(word)}</text>
+  ${star ? `<g transform="translate(172 -4) scale(1.1)">${STAR.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>` : ''}
+</svg>`;
+}

@@ -21,11 +21,32 @@
 // tolerance is at least 45 px (src/geometry.js withMinLeeway). Long names are
 // never stricter than single letters.
 //
-// Round 3 (the copy-it round) and the reward come in PR 2 of Slice 9C. For now,
-// after round 2 the whole name glows and onDone hands back to the shell with no star.
+// Round 3 (Slice 9C part 2), the copy-it round: the lines are empty and her name
+// stands on a model card above them, each letter with its numbered start dots
+// and arrows. Jugnu writes it once on the card, then she writes her whole name
+// anywhere on the lines. It is judged NAME_WAIT_MS after her last lift
+// (src/name-copy.js scoreName): her strokes are given to the letters by where
+// they are, and each letter is judged as it is on its own. Letters still to
+// write at the end: Jugnu shows the next one on the card (a hint, not a fail).
+// A fail shows why first, the letter it is about glowing on the card (or Jugnu
+// drawing what is missing, a dashed outline at the right size, or the guide
+// lines glowing), then her name fades and she writes it again. After 3 failed
+// copies the round counts as done, with help. The fading helper (its own level,
+// saved under 'name' in td.helper): level 1 the dotted ghost of her name and the
+// first start dot, level 2 a start dot for each letter not begun, level 3 nothing.
+// Habits (stroke order, the letters' order, a letter the other way round) never
+// fail: Jugnu writes those letters the usual way on the card once.
+//
+// The reward: her name glows letter by letter, and Jugnu flies loops over it.
+// onDone({ id: 'name', star, helped, failedCopies, wrongStarts, mirrored, review }):
+// the shell saves the star, the review schedule and her name card.
+//
+// A review (`review: true`) is round 3 alone, with one round light, and never
+// touches her saved rounds.
 
 import {
   drawLines, drawStageTrack, createInk, createFx, letterToPx, pxToLetter, START_DOT_RADIUS, trackLook, markPath,
+  drawModelCard, drawCopyHelper, nameHelperMarks, CARD,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker, withMinLeeway } from './geometry.js';
@@ -35,27 +56,42 @@ import {
 import {
   CONFIG, ROUNDS, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
   startRounds, markHelp, isHelp, finishRound, roundLights, isCopyRound, strokeLogEntry,
-  startNameRound, finishNameLetter,
+  startNameRound, finishNameLetter, finishCopy, starEarned, startHelper, applyHelperCopy,
 } from './progress.js';
-import { traceNote } from './notes.js';
-import { logAttempt, readProfile, readRounds, saveRounds, clearRounds } from './storage.js';
+import { traceNote, nameCopyNote } from './notes.js';
+import {
+  logAttempt, readProfile, readRounds, saveRounds, clearRounds, readHelper, saveHelper,
+} from './storage.js';
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel } from './debug.js';
 import { loadChar, pauseAnimations } from './game.js';
-import { NAME_ID, nameLayout, nameWidth, placeLetters, nameLogEntry } from './name.js';
+import { NAME_ID, nameLayout, nameCopyLayout, nameWidth, placeLetters, nameLogEntry } from './name.js';
+import { scoreName, nameCompareIds, assignStrokes, nameCopyLogEntry } from './name-copy.js';
+import { refBox, POSITION_LINES } from './copy.js';
 
 const HOME = { x: 0.35, y: 0.65 };   // Jugnu's home, as in game.js
 const TRAIL_WIDTH = 0.16;            // Jugnu's trail when he draws a stroke himself, line units
 const LETTER_GLOW_WIDTH = 0.12;      // a letter's glow when it is done, line units
 const LETTER_GLOW_MS = 900;          // one letter lights up this long
 const NAME_GLOW_STEP_MS = 220;       // at the end, each letter of her name starts glowing this long after the one before
+const NAME_WAIT_MS = 3000;           // round 3: her name is judged this long after her last lift
+const NAME_DEMO_MS = 700;            // round 3: Jugnu writes each stroke of her name on the card this fast
+const CARD_TRAIL_WIDTH = 0.2;        // Jugnu's trail on the card, card units
+const LINE_GLOW_WIDTH = 0.03;        // a guide line's gold glow (line position reasons), line units
+const STARTED_NEAR = 0.3;            // level 2: a stroke starting this near a letter's start dot begins that letter
+const CELEBRATE_MS = 2600;           // Jugnu's loops over her name
+const PLAIN_INK = { dim: false, glow: true };
 
 // Plays her name. els: { area, lines, ink, fx, jugnu, rounds, note }.
 // letters: the character ids of her name, in order (src/name.js nameOf).
 // Returns { pause, resume, stop }.
-export async function startNameGame(els, { letters, manifest = [], debugOn = false, onDone = () => {} }) {
+export async function startNameGame(els, { letters, manifest = [], debugOn = false, review = false, onDone = () => {} }) {
   const loaded = await Promise.all(letters.map((id) => loadChar(id, manifest)));
+  // Round 3 compares each letter with its board, its look-alikes and its twin in the other case.
+  const compared = [...new Set(letters.flatMap(nameCompareIds))];
+  const byId = new Map((await Promise.all(compared.map(async (id) => [id, await loadChar(id, manifest)]))).filter(([, c]) => c));
+  const othersOf = (id) => nameCompareIds(id).map((x) => byId.get(x)).filter(Boolean);
   if (letters.length === 0 || loaded.some((c) => !c)) {
     const panel = debugOn ? createDebugPanel(0) : null;
     panel?.message('A letter of the name could not be loaded');
@@ -63,6 +99,8 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   }
   const placed = placeLetters(loaded); // each letter in the name's units
   const width = nameWidth(loaded);
+  // The whole name as one character, for the model card and the helper.
+  const nameChar = { id: NAME_ID, width, strokes: placed.flatMap((c) => c.strokes) };
 
   const ink = createInk(els.ink);
   const fx = createFx(els.fx);
@@ -74,8 +112,13 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   setProfile(readProfile());
 
   const rounds = roundCount(ROUNDS);
-  let rp = startRounds(readRounds(NAME_ID), rounds);
-  if (isCopyRound(rp.round, rounds)) rp = { round: 0, helped: rp.helped }; // round 3 comes in PR 2
+  // A review starts at round 3 and never reads or saves her rounds.
+  let rp = review ? { round: rounds - 1, helped: false } : startRounds(readRounds(NAME_ID), rounds);
+  const keepRounds = (fn) => { if (!review) fn(); };
+  const isCopy = () => isCopyRound(rp.round, rounds);
+  let card = null;    // round 3: the model card for this screen, else null
+  let copy = null;    // round 3: { strokes, ids, fails, hinted }
+  let helper = startHelper(readHelper(NAME_ID));
   const sitting = { failedCopies: 0, wrongStarts: 0, mirrored: 0 };
   const stage = () => stageForRound(rp.round, rounds);
 
@@ -132,7 +175,14 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   }
   const resumeLater = () => { for (const t of timers) t.arm(); };
 
-  function updateDebug() {
+  function updateDebug(result = null) {
+    if (debug && card) {
+      debug.message(`name  round 3  copy it  helper ${helper.level} (passes ${helper.passes}, fails ${helper.fails})  failed copies ${copy?.fails ?? 0}/${CONFIG.copyTries}` +
+        `  help ${rp.helped ? 'yes (no star)' : 'no'}\nunit ${layout.unit.toFixed(0)} px` +
+        (result ? `\n${result.ok ? 'PASS' : `not ok: ${result.reason} (letter ${result.letter === null ? '-' : result.letter + 1})`}  order ${result.habits.order}\n` +
+          result.letters.map((x) => `  ${x.id}: ${x.ok ? 'ok' : x.reason}  strokes ${x.strokes}  distance ${x.distance ?? '-'}${x.lookalike ? `  looks like ${x.lookalike}` : ''}`).join('\n') : ''));
+      return;
+    }
     debug?.message(`name (${placed.length} letters)  round ${rp.round + 1}/${rounds}  stage ${progress.stage}  letter ${np.letter + 1} ${cur()?.id ?? '-'}` +
       `  stroke ${progress.current + 1}  streak ${progress.streak}  retraced ${np.retraced.map((r) => (r ? 1 : 0)).join('')}` +
       `  help ${rp.helped ? 'yes (no star)' : 'no'}\nunit ${layout ? layout.unit.toFixed(0) : '-'} px  tolerance ${(stageCfg().tolerance * (layout?.unit ?? 0)).toFixed(0)} px`);
@@ -140,7 +190,9 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
 
   function drawLights(lit = -1) {
     if (!els.rounds) return;
-    els.rounds.replaceChildren(...roundLights(rp, rounds).map((kind, i) => {
+    const first = review ? rounds - 1 : 0; // a review shows only its one round's light
+    els.rounds.replaceChildren(...roundLights(rp, rounds).slice(first).map((kind, j) => {
+      const i = j + first;
       const el = document.createElement('i');
       el.className = `rl ${kind}${i === lit ? ' lit' : ''}`;
       return el;
@@ -150,8 +202,21 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
 
   // The whole name's track: done letters gold, the letter she traces now with its
   // start dots (in the plan her strokes follow), the letters still to come without.
+  // Round 3: letters she has begun (a stroke started near its start dot), for level 2's dots.
+  function started() {
+    return placed.map((c) => {
+      const [sx, sy] = c.strokes[0].points[0];
+      return (copy?.strokes ?? []).some((pts) => Math.hypot(pts[0][0] - sx, pts[0][1] - sy) <= STARTED_NEAR);
+    });
+  }
+
   function redraw() {
     drawLines(els.lines, layout);
+    if (card) {
+      drawModelCard(els.lines, layout, card, nameChar, placed);
+      drawCopyHelper(els.lines, layout, nameChar, layout.offset, { level: helper.level, marks: nameHelperMarks(placed, helper.level, started()) });
+      return;
+    }
     placed.forEach((c, i) => {
       const opts = { stage: progress.stage };
       if (np.done[i]) drawStageTrack(els.lines, layout, c, layout.offset, { ...opts, done: c.strokes.map(() => true), markers: false });
@@ -174,7 +239,16 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   function applyLayout() {
     const w = els.area.clientWidth || window.innerWidth;
     const h = els.area.clientHeight || window.innerHeight;
-    layout = nameLayout(w, h, width);
+    if (isCopy()) {
+      layout = nameCopyLayout(w, h, width);
+      const { unit, originX, top, offset } = layout;
+      const c = layout.card;
+      // Card units (the name's own) -> the name's units on the lines, for Jugnu and the effects.
+      card = { ...c, toMain: ([x, y]) => [(c.origin[0] + x * c.k - originX) / unit - offset, (c.origin[1] + y * c.k - top) / unit] };
+    } else {
+      layout = nameLayout(w, h, width);
+      card = null;
+    }
     cfg = withMinLeeway(DEFAULTS, layout.unit);
     redraw();
     ink.resize(layout, layout.offset);
@@ -183,6 +257,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   }
 
   function beginStroke() {
+    if (card) return beginCopy();
     redraw();
     updateDebug();
     if (np.letter === 0 && progress.done.every((d) => !d)) speak('start');
@@ -279,16 +354,20 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     }
     logAttempt(nameLogEntry({ round: rp.round + 1, stage: stage(), letters: stats }));
     // A helped letter was traced again, so the round itself never starts again.
-    const r = finishRound(rp, { assisted: false }, rounds);
+    return afterRound(finishRound(rp, { assisted: false }, rounds));
+  }
+
+  // A round ended with `r` (finishRound or finishCopy). her: her copied strokes, which glow at the end.
+  async function afterRound(r, her = null) {
+    phase = 'held';
     const finished = rp.round;
     rp = r.state;
-    if (r.allDone || isCopyRound(rp.round, rounds)) {
-      // PR 1: the copy-it round is not built yet, so her practice ends here.
-      clearRounds(NAME_ID);
+    if (r.allDone) {
+      keepRounds(() => clearRounds(NAME_ID));
       drawLights(finished);
-      return finishName();
+      return finishName(her);
     }
-    saveRounds(NAME_ID, rp);
+    keepRounds(() => saveRounds(NAME_ID, rp));
     drawLights(finished);
     letterChime();
     await wait(CONFIG.roundPauseMs);
@@ -300,24 +379,166 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     letterInk = placed.map(() => []);
     progress = freshLetter();
     following = startPlans(cur());
+    applyLayout(); // round 3 lays the screen out round its model card
     phase = 'trace';
     beginStroke();
   }
 
-  // Her name glows, letter by letter, then the shell takes her back to the name book.
-  async function finishName() {
+  // ---- round 3: the copy-it round ----
+
+  const namePaths = () => placed.flatMap((c) => c.strokes.map((s) => markPath(s.points)));
+
+  async function beginCopy() {
+    copy = { strokes: [], ids: [], fails: 0, hinted: false };
+    progress = { ...progress, stage: 3 };
+    redraw();
+    updateDebug();
+    speak('copy');
+    if (!(await showOnCard(namePaths(), NAME_DEMO_MS))) return;
+    phase = 'trace';
+  }
+
+  // Jugnu draws `paths` (the name's own units) on the model card, each leaving a
+  // glowing trail; then the trails fade and he flies home. Resolves false if stopped.
+  async function showOnCard(paths, ms = CONFIG.copyDemoMs) {
+    phase = 'held';
+    const trails = [];
+    for (const path of paths) {
+      const pts = path.map(card.toMain);
+      const trail = fx.trail(pts.map(toPx), CARD_TRAIL_WIDTH * card.k);
+      trails.push(trail);
+      const flown = await jugnu.demo(pts, ms, CONFIG.hopMs, (f) => trail.set(f));
+      if (!alive || !flown) return false;
+    }
+    for (const t of trails) t.fadeOut(CONFIG.trailFadeMs);
+    jugnu.hopTo(home(), CONFIG.hopMs);
+    await wait(Math.max(CONFIG.trailFadeMs, CONFIG.hopMs));
+    return alive;
+  }
+
+  function endCopyStroke() {
+    const id = ink.end();
+    copy.strokes.push(attemptPoints);
+    copy.ids.push(id);
+    if (helper.level < 3) redraw(); // level 1's first dot and level 2's dots go as she begins letters
+    later(judgeName, NAME_WAIT_MS);
+  }
+
+  // She stopped before the last letters: Jugnu writes the next one on the card.
+  // Nothing is judged or logged, and it is not a failed copy.
+  async function hintName(result) {
+    copy.hinted = true; // this copy had Jugnu's help: it cannot move the helper up
+    if (!(await showOnCard(result.show.paths.map((p) => markPath(p))))) return;
+    phase = 'trace';
+  }
+
+  // Why her name did not count, while it is still there. Resolves false if stopped.
+  async function showWhy(result) {
+    const how = result.reason;
+    const paths = (result.show?.paths ?? []).map((p) => markPath(p));
+    if (how === 'no-letter') return showOnCard(namePaths(), CONFIG.copySlowMs);
+    if (how === 'unrecognized') return showOnCard(paths, CONFIG.copySlowMs);
+    if (how === 'missing-letter' || how === 'missing-stroke' || (how === 'looks-like' && result.show && !result.show.whole)) return showOnCard(paths);
+    phase = 'held';
+    const k = result.letter;
+    // The letter it is about glows on the card.
+    for (const pts of paths) fx.partGlow(pts.map(card.toMain).map(toPx), CARD.letter.width * card.k, CONFIG.copyReasonMs);
+    if (POSITION_LINES[how]) {
+      for (const y of POSITION_LINES[how]) {
+        const py = layout.top + y * layout.unit;
+        fx.partGlow([[layout.originX, py], [layout.lineEnd, py]], LINE_GLOW_WIDTH * layout.unit, CONFIG.copyReasonMs);
+      }
+    }
+    const hers = boxOfStrokes(assignStrokes(copy.strokes, placed).groups[k] ?? []);
+    if ((how === 'too-small' || how === 'too-big' || how === 'wrong-case') && hers) {
+      // A dashed outline the letter's own size, standing on the lines where her letter is.
+      const model = refBox(loaded[k]);
+      const [x0, y0] = toPx([hers.cx - model.w / 2 - 0.08, model.y0 - 0.08]);
+      const [x1, y1] = toPx([hers.cx + model.w / 2 + 0.08, model.y1 + 0.08]);
+      fx.outline({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, CONFIG.copyReasonMs);
+    }
+    await wait(CONFIG.copyReasonMs);
+    return alive;
+  }
+
+  async function judgeName() {
+    if (phase !== 'trace' || copy.strokes.length === 0) return;
+    phase = 'held';
+    const result = scoreName(copy.strokes, placed, loaded, { othersOf });
+    showNote(nameCopyNote(result, letters));
+    if (result.reason === 'unfinished') return hintName(result);
+    const r = finishCopy(rp, { ok: result.ok, fails: copy.fails }, rounds);
+    logAttempt(nameCopyLogEntry({ result, attempt: copy.fails + 1, helper: helper.level, helped: r.helpedOut, review }));
+    helper = applyHelperCopy(helper, { ok: result.ok, hinted: copy.hinted });
+    saveHelper(NAME_ID, helper);
+    if (!result.ok) sitting.failedCopies += 1;
+    if (result.ok && result.mirrored) sitting.mirrored += 1;
+    sitting.wrongStarts += result.letters.reduce((n, x) => n + (x.result?.strokes ?? []).filter((t) => t.startOk === false && t.reason !== 'extra-stroke').length, 0);
+    updateDebug(result);
+    if (result.ok) {
+      chime();
+      for (const pts of copy.strokes) fx.sparkle(pts.map(toPx), CONFIG.sparkleMs);
+      await wait(CONFIG.sparkleMs);
+      if (!alive) return;
+      // Habits coach, never fail: Jugnu writes those letters the usual way on the card.
+      if (!result.habits.usual) {
+        const paths = result.habits.coach.flatMap((k) => placed[k].strokes.map((s) => markPath(s.points)));
+        if (paths.length && !(await showOnCard(paths, NAME_DEMO_MS))) return;
+      }
+      return afterRound(r, copy.strokes);
+    }
+    copy.fails = r.fails;
+    speak('copyAgain');
+    if (!(await showWhy(result))) return;
+    // Her name fades (the one place her writing fades: room for a fresh copy).
+    for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
+    copy.strokes = [];
+    copy.ids = [];
+    copy.hinted = false;
+    redraw(); // the helper may have dropped a level: her next try has more help at once
+    if (r.helpedOut) return afterRound(r, null);
+    phase = 'trace';
+  }
+
+  // ---- the reward ----
+  // Her name glows letter by letter (her own writing in round 3, the model if
+  // Jugnu helped her out), Jugnu flies loops over it, then the shell takes over.
+  async function finishName(her = null) {
     phase = 'held';
     redraw();
     speak('letterDone');
     letterChime();
+    const groups = her ? assignStrokes(her, placed).groups : null;
     placed.forEach((c, i) => {
-      later(() => fx.letterGlow(c.strokes.map((s) => markPath(s.points).map(toPx)), LETTER_GLOW_WIDTH * layout.unit, CONFIG.letterGlowMs), i * NAME_GLOW_STEP_MS);
+      const lines = groups?.[i] ?? c.strokes.map((s) => markPath(s.points));
+      later(() => fx.letterGlow(lines.map((pts) => pts.map(toPx)), LETTER_GLOW_WIDTH * layout.unit, CONFIG.letterGlowMs), i * NAME_GLOW_STEP_MS);
     });
-    await wait(CONFIG.letterGlowMs + placed.length * NAME_GLOW_STEP_MS);
+    await wait(placed.length * NAME_GLOW_STEP_MS);
+    if (!alive) return;
+    // Jugnu celebrates: loops along the top of her name, a trail of sparkles behind him.
+    const loops = celebrationPath();
+    later(() => fx.sparkle(loops.map(toPx), CELEBRATE_MS), CONFIG.hopMs);
+    const flown = await jugnu.demo(loops, CELEBRATE_MS, CONFIG.hopMs);
+    if (!alive || !flown) return;
+    letterChime();
+    jugnu.hopTo(home(), CONFIG.hopMs);
+    await wait(Math.max(CONFIG.hopMs, CONFIG.letterGlowMs - CELEBRATE_MS));
     if (!alive) return;
     phase = 'done';
-    // No star yet: the star needs round 3 (PR 2).
-    onDone({ id: NAME_ID, star: false, helped: rp.helped, ...sitting, review: false, partial: true });
+    onDone({ id: NAME_ID, star: starEarned(rp), helped: rp.helped, ...sitting, review });
+  }
+
+  // Loop-the-loops from the left of her name to the right, just above the sky line (name units).
+  function celebrationPath() {
+    const n = Math.max(3, Math.round(placed.length * 0.75));
+    const r = 0.16;
+    const pts = [];
+    for (let i = 0; i <= n * 24; i++) {
+      const t = i / (n * 24);
+      const a = -Math.PI / 2 - t * n * 2 * Math.PI;
+      pts.push([t * width + r * Math.cos(a), -0.3 + r * Math.sin(a)]);
+    }
+    return pts;
   }
 
   function styleFor(q) {
@@ -345,13 +566,22 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     };
   }
 
+  let attemptPoints = null; // round 3: her stroke now
   function startStroke(p) {
     hush();
     cancelLater();
     fx.clear();
     ink.settle();
-    jugnu.restAt(startDot());
     const { u, q } = toChar(p);
+    if (card) {
+      // Copy it: no track to follow, so her ink is always full. Jugnu stays where he is.
+      jugnu.stop();
+      attempt = { copy: true, points: [q] };
+      attemptPoints = attempt.points;
+      ink.begin(u, PLAIN_INK);
+      return;
+    }
+    jugnu.restAt(startDot());
     const candidates = planCandidates(cur(), following);
     attempt = {
       candidates,
@@ -366,6 +596,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   function endStroke() {
     const a = attempt;
     attempt = null;
+    if (a.copy) return endCopyStroke();
     const id = ink.end();
     const st = progress.stage;
     const current = progress.current;
@@ -400,7 +631,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     progress = lift.state;
     if (!rp.helped && isHelp(st, lift)) {
       rp = markHelp(rp);
-      saveRounds(NAME_ID, rp);
+      keepRounds(() => saveRounds(NAME_ID, rp));
     }
     updateDebug();
 
@@ -434,7 +665,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
         const { u, q } = toChar(p);
         attempt.points.push(q);
         us.push(u);
-        styles.push(styleFor(q));
+        styles.push(attempt.copy ? PLAIN_INK : styleFor(q));
       }
       ink.add(us, styles);
     },
@@ -519,3 +750,12 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     },
   };
 }
+
+const boxOfStrokes = (strokes) => {
+  const pts = strokes.flat();
+  if (pts.length === 0) return null;
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs); const x1 = Math.max(...xs); const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+  return { x0, x1, y0, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+};

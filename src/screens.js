@@ -9,12 +9,12 @@
 
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, boardGrid, localDay,
-  startScreen, navigate, tuneFor, bookOf, tileColorOf, BOARD_ORDER, booksWithDue, pageNow, pageSwitch, NAME_BOOK,
+  startScreen, navigate, tuneFor, bookOf, tileColorOf, REVIEW_ORDER, booksWithDue, pageNow, pageSwitch, NAME_BOOK,
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
-  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, readProfile,
+  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, readProfile, saveNameCard,
 } from './storage.js';
 import {
   enrolStars, pickToday, dueToday, recordPractice, recordReview, reviewLogEntry, isDay,
@@ -24,10 +24,10 @@ import { setMusicOn, setTune, resumeMusic } from './music.js';
 import { startGame, loadChar } from './game.js';
 import { startNameGame } from './name-game.js';
 import { NAME_ID, nameOf, nameWidth, nameFits } from './name.js';
-import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover } from './art.js';
+import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
-import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS } from './finds.js';
+import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
 import { GAME_KINDS, gamesOf, kindStars, gameTile, kindOf } from './games.js';
 import { gameNote, nameNote } from './notes.js';
@@ -92,7 +92,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   function dueNow() {
     const today = todayNow();
     const before = readReviews();
-    const reviews = pickToday(enrolStars(before, readStars(), today), today, BOARD_ORDER);
+    const reviews = pickToday(enrolStars(before, readStars(), today), today, REVIEW_ORDER); // her name first (Slice 9C)
     if (reviews !== before) saveReviews(reviews);
     return dueToday(reviews, today);
   }
@@ -375,6 +375,15 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       star.innerHTML = STAR;
       tile.appendChild(star);
     }
+    // Due for review today (Slice 9C part 2): the tile glows and carries the firefly light.
+    const due = n.ok && dueNow().includes(NAME_ID);
+    if (due) {
+      tile.classList.add('due');
+      const mark = document.createElement('span');
+      mark.className = 'due-mark';
+      mark.innerHTML = DUE_MARK;
+      tile.appendChild(mark);
+    }
     let ready = false;
     const say = (reason) => showGameNote(nameNote(reason));
     if (!n.ok) say(n.reason);
@@ -396,7 +405,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       tile.classList.add('picked');
       setTimeout(() => {
         busy = false;
-        go(navigate(state, { type: 'openName', ready: true }));
+        go(navigate(state, { type: 'openName', ready: true, review: due }));
       }, TILE_PICK_MS);
     });
   }
@@ -586,10 +595,13 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const rows = [[], [], []];
     let row = 0;
     let used = 0;
+    // Her name card (Slice 9C part 2): her name from the profile, with the name's star when earned.
+    const word = nameOf(readProfile().name).word;
+    const nameStar = readStars().includes(NAME_ID);
     for (const f of readFinds().slice(-SHELF_SHOWS).reverse()) {
-      const art = findArt(f);
+      const art = isNameCard(f) ? (word ? nameCardArt(word, nameStar) : null) : findArt(f);
       if (!art) continue;
-      const places = f.g && f.n >= 3 ? 2 : 1;
+      const places = (f.g && f.n >= 3) || isNameCard(f) ? 2 : 1;
       if (used + places > 8) { row += 1; used = 0; }
       if (row > 2) break;
       rows[row].push({ art, places });
@@ -665,8 +677,16 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       letters: n.ok ? n.letters : [],
       manifest,
       debugOn,
-      onDone: () => {
-        if (state === mine) go(navigate(state, { type: 'letterDone' }));
+      review: state.review === true,
+      // As for a letter: a review never adds or takes a star. Her name card goes on her shelf of finds.
+      onDone: (done) => {
+        if (state !== mine) return;
+        const isReview = state.review === true;
+        const newStar = !isReview && done.star ? NAME_ID : null;
+        if (newStar) saveStar(NAME_ID);
+        recordSitting(done, isReview);
+        saveNameCard();
+        go(navigate(state, { type: 'letterDone' }), { newStar });
       },
     });
     if (state !== mine) running.stop();

@@ -75,3 +75,29 @@ export const NAME_NOTES = {
   'too-long': 'Her name is too long for one line. See the setup page.',
 };
 export const nameNote = (reason) => NAME_NOTES[reason] ?? null;
+
+// Her name's copy-it round (Slice 9C part 2): the line names the letter, and
+// that letter glows on the model card. `result` is src/name-copy.js scoreName's;
+// `ids` her name's letters. null for a usual pass.
+export function nameCopyNote(result, ids) {
+  if (result.ok) {
+    if (result.mirrored) return COPY_NOTES.mirrored;
+    return result.habits?.usual === false ? COPY_NOTES['usual-way'] : null;
+  }
+  const id = ids[result.letter];
+  const part = result.letters?.[result.letter]?.part;
+  switch (result.reason) {
+    case 'unfinished': return 'Here is the next letter.';
+    case 'missing-letter': return missingLine(id);
+    case 'looks-like': return part ? missingLine(`${part} of the ${id}`) : looksLine(result.lookalike);
+    case 'missing-stroke': return part ? missingLine(`${part} of the ${id}`) : `Almost! A line of the ${id} is missing.`;
+    case 'wrong-case': return /^[a-z]$/.test(id) ? `Almost! The ${id} is a small letter.` : `Almost! The ${id} is a capital letter.`;
+    case 'too-small': return `Make the ${id} bigger.`;
+    case 'too-big': return `Make the ${id} a little smaller.`;
+    case 'position-tail': return `Let the tail of the ${id} go below the grass.`;
+    case 'position-tall': return `Make the ${id} reach up high.`;
+    case 'position-small': return `Keep the ${id} between the fence and the grass.`;
+    case 'unrecognized': return `Let's watch Jugnu write the ${id}.`;
+    default: return "Let's watch Jugnu write it.";
+  }
+}

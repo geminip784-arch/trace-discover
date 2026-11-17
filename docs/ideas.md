@@ -152,8 +152,16 @@ counting thing), fairy (Jugnu is the only character).
 
 ## Slice 9C part 1: her name's book, rounds 1 and 2
 
-- **[9C part 2]** After round 2 the practice ends for now (no round 3, star or review). Part 2 adds the copy-it round, the reward, the name card on her shelf of finds and reviews; `name-game.js` then stops treating round 3 as the end.
+- ✅ **[9C part 2]** After round 2 the practice ends for now (no round 3, star or review). Part 2 adds the copy-it round, the reward, the name card on her shelf of finds and reviews; `name-game.js` then stops treating round 3 as the end.
 - **[later]** The 45 px floor covers the start radius, path tolerance and dot radius. A dot (i, j) must also be a tap no longer than `DOT_MAX` (0.2 units, about 23 px at the smallest lines); if her dots on a long name are often not counted, give `DOT_MAX` a px floor too.
 - **[later]** In rounds 1 and 2 only the letter she traces now is scored, so a neighbour's track (r's stem next to a's stick) can never take her stroke. Neighbouring tracks touch on long names; that is only how they look.
 - **[6B]** A spoken "Let's write your name!" (a private `{name}` clip) when the name book opens, and her name said letter by letter at the end.
 - **[8]** The parent zone could show the name book's `name` log entries: which letters of her name needed help.
+
+## Slice 9C part 2: round 3, the reward, the name card and reviews
+
+- **[later]** The stroke-to-letter cut (`NAME_COPY` in `src/name-copy.js`) was set on drawn test names (neat, wobbly, slanted, small, big, tight, spread out, out of order). Check her real `name` log entries after a week: a name that looks right to you but fails with `missing-letter` or a letter's `unrecognized` means the cut needs tuning (`gap`, `cutCost`, `place`).
+- **[later]** A name with an extra letter ("Sarra" for "Sara") fails on the letter the extra strokes join, often as "That looks like m" or "Let's watch Jugnu write the a". Fine for now; an "extra letter" reason could name it better.
+- **[later]** Judging takes about 0.1 to 0.9 s on a laptop for 3 to 8 letters; on the tablet it may take a little longer. If the pause after the 3-second wait feels long, the cut's shape costs could be cached per stroke group across copies.
+- **[6B]** The name lines name a letter ("Almost! The r is missing.", "Make the r bigger.", "Here is the next letter."...): for the voice pack they need a clip per letter or a "the r" clip spliced in. Not in `data/voice-script.js` yet.
+- **[8]** The parent zone could show the name's `name` log entries: which letters of her name she copies well, and which need help.

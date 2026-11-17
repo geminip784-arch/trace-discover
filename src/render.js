@@ -784,7 +784,9 @@ export function cardMarkers(char) {
 }
 
 // Draw the card on the guide layer (call after drawLines).
-export function drawModelCard(svg, layout, card, char) {
+// `groups` (Slice 9C, her name): the characters whose start dots are numbered
+// on their own (each letter 1, 2...), drawn in place of the whole char's.
+export function drawModelCard(svg, layout, card, char, groups = [char]) {
   const { unit } = layout;
   const make = (tag, attrs, parent = svg) => {
     const el = document.createElementNS(SVG_NS, tag);
@@ -821,7 +823,9 @@ export function drawModelCard(svg, layout, card, char) {
     const [cx, cy] = px(stroke.points[0]);
     make('circle', { cx, cy, r: CARD.letter.width * card.k, fill: CARD.letter.color }, g);
   }
-  const { dots, arrows } = cardMarkers(char);
+  const marks = groups.map(cardMarkers);
+  const dots = marks.flatMap((m) => m.dots);
+  const arrows = marks.flatMap((m) => m.arrows);
   for (const a of arrows) {
     const [cx, cy] = px(a.at);
     const s = a.r * card.k;
@@ -887,7 +891,8 @@ export function copyHelperMarks(char, level, done = null) {
 }
 
 // Draw the helper on the guide layer (after drawLines and the model card).
-export function drawCopyHelper(svg, layout, char, offset, { level, done = null }) {
+// `marks` ({ ghost, dots }, as copyHelperMarks gives) draws those instead (her name: nameHelperMarks).
+export function drawCopyHelper(svg, layout, char, offset, { level, done = null, marks = null }) {
   const { unit } = layout;
   const px = letterToPx(layout, offset);
   const make = (tag, attrs) => {
@@ -896,7 +901,7 @@ export function drawCopyHelper(svg, layout, char, offset, { level, done = null }
     svg.appendChild(el);
     return el;
   };
-  const { ghost, dots } = copyHelperMarks(char, level, done);
+  const { ghost, dots } = marks ?? copyHelperMarks(char, level, done);
   const g = HELPER_LOOK.ghost;
   for (const points of ghost) {
     make('polyline', {
@@ -921,4 +926,21 @@ export function drawCopyHelper(svg, layout, char, offset, { level, done = null }
       t.textContent = String(d.label);
     }
   }
+}
+
+// Pure: the fading helper for her name (Slice 9C part 2), in the name's units.
+// `letters`: the placed letters; `started[k]`: she has begun letter k.
+// Level 1: the dotted ghost of the whole name, and the first letter's start dot
+// until she draws. Level 2: one start dot per letter she has not begun (no
+// numbers). Level 3: nothing.
+export function nameHelperMarks(letters, level, started = []) {
+  const first = (c) => ({ at: c.strokes[0].points[0], label: null });
+  if (level === 1) {
+    return {
+      ghost: letters.flatMap((c) => c.strokes.map((s) => markPath(s.points))),
+      dots: started.some(Boolean) ? [] : [first(letters[0])],
+    };
+  }
+  if (level === 2) return { ghost: [], dots: letters.filter((c, k) => !started[k]).map(first) };
+  return { ghost: [], dots: [] };
 }
