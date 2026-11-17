@@ -106,6 +106,10 @@ export function pageSwitch(book, page, manifest, due = []) {
 // Every character on every board, ABC (capitals, then lowercase) then 123 then Urdu: the order reviews break ties in.
 export const BOARD_ORDER = Object.values(BOARDS).flatMap((b) => b.tiles.map((t) => t.id));
 
+// The order today's reviews break ties in (src/review.js pickToday): her name
+// first (Slice 9C part 2), then every board's characters.
+export const REVIEW_ORDER = ['name', ...BOARD_ORDER];
+
 // The books that hold at least one of today's due letters (they glow on the shelf).
 export const booksWithDue = (due) => [...new Set(due.map(bookOf).filter(Boolean))];
 
@@ -241,7 +245,8 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //   { type: 'turnPage' }                 board -> the book's other page (ABC only)
 //   { type: 'openChar', id, manifest, review } board -> write (faint characters: no change);
 //                                        review: true when the tile is due for review
-//   { type: 'openName', ready }          name -> write her name (ready: false, no name to write: no change)
+//   { type: 'openName', ready, review }  name -> write her name (ready: false, no name to write: no change);
+//                                        review: true when her name is due for review
 //   { type: 'openScene' }                write -> find (the same char and book)
 //   { type: 'letterDone' }               write or find -> its board, on the letter's page (or the shelf);
 //                                        her name -> the name book
@@ -284,7 +289,9 @@ export function navigate(state, event) {
       return event.review === true ? { ...write, review: true } : write;
     }
     case 'openName':
-      return screen === NAME_BOOK && event.ready === true ? { screen: 'write', char: NAME_BOOK, book: NAME_BOOK } : state;
+      if (screen !== NAME_BOOK || event.ready !== true) return state;
+      // review: true when her name is due for review today (Slice 9C part 2): round 3 alone.
+      return event.review === true ? { screen: 'write', char: NAME_BOOK, book: NAME_BOOK, review: true } : { screen: 'write', char: NAME_BOOK, book: NAME_BOOK };
     case 'openScene':
       return screen === 'write' ? { screen: 'find', char: state.char, book: state.book } : state;
     case 'letterDone':

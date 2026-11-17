@@ -81,6 +81,33 @@ export function nameLayout(w, h, width, fit = NAME_FIT) {
   };
 }
 
+// The copy-it round (Slice 9C part 2): the same unit and the same place across
+// the screen, but the model card stands above the lines, centred in her room,
+// as big as fits (at most 0.6 of a unit per card unit, as wide as her room, and
+// tall enough to leave the lines on the board), and the lines move down under it.
+// Returns nameLayout's fields with `top` moved, plus `card`: { x, y, w, h, k,
+// origin } in px (k: px per card unit; origin: the card name's x = 0, y = 0).
+export const NAME_CARD = { pad: 0.16, gap: 0.06, max: 0.6, bottom: 20 };
+export function nameCopyLayout(w, h, width, fit = NAME_FIT, card = NAME_CARD) {
+  const layout = nameLayout(w, h, width, fit);
+  const { unit } = layout;
+  const gap = card.gap * unit;
+  const tall = TAIL_LINE + 2 * card.pad; // card units
+  const k = Math.min(
+    card.max * unit,
+    (w - fit.left - fit.right) / (width + 2 * card.pad),
+    (h - card.bottom - fit.top - TAIL_LINE * unit - 2 * gap) / tall,
+  );
+  const cw = (width + 2 * card.pad) * k;
+  const ch = tall * k;
+  const x = (fit.left + (w - fit.right)) / 2 - cw / 2;
+  const y = fit.top;
+  // The lines: under the card, centred in the room left below it.
+  const below = y + ch + gap;
+  const top = Math.max(below, below + (h - card.bottom - below - TAIL_LINE * unit) / 2);
+  return { ...layout, top, card: { x, y, w: cw, h: ch, k, origin: [x + card.pad * k, y + card.pad * k] } };
+}
+
 // ---------------------------------------------------------------------------
 // The letters, placed
 

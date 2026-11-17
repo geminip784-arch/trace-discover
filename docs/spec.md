@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.8 · Nov 16, 2026 · describes the app as built through Slice 9C part 1 (her name's book and its first two rounds; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.9 · Nov 17, 2026 · describes the app as built through Slice 9C (her name's book: three rounds, the reward, her name card and reviews; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -39,7 +39,7 @@ Eight books stand on a shelf, left to right: **her name** (Slice 9C), **ABC**, *
 
 The home button (top of the left column) always returns here. The back button goes one step up. The music button turns the music on or off.
 
-### Her name's book (Slice 9C part 1)
+### Her name's book (Slice 9C)
 
 The first book on the shelf is hers: her name is on its cover (with no name set, four little writing lines). It opens to one big tile with her name, written as she will write it: a capital first letter and the rest lowercase, whatever the setup page holds ("sara" and "SARA" are both "Sara"). Her name lives only on the tablet (`td.profile`); the code, tests and docs only ever use made-up names.
 
@@ -49,9 +49,17 @@ The first book on the shelf is hers: her name is on its cover (with no name set,
 - **Round 1:** the full track of the whole name. Letter by letter, in order: the letter she traces now has its numbered start dot and arrow, and Jugnu flies each stroke first. Each letter is scored exactly as on its own (any allowed plan; a stroke traced the other way counts and is coached after the round). A finished letter lights up gold, with a chime.
 - **Round 2:** the thinner track; only the next start dot of the letter she traces now.
 - **Never stuck:** Jugnu demonstrates after 3 misses on a stroke and draws it after 5. Then only that letter is traced again, once; if Jugnu has to help again, it counts with help and she moves on. Any help means no gold star.
-- **For now** (round 3 comes in part 2): after round 2 her whole name glows letter by letter and she goes back to the name book. No star or review yet.
+- **Round 3, copy it (part 2):** the lines are empty and her name stands on a model card above them, centred in her room, as big as fits (up to 0.6 of a line unit per card unit); the lines move down under it, at the same size and place across as in rounds 1 and 2 (`nameCopyLayout` in `src/name.js`). Each letter on the card has its own numbered start dots and arrows (1, 2 within each letter). Jugnu writes her name once on the card, a little faster than a single letter (0.7 s a stroke), then she writes it anywhere on the lines.
+  - **The fading helper** has its own level for her name (`td.helper`, under `name`; it moves as for a letter): level 1 the dotted ghost of her whole name and the first letter's start dot until she draws; level 2 one start dot per letter she has not begun (no numbers); level 3 nothing.
+  - **When it is judged:** 3 seconds after her last lift (a new touch cancels the wait).
+  - **How it is judged** (`src/name-copy.js`): her strokes are sorted left to right and given to the letters by where they are along the line: the cut whose groups look most like their letters (each group's $P distance to its own letter), with small costs for a group far from where its letter stands (measured from the left of her name, in line units, since she writes on the same lines), for a clear gap inside one letter's group, and for cutting between strokes that stand over each other (a's round and its stick). A letter may get no strokes (left out). Then each letter is judged exactly as it is on its own (shape, every part, size, and for lowercase where it sits on the lines), also compared with its own twin in the other case. The name passes when every letter passes.
+  - **Stopped part way:** when the last letters are not written yet, nothing is judged: Jugnu writes the next letter on the card (a hint, never a fail, and not logged). Line: "Here is the next letter."
+  - **Why it did not count:** the first letter that did not count, from the left, says why, and it glows gold on the card (or Jugnu draws what is missing on the card, a dashed outline shows the letter's size where hers stands, or the guide lines glow). The line names the letter: "Almost! The r is missing.", "Almost! That looks like n.", "Almost! The dot of the i is missing.", "Almost! The a is a small letter.", "Almost! The S is a capital letter." (a capital in the wrong place, read as its twin, or for twins of the same shape such as s and S, by its size), "Make the r bigger.", "Let the tail of the y go below the grass.", "Let's watch Jugnu write the r." Then her name fades and she writes it again. After 3 failed copies the round counts as done, with help (no star).
+  - **Habits coach, never fail:** stroke order, the letters written out of order, or a letter the other way round: she passes, and Jugnu writes those letters (the whole name, for the order) the usual way on the card once. Line: "Well done! Here is the usual way."
+- **The reward (part 2):** her name glows letter by letter (her own writing; the model if Jugnu helped her out), and Jugnu flies loop-the-loops along the top of it with a trail of sparkles. Her **name card** goes on her shelf of finds: her name on the four little lines, two places wide, with a gold star once she has earned the name's star. Only one card is ever kept (a new one moves to the newest place); the card stores no name (`{ nm: 1 }`) and shows the name from the setup page. Then she goes back to the name book, where the star appears on the tile.
+- **Star and reviews (part 2):** the gold star needs a whole practice with no help, as for a letter. Her name then comes back for review on the usual schedule (1, 3, 7 and 21 days), counted in the 2 a day, and first when reviews tie. When it is due, the name book glows on the shelf and the tile glows with the firefly light; a review is round 3 alone, with one round light. It goes on the practice-more list for the same reasons as a letter.
 - **Changing the name** on the setup page starts its practice again: rounds, helper, star, review and practice-more entry are cleared, since it is a new word.
-- **Log:** each tracing round adds a `name` entry with each letter's result (ok, helped, misses, wrong starts, strokes traced the other way). Its strokes are logged as usual, marked `in: 'name'`.
+- **Log:** each tracing round adds a `name` entry with each letter's result (ok, helped, misses, wrong starts, strokes traced the other way), and each judged copy in round 3 a `name` entry with round 3, the try, the helper level, review or not, pass or fail, the reason and the letter it is about, the letters' order, and each letter's result (ok, reason, strokes, look-alike, missing part, distance, mirrored, usual way). Its strokes are logged as usual, marked `in: 'name'`.
 
 ### Character boards: ABC, 123 and Urdu
 
@@ -208,7 +216,7 @@ Every find and every counted group joins her collection.
 
 ### Her shelf of finds
 
-The toy box on the bookshelf opens her collection: the newest 24 finds stand on wooden planks. These are the objects she found and the groups she counted. Up to 500 are kept (`td.finds`).
+The toy box on the bookshelf opens her collection: the newest 24 finds stand on wooden planks, and her name card (Slice 9C) once she has written her name. These are the objects she found and the groups she counted. Up to 500 are kept (`td.finds`).
 
 ### Games book
 

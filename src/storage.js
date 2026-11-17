@@ -1,7 +1,7 @@
 // storage.js — settings and progress in localStorage. Every read and write is
 // wrapped in try/catch: a full or blocked storage must never stop the game.
 
-import { addFind, cleanFinds } from './finds.js';
+import { addFind, cleanFinds, addNameCard, isNameCard } from './finds.js';
 import { cleanReviews, cleanPracticeMore } from './review.js';
 
 // ---------------------------------------------------------------------------
@@ -393,6 +393,17 @@ export function savePracticeMore(list, store = activeStore()) {
 // ---------------------------------------------------------------------------
 // Her name (Slice 9C). Its practice is saved under one id (src/name.js NAME_ID)
 // like any character's: rounds, helper, star, review and the practice-more list.
+// Her name card on her shelf of finds (Slice 9C part 2): added, or moved to the
+// newest place, each time she finishes her name. Returns true when saved.
+export function saveNameCard(store = activeStore()) {
+  try {
+    store.setItem(FINDS_KEY, JSON.stringify(addNameCard(readFinds(store))));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // A changed name is a new word: resetName clears all of that, so she starts it
 // fresh. Returns true when everything was cleared.
 export function resetName(id, store = activeStore()) {
@@ -415,6 +426,9 @@ export function resetName(id, store = activeStore()) {
       today: reviews.today ? { ...reviews.today, ids: reviews.today.ids.filter((x) => x !== id) } : null,
     }, store);
     savePracticeMore(readPracticeMore(store).filter((e) => e.id !== id), store);
+    // The name card on her shelf of finds was for the old name.
+    const finds = readFinds(store);
+    if (finds.some(isNameCard)) store.setItem(FINDS_KEY, JSON.stringify(finds.filter((e) => !isNameCard(e))));
     return true;
   } catch {
     return false;

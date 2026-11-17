@@ -303,6 +303,7 @@ export function cleanFinds(list) {
   if (!Array.isArray(list)) return [];
   return list.filter((e) => (e && typeof e === 'object')
     && ((typeof e.o === 'string' && OBJECTS.some((o) => o.id === e.o))
+      || e.nm === 1 // her name card (Slice 9C part 2)
       || (typeof e.g === 'string' && THINGS[e.g] && Number.isInteger(e.n) && e.n >= 1 && e.n <= 20))); // 10 to 20: Slice 9B
 }
 
@@ -312,6 +313,13 @@ export function findArt(entry, objects = OBJECTS) {
   if (entry?.g) return THINGS[entry.g] ? groupArt(entry.g, entry.n, entry.gold ? 0 : -1).svg : null;
   return objects.find((o) => o.id === entry?.o)?.art ?? null;
 }
+
+// Her name card (Slice 9C part 2): { nm: 1 }. Only one is ever kept: a newly
+// earned one replaces the old, at the newest place. Her name itself is never
+// stored here; the shelf reads it from the profile when it draws the card.
+export const NAME_CARD = { nm: 1 };
+export const isNameCard = (e) => e?.nm === 1;
+export const addNameCard = (list, max = MAX_FINDS) => addFind(list.filter((e) => !isNameCard(e)), NAME_CARD, max);
 
 // The kind of her last counted group (so the next number scene can avoid it).
 export function lastGroupKind(list) {
