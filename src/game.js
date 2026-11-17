@@ -7,17 +7,20 @@
 //
 // Slice 5B: practice rounds (src/progress.js). Each round is the whole letter
 // at its round's stage: full track and Jugnu's demonstrations, then a thinner
-// track with the next start dot, then a faint track. Every finished round is
-// saved per character, so she resumes at the same round. After the last one
-// the letter glows, a chime plays, then onDone({ id, star, ... }) hands back to the
-// shell: star is true when no round needed Jugnu's help.
+// track with the next start dot. Every finished round is saved per character,
+// so she resumes at the same round. After the last one the letter glows, a
+// chime plays, then onDone({ id, star, ... }) hands back to the shell: star is
+// true when no round needed Jugnu's help.
+//
+// Slice 5K: a practice is the two tracing rounds only. The copy-it round below
+// is what a review is, on a later day.
 //
 // Screen size: everything she draws is kept in letter units, and every change of
 // size (rotation, the browser bar, split screen) redraws the guide, the track, her
 // ink, the effects and Jugnu from those units. pause() and resume() hold the game
 // while the tablet is upright; her place, round and strokes are kept.
 //
-// Slice 5I: the last round is the copy-it round. The lines are empty and the
+// Slice 5I: the copy-it round (reviews only since Slice 5K). The lines are empty and the
 // finished letter sits on a small model card at their right end, with a numbered
 // start dot and an arrow on every stroke. Jugnu draws it once on the card, then
 // she writes the whole letter anywhere on the lines. It is judged as a whole
@@ -28,13 +31,13 @@
 // that went wrong (all of it when the size was wrong); she tries again. After
 // CONFIG.copyTries failed copies the round counts as done, with help (no star).
 //
-// Slice 5I part 2: a review (`review: true`) is the copy-it round alone. It shows
+// Slice 5I part 2: a review (`review: true`) is the copy-it round. It shows
 // one round light, and never reads, saves or clears her saved practice rounds.
 // onDone also reports the sitting, for the review schedule and the practice-more
 // list (src/review.js): { id, star, helped, failedCopies, wrongStarts, mirrored, review }.
 //
 // Slice 5J: stroke plans and shape judging.
-// - Rounds 1 and 2 accept any allowed stroke plan (src/variants.js): the
+// - The tracing rounds accept any allowed stroke plan (src/variants.js): the
 //   default plan is shown until her strokes leave it, then her plan's track,
 //   start dots and help follow. Each stroke is still checked for start,
 //   direction and shape.
@@ -49,10 +52,10 @@
 //
 // Slice 5J part 2: frustration fixes.
 // - The copy-it round has a fading helper on the lines (src/progress.js
-//   HELPER, saved per character in td.helper, used by reviews too): level 1 a
+//   HELPER, saved per character in td.helper): level 1 a
 //   faint dotted ghost and the first start dot, level 2 the start dots of the
 //   plan her strokes read as, level 3 nothing. Every copy entry logs its level.
-// - Rounds 1 and 2: a stroke traced along the track the other way (from its far
+// - The tracing rounds: a stroke traced along the track the other way (from its far
 //   end) counts (src/variants.js scoreEitherWay). Her ink keeps glowing. It is
 //   logged as a habit, and after the letter Jugnu flies it the usual way once.
 
@@ -66,8 +69,8 @@ import {
   variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar, scoreMark,
 } from './variants.js';
 import {
-  CONFIG, ROUNDS, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
-  startRounds, markHelp, isHelp, finishRound, starEarned, roundLights, isCopyRound, finishCopy,
+  CONFIG, ROUNDS, COPY_STAGE, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
+  startRounds, startReview, markHelp, isHelp, finishRound, starEarned, roundLights, finishCopy,
   startHelper, applyHelperCopy, strokeLogEntry,
 } from './progress.js';
 import { scoreCopy, copyStatus, copyLogEntry, copyShow, compareIds, boxOf, refBox, POSITION_LINES } from './copy.js';
@@ -144,13 +147,13 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   const removeCopyButton = debugOn ? createCopyAttemptsButton(() => readAttempts()) : null;
 
   setProfile(readProfile());
-  const rounds = roundCount(ROUNDS);
-  // A review starts at the last round (the copy-it round) and saves nothing to td.rounds.
-  let rp = review ? { round: rounds - 1, helped: false } : startRounds(readRounds(char.id), rounds); // { round, helped }
+  // A practice: the tracing rounds. A review: one copy-it round, which saves nothing to td.rounds.
+  const rounds = review ? 1 : roundCount(ROUNDS);
+  let rp = review ? startReview() : startRounds(readRounds(char.id), rounds); // { round, helped }
   const keepRounds = (fn) => { if (!review) fn(); };
   // This sitting, for the practice-more list: judged copies that failed, and wrong starts.
   const sitting = { failedCopies: 0, wrongStarts: 0, mirrored: 0 };
-  const freshRound = () => ({ ...initialState(strokes.length), stage: stageForRound(rp.round, rounds) });
+  const freshRound = () => ({ ...initialState(strokes.length), stage: review ? COPY_STAGE : stageForRound(rp.round, rounds) });
   let progress = freshRound();
   // The stroke plans her strokes still follow this round ([{ plan, done }]); the first is shown.
   let following = startPlans(char);
@@ -174,7 +177,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   let helperRead = { plan: 0, done: null };
   // Rounds 1 and 2: strokes she traced the other way this round (reference paths, the usual way).
   let reversedStrokes = [];
-  const isCopy = () => isCopyRound(rp.round, rounds);
+  const isCopy = () => review;
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
   // The stroke Jugnu demonstrates: the first unfinished one of the shown plan.
@@ -225,11 +228,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // The round lights, top right: done, now, to come. `lit` lights one up.
   function drawLights(lit = -1) {
     if (!els.rounds) return;
-    // A review shows only its one round's light.
-    const lights = roundLights(rp, rounds);
-    const first = review ? rounds - 1 : 0;
-    els.rounds.replaceChildren(...lights.slice(first).map((kind, j) => {
-      const i = j + first;
+    // A review shows its one round's light.
+    els.rounds.replaceChildren(...roundLights(rp, rounds).map((kind, i) => {
       const el = document.createElement('i');
       el.className = `rl ${kind}${i === lit ? ' lit' : ''}`;
       return el;
@@ -455,9 +455,9 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     if (phase !== 'trace' || copy.strokes.length === 0) return;
     phase = 'held';
     const result = scoreCopy(copy.strokes, char, { others });
-    const r = finishCopy(rp, { ok: result.ok, fails: copy.fails }, rounds);
+    const r = finishCopy(rp, { ok: result.ok, fails: copy.fails });
     logAttempt(copyLogEntry({ char: char.id, result, attempt: copy.fails + 1, helped: r.helpedOut, helper: helper.level }));
-    // The fading helper moves with every judged copy, reviews included (shape judging never depends on it).
+    // The fading helper moves with every judged copy (shape judging never depends on it).
     helper = applyHelperCopy(helper, { ok: result.ok, hinted: copy.hinted });
     saveHelper(char.id, helper);
     if (!result.ok) sitting.failedCopies += 1;
@@ -537,7 +537,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     progress = freshRound();
     following = startPlans(char);
     reversedStrokes = [];
-    applyLayout(); // the copy round lays the screen out round its model card
+    applyLayout();
     phase = 'trace';
     beginStroke();
   }

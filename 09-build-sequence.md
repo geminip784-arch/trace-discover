@@ -85,6 +85,19 @@ The optional "again?" after the star moved to `docs/ideas.md`.
 - [ ] A copy drawn in another order or direction passes, and Jugnu shows the usual way
 - [ ] Every failed copy shows why before it fades
 
+### 5K — Feedback from testing with her
+Four pull requests, one at a time.
+
+1. **Round 3 moves to review days (built):** practising a letter, number or her name is rounds 1 and 2, then the glow, the star and the find scene (two round lights). The star needs both rounds with no help. The copy-it round, with its helper levels, judging and reasons, is used only in reviews (1, 3, 7 and 21 days). Why: copying from memory on a later day shows what she has kept; straight after tracing it only shows what she has just seen. Saved progress: a practice left in the old round 3 counts as finished (its star if no help was used, its first review the next day); nothing she has earned is lost. Screenshots: `docs/screenshots/slice-5k/`.
+2. **Follow the path:** Jugnu flies the first road only the first time she ever plays it; a new generated road layout every play (1 or 2 crossings at a clear angle, a minimum gap, random start and home heights, some plays from the right), never the last play's layout.
+3. **Randomization:** match sides and Jugnu's first card; Sort it basket sides, samples and bigger pools; Odd one out's easy row; Missing piece's first gap; dot to dot start dots (the house's level 1 order kept), direction, mirroring, place, level 3 sides and pairs, 8 new pictures, and 6 tiles per visit favouring unfinished ones, never the same six twice in a row. Free-paper crayons stay put.
+4. **Mango and tomato** redrawn in our style.
+
+**Done when:**
+- [ ] A new letter takes two rounds, then its star and scene
+- [ ] The next day it comes back as a copy-it review
+- [ ] A letter she left in the old round 3 has its star (if she had no help) and is due for review
+
 ### 6 — Voice and phonics
 - A family voice recorder (clips stored in IndexedDB).
 - Jugnu greets her by name.

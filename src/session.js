@@ -290,7 +290,7 @@ export function navigate(state, event) {
     }
     case 'openName':
       if (screen !== NAME_BOOK || event.ready !== true) return state;
-      // review: true when her name is due for review today (Slice 9C part 2): round 3 alone.
+      // review: true when her name is due for review today (Slice 9C part 2): the copy-it round alone.
       return event.review === true ? { screen: 'write', char: NAME_BOOK, book: NAME_BOOK, review: true } : { screen: 'write', char: NAME_BOOK, book: NAME_BOOK };
     case 'openScene':
       return screen === 'write' ? { screen: 'find', char: state.char, book: state.book } : state;

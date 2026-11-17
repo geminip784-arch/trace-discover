@@ -2,7 +2,8 @@
 // wrapped in try/catch: a full or blocked storage must never stop the game.
 
 import { addFind, cleanFinds, addNameCard, isNameCard } from './finds.js';
-import { cleanReviews, cleanPracticeMore } from './review.js';
+import { cleanReviews, cleanPracticeMore, recordPractice } from './review.js';
+import { finishedEarlier } from './progress.js';
 
 // ---------------------------------------------------------------------------
 // Test mode (?debug=1&today=...): her real progress must never change while a
@@ -433,4 +434,25 @@ export function resetName(id, store = activeStore()) {
   } catch {
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Slice 5K: round 3 moved to reviews. A practice saved part way through the
+// old round 3 had already finished rounds 1 and 2, so it counts as finished:
+// its gold star when no help was used, its review schedule (as any finished
+// practice: due tomorrow), and for her name (nameId) the name card. Its saved
+// round is then cleared, so this happens once; it runs at every start and finds
+// nothing the next time. Stars, helper levels, reviews and the practice-more
+// list she already has are kept. Returns the ids it finished.
+export function finishOldPractices(today, { nameId = 'name', store = activeStore() } = {}) {
+  const done = finishedEarlier(readAllRounds(store));
+  for (const { id, helped } of done) {
+    if (!helped) saveStar(id, store);
+    if (id === nameId) saveNameCard(store);
+    const out = recordPractice({ reviews: readReviews(store), list: readPracticeMore(store) }, id, { helped }, today);
+    saveReviews(out.reviews, store);
+    savePracticeMore(out.list, store);
+    clearRounds(id, store);
+  }
+  return done.map((d) => d.id);
 }

@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.9 · Nov 17, 2026 · describes the app as built through Slice 9C (her name's book: three rounds, the reward, her name card and reviews; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.10 · Nov 17, 2026 · describes the app as built through Slice 5K part 1 (testing feedback: practising is rounds 1 and 2, and the copy-it round moved to reviews on later days); before it, Slice 9C (her name's book: three rounds, the reward, her name card and reviews; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -13,9 +13,9 @@ Trace & Discover is a short, daily writing-practice app for one 4-year-old girl.
 | Her profile | What the app does about it |
 | --- | --- |
 | Strong vocabulary and counting | Talking and counting are the rewards, not the hurdles |
-| Writing lags behind | Big strokes on wide paths first. Help fades over three rounds |
+| Writing lags behind | Big strokes on wide paths first. Help fades over two tracing rounds, then she copies from memory on later days |
 | Cannot read yet | She never needs to read. Prompts are pictures, sounds and Jugnu (spoken prompts come in Slice 6). Short lines in small type at the top are for a grown-up watching |
-| Short attention span | One character takes three short rounds. Every game ends after a few sets |
+| Short attention span | One character takes two short rounds. A review is one copy. Every game ends after a few sets |
 | Learning English and Urdu | Urdu has its own book on the shelf, not an add-on |
 
 **Six design principles**
@@ -44,22 +44,22 @@ The home button (top of the left column) always returns here. The back button go
 The first book on the shelf is hers: her name is on its cover (with no name set, four little writing lines). It opens to one big tile with her name, written as she will write it: a capital first letter and the rest lowercase, whatever the setup page holds ("sara" and "SARA" are both "Sara"). Her name lives only on the tablet (`td.profile`); the code, tests and docs only ever use made-up names.
 
 - **When it cannot open.** The tile is faint and shakes, and one grey parent line at the top says why: no name set ("Add her name on the setup page"), a character other than a to z ("Her name can use the letters a to z only"), or too long for one line. The setup page says the same under the name field, naming each character it cannot use (space, hyphen, é...), or shows how the name will be written.
-- **On the lines.** The whole name sits on the four lines as one word. Each letter is its own character file, with its own glyph and plans, box after box, so the spacing is normal print spacing. The name is centred in her writing room, right of the button column, so no letter is under a button. The lines shrink to fit it and keep that size in all three rounds: one unit is the smallest of a single letter's unit, the size that leaves room above the lines for round 3's model card (2.3 units of height below the round lights), and the size at which her room is 1.2 times the name's width (`NAME_FIT` in `src/name.js`). Sara: 242 px at 1280 x 626 and 317 px at 1280 x 800; an 8-letter name such as Muhammad: 148 px; the widest 8 letters possible: 114 px. **Longer names:** the rule is the width, not the count: a name fits while its unit is at least 112 px on her tablet (most 9 to 11 letter names do); a wider one gets the "too long" line.
+- **On the lines.** The whole name sits on the four lines as one word. Each letter is its own character file, with its own glyph and plans, box after box, so the spacing is normal print spacing. The name is centred in her writing room, right of the button column, so no letter is under a button. The lines shrink to fit it and keep that size in every round, reviews included: one unit is the smallest of a single letter's unit, the size that leaves room above the lines for the copy-it round's model card (2.3 units of height below the round lights), and the size at which her room is 1.2 times the name's width (`NAME_FIT` in `src/name.js`). Sara: 242 px at 1280 x 626 and 317 px at 1280 x 800; an 8-letter name such as Muhammad: 148 px; the widest 8 letters possible: 114 px. **Longer names:** the rule is the width, not the count: a name fits while its unit is at least 112 px on her tablet (most 9 to 11 letter names do); a wider one gets the "too long" line.
 - **Never stricter than a single letter.** Smaller lines would narrow the tolerances on screen, so for her name every start radius, path tolerance and dot radius is at least 45 px (`withMinLeeway` in `src/geometry.js`). The thresholds in `DEFAULTS.stages` are unchanged, and single letters do not use the floor.
 - **Round 1:** the full track of the whole name. Letter by letter, in order: the letter she traces now has its numbered start dot and arrow, and Jugnu flies each stroke first. Each letter is scored exactly as on its own (any allowed plan; a stroke traced the other way counts and is coached after the round). A finished letter lights up gold, with a chime.
 - **Round 2:** the thinner track; only the next start dot of the letter she traces now.
 - **Never stuck:** Jugnu demonstrates after 3 misses on a stroke and draws it after 5. Then only that letter is traced again, once; if Jugnu has to help again, it counts with help and she moves on. Any help means no gold star.
-- **Round 3, copy it (part 2):** the lines are empty and her name stands on a model card above them, centred in her room, as big as fits (up to 0.6 of a line unit per card unit); the lines move down under it, at the same size and place across as in rounds 1 and 2 (`nameCopyLayout` in `src/name.js`). Each letter on the card has its own numbered start dots and arrows (1, 2 within each letter). Jugnu writes her name once on the card, a little faster than a single letter (0.7 s a stroke), then she writes it anywhere on the lines.
+- **Copy it, in reviews (part 2; reviews only since Slice 5K):** the lines are empty and her name stands on a model card above them, centred in her room, as big as fits (up to 0.6 of a line unit per card unit); the lines move down under it, at the same size and place across as in rounds 1 and 2 (`nameCopyLayout` in `src/name.js`). Each letter on the card has its own numbered start dots and arrows (1, 2 within each letter). Jugnu writes her name once on the card, a little faster than a single letter (0.7 s a stroke), then she writes it anywhere on the lines.
   - **The fading helper** has its own level for her name (`td.helper`, under `name`; it moves as for a letter): level 1 the dotted ghost of her whole name and the first letter's start dot until she draws; level 2 one start dot per letter she has not begun (no numbers); level 3 nothing.
   - **When it is judged:** 3 seconds after her last lift (a new touch cancels the wait).
   - **How it is judged** (`src/name-copy.js`): her strokes are sorted left to right and given to the letters by where they are along the line: the cut whose groups look most like their letters (each group's $P distance to its own letter), with small costs for a group far from where its letter stands (measured from the left of her name, in line units, since she writes on the same lines), for a clear gap inside one letter's group, and for cutting between strokes that stand over each other (a's round and its stick). A letter may get no strokes (left out). Then each letter is judged exactly as it is on its own (shape, every part, size, and for lowercase where it sits on the lines), also compared with its own twin in the other case. The name passes when every letter passes.
   - **Stopped part way:** when the last letters are not written yet, nothing is judged: Jugnu writes the next letter on the card (a hint, never a fail, and not logged). Line: "Here is the next letter."
-  - **Why it did not count:** the first letter that did not count, from the left, says why, and it glows gold on the card (or Jugnu draws what is missing on the card, a dashed outline shows the letter's size where hers stands, or the guide lines glow). The line names the letter: "Almost! The r is missing.", "Almost! That looks like n.", "Almost! The dot of the i is missing.", "Almost! The a is a small letter.", "Almost! The S is a capital letter." (a capital in the wrong place, read as its twin, or for twins of the same shape such as s and S, by its size), "Make the r bigger.", "Let the tail of the y go below the grass.", "Let's watch Jugnu write the r." Then her name fades and she writes it again. After 3 failed copies the round counts as done, with help (no star).
+  - **Why it did not count:** the first letter that did not count, from the left, says why, and it glows gold on the card (or Jugnu draws what is missing on the card, a dashed outline shows the letter's size where hers stands, or the guide lines glow). The line names the letter: "Almost! The r is missing.", "Almost! That looks like n.", "Almost! The dot of the i is missing.", "Almost! The a is a small letter.", "Almost! The S is a capital letter." (a capital in the wrong place, read as its twin, or for twins of the same shape such as s and S, by its size), "Make the r bigger.", "Let the tail of the y go below the grass.", "Let's watch Jugnu write the r." Then her name fades and she writes it again. After 3 failed copies the review ends, with help.
   - **Habits coach, never fail:** stroke order, the letters written out of order, or a letter the other way round: she passes, and Jugnu writes those letters (the whole name, for the order) the usual way on the card once. Line: "Well done! Here is the usual way."
 - **The reward (part 2):** her name glows letter by letter (her own writing; the model if Jugnu helped her out), and Jugnu flies loop-the-loops along the top of it with a trail of sparkles. Her **name card** goes on her shelf of finds: her name on the four little lines, two places wide, with a gold star once she has earned the name's star. Only one card is ever kept (a new one moves to the newest place); the card stores no name (`{ nm: 1 }`) and shows the name from the setup page. Then she goes back to the name book, where the star appears on the tile.
-- **Star and reviews (part 2):** the gold star needs a whole practice with no help, as for a letter. Her name then comes back for review on the usual schedule (1, 3, 7 and 21 days), counted in the 2 a day, and first when reviews tie. When it is due, the name book glows on the shelf and the tile glows with the firefly light; a review is round 3 alone, with one round light. It goes on the practice-more list for the same reasons as a letter.
+- **Star and reviews (part 2; Slice 5K):** practising her name is rounds 1 and 2, then the reward. The gold star needs both rounds with no help, as for a letter. Her name then comes back for review on the usual schedule (1, 3, 7 and 21 days), counted in the 2 a day, and first when reviews tie. When it is due, the name book glows on the shelf and the tile glows with the firefly light; a review is the copy-it round alone, with one round light. It goes on the practice-more list for the same reasons as a letter.
 - **Changing the name** on the setup page starts its practice again: rounds, helper, star, review and practice-more entry are cleared, since it is a new word.
-- **Log:** each tracing round adds a `name` entry with each letter's result (ok, helped, misses, wrong starts, strokes traced the other way), and each judged copy in round 3 a `name` entry with round 3, the try, the helper level, review or not, pass or fail, the reason and the letter it is about, the letters' order, and each letter's result (ok, reason, strokes, look-alike, missing part, distance, mirrored, usual way). Its strokes are logged as usual, marked `in: 'name'`.
+- **Log:** each tracing round adds a `name` entry with each letter's result (ok, helped, misses, wrong starts, strokes traced the other way), and each judged copy in a review a `name` entry with round 3 (the copy round's label in the log), the try, the helper level, review or not, pass or fail, the reason and the letter it is about, the letters' order, and each letter's result (ok, reason, strokes, look-alike, missing part, distance, mirrored, usual way). Its strokes are logged as usual, marked `in: 'name'`.
 
 ### Character boards: ABC, 123 and Urdu
 
@@ -72,20 +72,24 @@ Each board is a grid of large tiles, one per character, each in its own color. N
 - A character due for review today glows gently and carries a small firefly light (see **Reviews** below).
 - Tapping a bright tile pops it and opens the writing screen.
 
-### Writing: three practice rounds
+### Writing: two practice rounds, and copying on review days
 
-Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to 5 allowed). Three round lights at the top show done, now and to come.
+Each character is practised in two rounds (`ROUNDS` in `src/progress.js`; 2 to 4 allowed). Two round lights at the top show done, now and to come. Then the letter glows, she gets her star, and the find or count scene opens. The copy-it round (Stage 3) is a review on a later day (**Reviews**, below), with one round light.
 
 | Round | Stage | What she sees | Help given |
 | --- | --- | --- | --- |
 | 1 | Dots | The letter's track, numbered start dots, arrows. Jugnu flies each stroke first | Wide path |
 | 2 | Ghost | A faded track. Only the next start dot glows | Narrower path |
-| 3 | Copy it | Empty lines, and the finished letter on a small model card at their right end, with a numbered start dot and an arrow on every stroke. Jugnu draws it once on the card | The fading helper on the lines (below). Her whole letter is judged at the end |
+| Review | Copy it | Empty lines, and the finished letter on a small model card at their right end, with a numbered start dot and an arrow on every stroke. Jugnu draws it once on the card | The fading helper on the lines (below). Her whole letter is judged at the end |
+
+**Why copying moved to review days (Slice 5K, after testing with her).** Copying straight after two tracing rounds mostly tests what she has just seen, and it made each practice longer. Copying from memory a day or more later shows what she has really kept, and each review is the practice that makes it stick (spaced retrieval). So a practice is now short (trace, trace, star, scene) and the copy-it round, with its helper levels, judging and reasons, comes back on the 1, 3, 7 and 21-day schedule.
+
+**Progress from before Slice 5K.** A practice saved part way through the old round 3 had already finished rounds 1 and 2, so it counts as finished the first time the app opens: its star if no help was used, and its first review the next day either way (her name also gets its name card). Stars, helper levels, review dates and the practice-more list are kept as they were (`finishOldPractices` in `src/storage.js`).
 
 - Strokes must be drawn in order, in one of the character's **allowed stroke plans** (Slice 5J, below). Stroke k of her plan is compared with stroke k of that plan. Some letters also accept known joined versions (for example, both strokes of 4 in one go).
 - **Never stuck.** After 3 misses in a row on one stroke, Jugnu demonstrates it. After 5, Jugnu draws it himself and the round starts again. The stage never drops inside a round.
-- **The star.** A round counts only when she drew every stroke herself. The gold star needs a whole practice with no help: no assist, and no demonstration after misses in rounds 2 or 3.
-- When the last round is done, the whole letter glows, then the find or count scene opens.
+- **The star.** A round counts only when she drew every stroke herself. The gold star needs both rounds with no help: no assist, and no demonstration after misses in round 2.
+- When round 2 is done, the whole letter glows, then the find or count scene opens.
 - If she leaves mid-way, the next visit resumes at the round she left (`td.rounds`).
 
 **Stroke plans (Slice 5J).** Each character has a short list of allowed ways to draw it, all built from the same exact lines and arcs, so every plan has the same shape (`data/glyphs.js`; each plan is a card on `glyphs.html`). The first is the default: the one the model card, the numbered dots and Jugnu show.
@@ -114,9 +118,9 @@ Each character is practised in three rounds (`ROUNDS` in `src/progress.js`; 3 to
 
 No plan runs any part the other way, except M and N from the bottom (their stem runs up). In rounds 1 and 2 the default plan's track and dots show until her strokes leave it; then her plan's track, next start dot and Jugnu's help follow. Start is still checked for every stroke; direction is coached (below).
 
-**Copy it (round 3, Slice 5I, judged by shape since 5J).** She writes the whole letter herself, anywhere on the lines (`src/copy.js`).
+**Copy it (reviews; Slice 5I, judged by shape since 5J, reviews only since 5K).** She writes the whole letter herself, anywhere on the lines (`src/copy.js`).
 
-- **The fading helper (Slice 5J part 2).** Each character has its own helper level for round 3 (`HELPER` in `src/progress.js`, saved in `td.helper`). Level 1, where every character starts: a faint dotted ghost of the letter on the lines, and the first stroke's start dot until she draws. Level 2: a numbered start dot for each stroke still to draw, following the plan her strokes read as so far (an E with its L first leaves the top and middle bars' dots; two strokes that start together slide apart). Level 3: nothing. A character moves up a level after 2 passed copies at its level with no hint during them (across sittings, not necessarily in a row), and drops back one level after 2 failed copies in a row, at once, so her next try has more help. Reviews use the current level. Shape judging never depends on it.
+- **The fading helper (Slice 5J part 2).** Each character has its own helper level for the copy-it round (`HELPER` in `src/progress.js`, saved in `td.helper`). Level 1, where every character starts: a faint dotted ghost of the letter on the lines, and the first stroke's start dot until she draws. Level 2: a numbered start dot for each stroke still to draw, following the plan her strokes read as so far (an E with its L first leaves the top and middle bars' dots; two strokes that start together slide apart). Level 3: nothing. A character moves up a level after 2 passed copies at its level with no hint during them (across sittings, not necessarily in a row), and drops back one level after 2 failed copies in a row, at once, so her next try has more help. Levels carry from one review to the next. Shape judging never depends on it.
 
 - **When it is judged:** as soon as she has drawn as many strokes as the letter's longest plan has, or fewer that already make a good letter (a joined version, such as L in one go). Fewer strokes that read best as the whole letter joined are judged 2 seconds after her last lift. A new touch cancels the wait; turning the tablet upright pauses it.
 - **Stopped part way:** fewer strokes that read best as the start of the letter are not judged. After 5 seconds Jugnu draws the next stroke on the model card as a hint. Her strokes stay on the lines, and the hint is neither a failed copy nor logged. (To tell the two apart, her strokes are fitted to each way of reading them, "the first strokes" or "the whole letter, joined", and the closest reading wins.)
@@ -140,9 +144,9 @@ No plan runs any part the other way, except M and N from the bottom (their stem 
   - the digits swapped (21 for 12; a whole number turned round in a mirror too): "Almost! The 1 comes first." Her number shows beside the model;
   - a digit left out: "Almost! The 7 is missing." Jugnu draws that digit on the model card;
   - too small or too big: as for any letter.
-- **Wide numbers on the full screen (Slice 9B part 2).** The lines shrink a little for a character too wide to write at 125% beside the model card (`fitUnit` in `src/render.js`): only 20 on the full screen (1280 x 800), whose unit goes from 440 to 388 px. It keeps that size in all three rounds. Every other character keeps its size.
+- **Wide numbers on the full screen (Slice 9B part 2).** The lines shrink a little for a character too wide to write at 125% beside the model card (`fitUnit` in `src/render.js`): only 20 on the full screen (1280 x 800), whose unit goes from 440 to 388 px. It keeps that size in every round. Every other character keeps its size.
 - **Mirrored.** A letter written the other way round passes (not b, d, p or q, above). Jugnu then shows the right way round once on the card, and the letter goes on the practice-more list (reason "mirrored"). Reversals are a direction cue, never an error.
-- **Pass:** a chime, sparkles along her strokes, and the round light comes on as for any round. When it is the last round, her own letter glows.
+- **Pass:** a chime, sparkles along her strokes, the round light comes on, and her own letter glows.
 - **Fail: why, first.** Before her letter fades, the screen shows why, with no red and no sound:
 
 | Why | What she sees | Parent line |
@@ -154,7 +158,7 @@ No plan runs any part the other way, except M and N from the bottom (their stem 
 | Not recognizable | Jugnu traces the whole model slowly | "Let's watch Jugnu write it." |
 
   Then her letter fades (the one place the app fades her whole letter: it makes room for a fresh copy), and she tries again.
-- **Never stuck:** after 3 failed copies the round counts as done, with help: no gold star, as when Jugnu helps in the other rounds.
+- **Never stuck:** after 3 failed copies the review ends, with help (a failed review: back to 1 day).
 - Her ink in the copy round never dims: nothing is judged until she has finished.
 
 **Feedback rules** (every round)
@@ -173,7 +177,7 @@ Letters come back on later days, so what she has learned stays learned (`src/rev
 
 | What happened | When it is next due |
 | --- | --- |
-| She earned the letter's star | 1 day later |
+| She earned the letter's star (rounds 1 and 2 with no help) | 1 day later |
 | A passed review | The next interval: 3 days, then 7, then 21. Passing the 21-day review graduates the letter: no more reviews |
 | A failed review (3 failed copies) | Back to 1 day |
 | A practice finished only with Jugnu's help | Back to 1 day, even for a graduated letter |
@@ -181,14 +185,14 @@ Letters come back on later days, so what she has learned stays learned (`src/rev
 | A clean replay of a letter already on the schedule | No change, so replaying never undoes her progress |
 
 - **What she sees.** On a board, today's due letters glow gently, with a small firefly light at the corner opposite the star. On the bookshelf, a book holding one of them glows softly. No text.
-- **A review** is one copy-it round (one round light), then the letter's find scene, pass or fail. A review never adds or takes away a star, and never touches a practice she left part way.
+- **A review** is the copy-it round (one round light; since Slice 5K the only place it is used), then the letter's find scene, pass or fail. A review never adds or takes away a star, and never touches a practice she left part way.
 - **Never homework.** At most 2 letters are due each day: most overdue first, ties in board order (ABC capitals, ABC lowercase, 123, Urdu). They are picked the first time she sees the shelf or a board that day, and stay fixed all day; a finished review is not replaced by another.
 - **Days** are the tablet's calendar days. An overdue letter waits for her, and its next interval counts from the day she does the review.
 - **Stars from before Slice 5I** were added to the schedule once, due from the day after the update.
 
 **The practice-more list** (`td.practiceMore`, for the Slice 8 parent zone). A letter goes on it, with its reasons, when one sitting (a practice or a review) has any of:
 
-- Jugnu's help (an assist, a demonstration after misses in round 2, or 3 failed copies)
+- Jugnu's help (an assist, a demonstration after misses in round 2, or 3 failed copies in a review)
 - 2 or more failed copies
 - 3 or more wrong starts
 - a copy that passed written the other way round (mirrored, Slice 5J)
@@ -337,7 +341,7 @@ Every character is an ordered list of strokes in line units: y = 0 is the sky li
 
 ### Numbers
 
-- 0 to 9 are built, and 1 to 9 have count scenes. **10 to 20 (Slice 9B part 1)** are generated from the digit glyphs (`NUMBERS` in `data/glyphs.js`): the left digit, then the right digit moved right so that a quarter of a line (`NUMBER_GAP`, 0.25 line units) separates their ink, both at full height. Stroke order is the left digit first. Every plan is one of the left digit's plans followed by one of the right digit's (17: four plans, the 1 and the 7 each in one go or two). Each file also lists its `digits` and how far each is moved, for the copy-it round. Since part 2 they are on the 123 board and play all three rounds; since part 3 they have count scenes (ten-frames and counting on, above).
+- 0 to 9 are built, and 1 to 9 have count scenes. **10 to 20 (Slice 9B part 1)** are generated from the digit glyphs (`NUMBERS` in `data/glyphs.js`): the left digit, then the right digit moved right so that a quarter of a line (`NUMBER_GAP`, 0.25 line units) separates their ink, both at full height. Stroke order is the left digit first. Every plan is one of the left digit's plans followed by one of the right digit's (17: four plans, the 1 and the 7 each in one go or two). Each file also lists its `digits` and how far each is moved, for the copy-it round. Since part 2 they are on the 123 board and play the practice rounds and reviews; since part 3 they have count scenes (ten-frames and counting on, above).
 - Mirror-image numbers are common at this age. The app treats them as a direction cue, never as an error.
 - Optional later: Urdu numerals (۰ ۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹), which need their own font and stroke model.
 
@@ -409,6 +413,7 @@ The full order, with goals and checks, is in `09-build-sequence.md`.
 | 5G | Sound-first find pictures for every letter, garden and sea backdrops, the finds review sheet |
 | 5H | More game variety, and the Missing piece game |
 | 5I | Practice and review: round 3 as a copy-it round judged on shape, reviews after 1, 3, 7 and 21 days, a practice-more list (built) |
+| 5K | Testing feedback: the copy-it round moves to review days (part 1 built); Follow the path changes; randomization in every game and dot to dot; mango and tomato redrawn |
 | 5J | Testing fixes: stroke plans, shape-only judging of copies, habits coached, failure reasons and parent lines (part 1 built); the fading helper, M and N from the bottom, direction coached, child-style templates (part 2A built); game instructions, show me, the U umpire (part 2B built) |
 | 6 | Voice and phonics: family voice recorder, greeting by name, spoken prompts, the ear button, each letter's name, sound and picture word |
 | 9A | Lowercase on four lines (built) |
