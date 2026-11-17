@@ -275,6 +275,31 @@
     .tile.shake { animation: shake 0.4s; }
     @keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
     .star { position: absolute; top: -10px; right: -10px; width: 38%; height: 38%; pointer-events: none; }
+    /* Slice 5L: the board's pencil tile (ABC and 123), last in the grid. A tap
+       turns practice mode on (the tile glows gold) or off. In practice mode a
+       starred tile wears a pencil badge and opens its practice page; every other
+       tile is faint. The badge is a picture on the tile: the whole tile is the target. */
+    .tile.pencil-tile { border: 5px solid #E0B84A; background: #FFFDF5; }
+    .pencil-tile svg { width: 78%; height: 78%; display: block; pointer-events: none; }
+    .tile.pencil-tile.on { background: #FFF3C4; border-color: #F2A900; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.12), 0 0 0 5px rgba(255, 212, 59, 0.6), 0 0 26px 8px rgba(255, 212, 59, 0.6); }
+    .pencil-badge { position: absolute; bottom: -10px; right: -10px; width: 42%; height: 42%; pointer-events: none; animation: due-bob 2.4s ease-in-out infinite; }
+    .pencil-badge svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2)); }
+    /* The practice page: three fireflies in place of the round lights. */
+    #rounds .rl.ff { display: flex; align-items: center; justify-content: center; background: #EEF4FB; }
+    #rounds .rl.ff svg { width: 34px; height: 34px; display: block; opacity: 0.35; filter: grayscale(0.7); transition: opacity 0.3s, filter 0.3s; }
+    #rounds .rl.ff.now svg { opacity: 0.6; filter: none; }
+    #rounds .rl.ff.done svg { opacity: 1; filter: drop-shadow(0 0 6px #FFD43B); }
+    /* The next-page tile: big (120 px), in the left button column between back
+       and music, so it never covers her letters. Jugnu perches on top of it. */
+    .next-tile {
+      position: fixed; left: 8px; top: calc(50% - 40px); z-index: 20;
+      width: 120px; height: 120px; padding: 0; border: 6px solid #35D07F; border-radius: 30px;
+      background: #fff; box-shadow: 0 8px 0 rgba(0, 0, 0, 0.15), 0 0 30px 6px rgba(53, 208, 127, 0.45);
+      touch-action: none; cursor: pointer; animation: next-in 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both, breathe 1.6s 0.6s ease-in-out infinite;
+    }
+    .next-tile svg { width: 92px; height: 92px; display: block; margin: auto; pointer-events: none; }
+    .next-tile:active { transform: translateY(4px); }
+    @keyframes next-in { from { transform: scale(0); } to { transform: scale(1); } }
     /* Due for review (Slice 5I): a slow, soft gold glow and a firefly light at the
        top left (top right on Urdu boards, where the star swaps sides). Never red. */
     .tile.due { animation: due-glow 2.8s ease-in-out infinite; }
@@ -659,6 +684,8 @@
   <button id="back" class="btn" type="button" aria-label="Back" hidden></button>
   <button id="showme" class="btn" type="button" aria-label="Show me" hidden></button>
   <button id="music" class="btn" type="button" aria-label="Music" hidden></button>
+  <!-- Slice 5L: the practice page's big next-page tile (a picture only), shown when a page is done. -->
+  <button id="nextpage" class="next-tile" type="button" aria-label="Next page" hidden></button>
   <div id="turn" aria-hidden="true" hidden></div>
   <script type="module">
     for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
@@ -672,7 +699,7 @@
     const $ = (id) => document.getElementById(id);
     // index.html?setup=1 is the parent setup page. Every other address is the app.
     if (params.get('setup') === '1') {
-      for (const id of ['shell', 'home', 'back', 'music', 'rounds', 'note', 'turn']) $(id).remove();
+      for (const id of ['shell', 'home', 'back', 'music', 'rounds', 'note', 'turn', 'nextpage']) $(id).remove();
       const { showSetup } = await import('./src/setup.js');
       showSetup();
     } else {
@@ -685,7 +712,7 @@
       const { startShell } = await import('./src/screens.js');
       startShell({
         shell: $('shell'), area: $('area'), lines: $('lines'), ink: $('ink'), fx: $('fx'), jugnu: $('jugnu'), rounds: $('rounds'), note: $('note'),
-        home: $('home'), back: $('back'), showme: $('showme'), music: $('music'), turn: $('turn'),
+        home: $('home'), back: $('back'), showme: $('showme'), music: $('music'), turn: $('turn'), next: $('nextpage'),
       }, { manifest, params });
     }
   </script>

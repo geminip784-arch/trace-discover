@@ -362,3 +362,87 @@ test('the switch tile: turns to the other page, and glows when that page has a l
   assert.deepEqual(pageSwitch('abc', 'lower', manifest, ['A']), { to: 'upper', due: true });
   assert.equal(pageSwitch('num', 'all', manifest, []), null);
 });
+
+// ---------------------------------------------------------------------------
+// Slice 5L: the pencil tile and practice mode
+
+import { hasPencil, PRACTICE_BOOKS, boardTileCount, boardGrid } from '../src/session.js';
+
+const ALL = BOARDS.abc.tiles.map((t) => t.id).concat(BOARDS.num.tiles.map((t) => t.id));
+
+test('practice mode: the pencil badge only on starred, bright tiles; every other tile is faint', () => {
+  const stars = ['E', 'H', '4', 'Q']; // Q is starred but not in this manifest
+  for (const [book, page] of [['abc', 'upper'], ['abc', 'lower'], ['num', 'all']]) {
+    const off = boardTiles(book, MANIFEST, stars, [], page === 'all' ? undefined : page);
+    assert.ok(off.every((t) => t.pencil === false), 'no pencil outside practice mode');
+    assert.ok(off.every((t) => t.open === t.bright), 'outside practice mode a tile opens when bright, as before');
+    const on = boardTiles(book, MANIFEST, stars, [], page === 'all' ? undefined : page, true);
+    for (const t of on) {
+      const starred = stars.includes(t.id) && MANIFEST.includes(t.id);
+      assert.equal(t.pencil, starred, `${t.id}`);
+      assert.equal(t.open, starred, `${t.id}: only a pencil tile opens`);
+      assert.equal(t.star, stars.includes(t.id)); // stars still show
+    }
+  }
+  // Urdu has no pencil tile: practice mode never applies there.
+  assert.ok(boardTiles('urdu', MANIFEST, stars, [], undefined, true).every((t) => !t.pencil));
+  assert.deepEqual(PRACTICE_BOOKS, ['abc', 'num']);
+  assert.equal(hasPencil('urdu'), false);
+});
+
+test('the pencil tile turns practice mode on and off; leaving the board ends it', () => {
+  const board = { screen: 'board', book: 'abc' };
+  const on = navigate(board, { type: 'togglePractice' });
+  assert.deepEqual(on, { screen: 'board', book: 'abc', practice: true });
+  assert.deepEqual(navigate(on, { type: 'togglePractice' }), board);
+  // Turning the page keeps it; the lowercase page too.
+  const lower = navigate(on, { type: 'turnPage' });
+  assert.deepEqual(lower, { screen: 'board', book: 'abc', page: 'lower', practice: true });
+  assert.deepEqual(navigate(lower, { type: 'togglePractice' }), { screen: 'board', book: 'abc', page: 'lower' });
+  // 123 has one too; Urdu does not.
+  assert.deepEqual(navigate({ screen: 'board', book: 'num' }, { type: 'togglePractice' }), { screen: 'board', book: 'num', practice: true });
+  assert.deepEqual(navigate({ screen: 'board', book: 'urdu' }, { type: 'togglePractice' }), { screen: 'board', book: 'urdu' });
+  // Home leaves the board: practice mode is gone when she comes back.
+  assert.deepEqual(navigate(on, { type: 'home' }), { screen: 'shelf' });
+  assert.deepEqual(navigate(navigate(on, { type: 'home' }), { type: 'openBook', book: 'abc' }), board);
+});
+
+test('in practice mode a starred tile opens its practice page; back returns to its board, practice mode off', () => {
+  const on = { screen: 'board', book: 'abc', practice: true };
+  const page = navigate(on, { type: 'openPractice', id: 'E', manifest: MANIFEST, stars: ['E'] });
+  assert.deepEqual(page, { screen: 'practice', char: 'E', book: 'abc' });
+  // Not starred, not bright, not on this page, or not in practice mode: nothing happens.
+  assert.equal(navigate(on, { type: 'openPractice', id: 'F', manifest: MANIFEST, stars: ['E'] }), on);
+  assert.equal(navigate(on, { type: 'openPractice', id: 'Q', manifest: MANIFEST, stars: ['Q'] }), on);
+  assert.equal(navigate(on, { type: 'openPractice', id: '4', manifest: MANIFEST, stars: ['4'] }), on);
+  const off = { screen: 'board', book: 'abc' };
+  assert.equal(navigate(off, { type: 'openPractice', id: 'E', manifest: MANIFEST, stars: ['E'] }), off);
+  // In practice mode a tile never opens the usual tracing.
+  assert.equal(navigate(on, { type: 'openChar', id: 'E', manifest: MANIFEST }), on);
+  assert.deepEqual(navigate(off, { type: 'openChar', id: 'E', manifest: MANIFEST }), { screen: 'write', char: 'E', book: 'abc' });
+  // Back from the practice page: the letter's own board page, practice mode off. Home: the shelf.
+  assert.deepEqual(navigate(page, { type: 'back' }), off);
+  assert.deepEqual(navigate({ screen: 'practice', char: 'e', book: 'abc' }, { type: 'back' }), { screen: 'board', book: 'abc', page: 'lower' });
+  assert.deepEqual(navigate({ screen: 'practice', char: '4', book: 'num' }, { type: 'back' }), { screen: 'board', book: 'num' });
+  assert.deepEqual(navigate(page, { type: 'home' }), { screen: 'shelf' });
+  assert.equal(tuneFor('practice'), 'write');
+  // ?practice=A (for checks) opens it straight away.
+  assert.deepEqual(startScreen({ today: '2026-11-17', practice: 'A' }), { screen: 'practice', char: 'A', book: 'abc' });
+  assert.ok(ALL.length > 0);
+});
+
+test('with the pencil tile, every board tile is still at least 88 px on both screens', () => {
+  for (const [w, h] of [[1280, 626], [1280, 800]]) {
+    const space = boardSpace(w, h);
+    for (const [book, page] of [['abc', 'upper'], ['abc', 'lower'], ['num', 'all'], ['urdu', 'all']]) {
+      const n = boardTileCount(book, page === 'all' ? undefined : page);
+      const { size } = boardGrid(book, n, space.w, space.h, BOARD_BOX.gap);
+      assert.ok(size >= 88, `${book} ${page} ${w}x${h}: ${size} px`);
+    }
+  }
+  // The counts: 26 letters + "A a" + pencil; 21 numbers + pencil; Urdu unchanged.
+  assert.equal(boardTileCount('abc', 'upper'), 28);
+  assert.equal(boardTileCount('abc', 'lower'), 28);
+  assert.equal(boardTileCount('num'), 22);
+  assert.equal(boardTileCount('urdu'), 39);
+});

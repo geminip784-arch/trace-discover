@@ -79,18 +79,46 @@ export function bookOf(id) {
 // Every tile of a board page with bright (tappable: it is in the manifest), star,
 // and due (one of today's reviews, src/review.js; only a bright tile can be due).
 // `page`: 'upper' or 'lower' for the ABC book (Slice 9A); other books have one page.
-export function boardTiles(book, manifest, stars = [], due = [], page = pagesOf(book)[0]) {
+// `practice` (Slice 5L): the board is in practice mode (its pencil tile is on).
+// Then `pencil` marks a starred, bright tile (it shows a pencil badge and opens
+// its practice page), and only those tiles are `open`; every other tile is faint.
+// Outside practice mode `open` is `bright` and no tile has a pencil.
+export function boardTiles(book, manifest, stars = [], due = [], page = pagesOf(book)[0], practice = false) {
   const recorded = new Set(manifest);
   const starred = new Set(stars);
   const dueSet = new Set(due);
-  return pageTiles(book, page).map((t, i) => ({
-    ...t,
-    color: tileColor(i),
-    bright: recorded.has(t.id),
-    star: starred.has(t.id),
-    due: recorded.has(t.id) && dueSet.has(t.id),
-  }));
+  const on = practice && hasPencil(book);
+  return pageTiles(book, page).map((t, i) => {
+    const bright = recorded.has(t.id);
+    const star = starred.has(t.id);
+    const pencil = on && bright && star;
+    return {
+      ...t,
+      color: tileColor(i),
+      bright,
+      star,
+      due: bright && dueSet.has(t.id),
+      pencil,
+      open: on ? pencil : bright,
+    };
+  });
 }
+
+// ---------------------------------------------------------------------------
+// The practice page (Slice 5L)
+//
+// The ABC and 123 boards have one big pencil tile, last in the grid (in the ABC
+// book just after the "A a" switch). A tap turns the board's practice mode on or
+// off. In practice mode a starred tile shows a pencil badge and opens its
+// practice page; other tiles are faint and wiggle. Leaving the board ends
+// practice mode (it is part of the board's screen state only).
+export const PRACTICE_BOOKS = ['abc', 'num'];
+export const hasPencil = (book) => PRACTICE_BOOKS.includes(book);
+
+// How many tiles a board page's grid holds: its characters, the page switch
+// (ABC) and the pencil tile (ABC and 123). Every one must be at least 88 px.
+export const boardTileCount = (book, page = pagesOf(book)[0]) =>
+  pageTiles(book, page).length + (pagesOf(book).length > 1 ? 1 : 0) + (hasPencil(book) ? 1 : 0);
 
 // The switch tile (Slice 9A): the page it turns to, and whether that page holds
 // one of today's due letters (then the switch glows too), or null for a book
@@ -211,9 +239,13 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   name   her name's book (Slice 9C): one tile with her name. Writing her name
 //          is { screen: 'write', char: 'name', book: 'name' }
 //   toys   her shelf of finds, from the toy box on the bookshelf
+//   practice the practice page for char (Slice 5L), from a board in practice
+//          mode (practice: true on the board's state); book is that board
 
 // The first screen. ?char=X goes straight to writing X; ?door=1 always shows the door.
-export function startScreen({ lastVisit = null, today, forceDoor = false, char = null } = {}) {
+// ?practice=X (for checks, Slice 5L) goes straight to X's practice page.
+export function startScreen({ lastVisit = null, today, forceDoor = false, char = null, practice = null } = {}) {
+  if (practice && hasPencil(bookOf(practice))) return { screen: 'practice', char: practice, book: bookOf(practice) };
   if (char) return { screen: 'write', char, book: bookOf(char) };
   if (forceDoor || isFirstVisitToday(lastVisit, today)) return { screen: 'door' };
   return { screen: 'shelf' };
@@ -221,8 +253,11 @@ export function startScreen({ lastVisit = null, today, forceDoor = false, char =
 
 const SHELF = { screen: 'shelf' };
 // A board screen: the first page leaves `page` out, so its state stays { screen, book }.
-const boardState = (book, page) => (page && page !== pagesOf(book)[0] && pagesOf(book).includes(page)
-  ? { screen: 'board', book, page } : { screen: 'board', book });
+const boardState = (book, page, practice = false) => {
+  const state = page && page !== pagesOf(book)[0] && pagesOf(book).includes(page)
+    ? { screen: 'board', book, page } : { screen: 'board', book };
+  return practice ? { ...state, practice: true } : state;
+};
 // The games menu: each kind of game and its sets (src/games.js GAME_ROWS;
 // tests/games-menu.test.js checks they agree). The ids are her saved stars.
 export const GAME_KINDS = {
@@ -247,6 +282,8 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //                                        review: true when the tile is due for review
 //   { type: 'openName', ready, review }  name -> write her name (ready: false, no name to write: no change);
 //                                        review: true when her name is due for review
+//   { type: 'togglePractice' }           board (ABC or 123) -> the same board with practice mode on, or off
+//   { type: 'openPractice', id, manifest, stars } board in practice mode -> practice (starred, bright tiles only)
 //   { type: 'openScene' }                write -> find (the same char and book)
 //   { type: 'letterDone' }               write or find -> its board, on the letter's page (or the shelf);
 //                                        her name -> the name book
@@ -259,7 +296,8 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //   { type: 'pictureDone' }              dots -> drawing
 //   { type: 'back' }                     play -> games step 2; games step 2 -> step 1;
 //                                        dots or paper -> drawing;
-//                                        games step 1, drawing, toys or the name book -> shelf
+//                                        games step 1, drawing, toys or the name book -> shelf;
+//                                        practice -> its board, on the letter's page (practice mode off)
 //   { type: 'home' }                     any screen -> shelf
 export function navigate(state, event) {
   const { screen } = state;
@@ -279,10 +317,20 @@ export function navigate(state, event) {
       if (screen !== 'board') return state;
       const pages = pagesOf(state.book);
       if (pages.length < 2) return state;
-      return boardState(state.book, pages[(pages.indexOf(pageNow(state)) + 1) % pages.length]);
+      // Turning the page stays on the board, so practice mode stays as it is.
+      return boardState(state.book, pages[(pages.indexOf(pageNow(state)) + 1) % pages.length], state.practice === true);
+    }
+    case 'togglePractice':
+      if (screen !== 'board' || !hasPencil(state.book)) return state;
+      return boardState(state.book, pageNow(state), state.practice !== true);
+    case 'openPractice': {
+      if (screen !== 'board' || state.practice !== true) return state;
+      const tile = boardTiles(state.book, event.manifest ?? [], event.stars ?? [], [], pageNow(state), true)
+        .find((t) => t.id === event.id);
+      return tile?.pencil ? { screen: 'practice', char: event.id, book: state.book } : state;
     }
     case 'openChar': {
-      if (screen !== 'board') return state;
+      if (screen !== 'board' || state.practice === true) return state;
       const onBoard = pageTiles(state.book, pageNow(state)).some((t) => t.id === event.id);
       if (!onBoard || !canLoad(event.id, event.manifest ?? [])) return state;
       const write = { screen: 'write', char: event.id, book: state.book };
@@ -317,6 +365,7 @@ export function navigate(state, event) {
       if (screen === 'play') return setsOf(state.game);
       if (screen === 'games' && state.kind) return { screen: 'games' };
       if (screen === 'dots' || screen === 'paper') return { screen: 'drawing' };
+      if (screen === 'practice') return state.book ? boardState(state.book, pageOf(state.char)) : SHELF;
       return ['games', 'drawing', 'toys', NAME_BOOK].includes(screen) ? SHELF : state;
     default:
       return state;
@@ -327,6 +376,6 @@ export function navigate(state, event) {
 export function tuneFor(screen) {
   if (screen === 'shelf' || screen === 'toys') return 'shelf';
   if (['board', 'name', 'find', 'games', 'play', 'drawing', 'dots', 'paper'].includes(screen)) return 'board';
-  if (screen === 'write') return 'write';
+  if (screen === 'write' || screen === 'practice') return 'write';
   return null;
 }
