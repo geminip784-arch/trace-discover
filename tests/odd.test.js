@@ -4,10 +4,11 @@
 // colors are read from their own pictures; taps, the hint, the layout and the log.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ODD_THINGS, PAINTS, oddThingArt, MENU } from '../data/games.js';
+import { ODD_THINGS, PAINTS, oddThingArt, oddRuleArt, MENU } from '../data/games.js';
+import { ODD_NOTES, GAME_NOTES, oddNote } from '../src/notes.js';
 import {
   GAME_ROWS, ODD, singledOut, fairRow, kindRow, colorRow, oddPlay, startOdd, tapOdd, oddCards, hitOdd,
-  marginUnits, boardFit, BOARD, gameLogEntry,
+  marginUnits, boardFit, BOARD, gameLogEntry, oddRule, oddRuleColor, ODD_RULES, oddRuleBox, oddBand, oddAlike,
 } from '../src/games.js';
 import { family, biggestColor, hsl } from './art-colors.js';
 
@@ -206,4 +207,112 @@ test('Odd one out logs as the existing "game" entry: row, the picture she tapped
     { type: 'game', time: '2026-11-05T09:00:00.000Z', game: 'odd-colors', set: 3, from: 'cup-blue', ok: true, ms: 2200 });
   assert.deepEqual(gameLogEntry({ game: 'odd-kinds', set: 2, from: 'banana', ok: false, ms: 10, now }),
     { type: 'game', time: '2026-11-05T09:00:00.000Z', game: 'odd-kinds', set: 2, from: 'banana', ok: false, ms: 10 });
+});
+
+// ---- Slice 5M: made clear ----
+
+test('every row a play can make has its own instruction line and rule picture', () => {
+  const seen = new Set();
+  for (const seed of SEEDS) {
+    for (const game of ['odd-kinds', 'odd-colors']) {
+      for (const row of oddPlay(game, seeded(seed))) {
+        const rule = oddRule(row);
+        seen.add(rule);
+        assert.ok(ODD_RULES.includes(rule), rule);
+        const note = oddNote(rule);
+        assert.notEqual(note, GAME_NOTES.odd, `${rule}: a specific line, not the general one`);
+        assert.equal(note, ODD_NOTES[rule]);
+        const art = oddRuleArt(rule, oddRuleColor(row));
+        assert.ok(isInlineSvg(art), `${rule}: an inline picture, nothing from the network`);
+        if (game === 'odd-colors') {
+          assert.equal(rule, 'color');
+          assert.equal(oddRuleColor(row), alikeOf(row)[0].color, 'the paint drop is the three\'s color');
+          assert.ok(alikeOf(row).every((t) => t.color === oddRuleColor(row)));
+        } else {
+          assert.ok(alikeOf(row).every((t) => t.kind === rule), 'the line names what the three share');
+          assert.notEqual(row.items[row.odd].kind, rule, 'and the odd one is not that');
+          assert.equal(oddRuleColor(row), null);
+        }
+      }
+    }
+  }
+  assert.deepEqual([...seen].sort(), [...ODD_RULES].sort(), 'every rule turns up');
+});
+
+test('the lines: one per rule, short, kind words, and different from each other', () => {
+  assert.deepEqual(Object.keys(ODD_NOTES).sort(), [...ODD_RULES].sort());
+  assert.equal(ODD_NOTES.color, 'Find the one that is a different color');
+  assert.equal(ODD_NOTES.fruit, 'Find the one that is not a fruit');
+  assert.equal(new Set(Object.values(ODD_NOTES)).size, ODD_RULES.length);
+  for (const line of Object.values(ODD_NOTES)) {
+    assert.ok(line.length <= 50, line);
+    assert.doesNotMatch(line, /wrong|no!|bad|error|fail/i, line);
+  }
+});
+
+test('every rule picture is an inline picture; the paint drop takes each paint\'s color', () => {
+  for (const rule of ODD_RULES) assert.ok(isInlineSvg(oddRuleArt(rule, 'red')), rule);
+  for (const [color, p] of Object.entries(PAINTS)) {
+    const art = oddRuleArt('color', color);
+    assert.ok(art.includes(p.paint), `${color} drop`);
+    assert.equal(biggestColor(art), p.paint, `${color}: the drop is mostly that paint`);
+    for (const other of Object.keys(PAINTS)) if (other !== color) assert.ok(!art.includes(PAINTS[other].paint));
+  }
+});
+
+test('the rule picture sits above the row, below the dots, centred, and at least 88 px', () => {
+  const r = oddRuleBox();
+  const top = oddCards()[0].y0;
+  assert.ok(r.y0 > ODD.dots.y + 14, 'below the progress dots');
+  assert.ok(ODD.band.y > r.y1 && ODD.band.y < top, 'the band runs between the picture and the cards');
+  assert.ok(r.y1 < top);
+  assert.equal(ODD.rule.x, BOARD.w / 2);
+  for (const [w, h] of [[1280, 626], [1280, 800]]) assert.ok(ODD.rule.size * boardFit(w, h).s >= 88);
+  for (const c of oddCards()) assert.ok(c.y1 <= BOARD.h - 12, 'the row still fits on the board');
+});
+
+test('the band drops to the three that match and never to the odd one, and rises to the rule picture', () => {
+  const top = oddCards()[0].y0;
+  for (const odd of [0, 1, 2, 3]) {
+    const row = { by: 'kind', odd, items: [] };
+    const { d, drops } = oddBand(row);
+    assert.deepEqual(drops.map((p) => p.place), oddAlike(row));
+    assert.equal(drops.length, 3);
+    // Every vertical piece: 3 drops onto a card top, 1 stem up to the picture.
+    const verticals = [...d.matchAll(/M(\d+) (\d+) V(\d+)/g)].map((m) => m.slice(1).map(Number));
+    assert.equal(verticals.length, 4);
+    const onto = verticals.filter(([, , y]) => y > ODD.band.y).map(([x]) => x);
+    assert.deepEqual(onto, drops.map((p) => ODD.xs[p.place]));
+    assert.ok(!onto.includes(ODD.xs[odd]), 'no drop to the odd card');
+    assert.ok(verticals.filter(([, , y]) => y > ODD.band.y).every(([, , y]) => y < top && top - y <= 10), 'drops stop just above the card');
+    const stem = verticals.find(([, , y]) => y === ODD.band.y);
+    assert.equal(stem[0], ODD.rule.x);
+    assert.ok(stem[1] > oddRuleBox().y1 && stem[1] - oddRuleBox().y1 <= 10, 'the stem starts just under the picture');
+    // The line across spans every drop and the stem.
+    const [x0, x1] = oddBand(row).span;
+    assert.ok(x0 <= Math.min(...onto, ODD.rule.x) && x1 >= Math.max(...onto, ODD.rule.x));
+    assert.equal(Number(d.match(/^M(\d+)/)[1]), x0);
+    // Over an odd card between two of the three, the line hops in an arch.
+    const { hop } = oddBand(row);
+    if (ODD.xs[odd] > x0 && ODD.xs[odd] < x1) {
+      assert.equal(hop, ODD.xs[odd]);
+      assert.match(d, new RegExp(`Q${ODD.xs[odd]} ${ODD.band.y - ODD.band.rise} `));
+      const r = oddRuleBox();
+      const archL = hop - ODD.band.hop; const archR = hop + ODD.band.hop;
+      assert.ok(archR < r.x0 || archL > r.x1 || ODD.band.y - ODD.band.rise / 2 > r.y1, 'the arch clears the rule picture');
+    } else assert.equal(hop, null);
+  }
+});
+
+test('the screen: each row sets its line, show me rings the three, a right answer shows the band, a wrong tap stays silent', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/odd.js', import.meta.url), 'utf8');
+  const screens = readFileSync(new URL('../src/screens.js', import.meta.url), 'utf8');
+  assert.match(src, /onNote\(oddNote\(rule\)\)/, 'each row sends its line');
+  assert.match(screens, /onNote: showGameNote/, 'the shell shows it');
+  assert.match(src, /step\.kind === 'ring'[\s\S]*?showGroup\(\)/, 'show me: the band joins the three');
+  assert.match(src, /function found\(\) \{[\s\S]*?showGroup\(\);/, 'a right answer: the band shows why');
+  const tap = src.match(/function tap\(place\) \{[\s\S]*?\n {2}\}/)[0];
+  const wrong = tap.slice(tap.indexOf('if (r.ok) return found();'));
+  assert.doesNotMatch(wrong, /chime|showGroup|Sound/, 'a wrong tap: a wiggle, no sound, no band');
 });

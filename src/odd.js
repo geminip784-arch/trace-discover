@@ -13,29 +13,36 @@
 // Child-screen rules: no text, no failure sound, nothing red as feedback, every
 // card at least 88 px, Jugnu the only character.
 // Slice 5J part 2: Jugnu's demonstration is slower (about 5 s, games.js
-// ODD_DEMO): showMe() has him hop onto each card in turn, each lifting a
-// little while he looks, pause, then point at the different card; she taps it
-// herself (logged as help, never her move).
+// ODD_DEMO); she taps the different card herself (logged as help, never her move).
+// Slice 5M, made clear: each row has its own instruction line (src/notes.js
+// ODD_NOTES, sent to the shell through onNote) and a picture of its rule above
+// the row: a paint drop in the three's color, a fruit bowl, the toy box, a paw
+// print or a clothes hanger. showMe() has Jugnu hop onto the three that match
+// only; a gold outline on each and a gold band join them to the rule picture;
+// then he points at the different one. A right answer shows the same band, so
+// she sees why. A wrong tap stays silent, as before.
 
 import {
   ODD, oddPlay, oddKey, oddCards, hitOdd, startOdd, tapOdd, marginUnits, gameLogEntry,
-  ODD_DEMO, oddDemoSteps, showMeOdd, showMeLogEntry,
+  ODD_DEMO, oddDemoSteps, showMeOdd, showMeLogEntry, oddRule, oddRuleColor, oddRuleBox, oddBand,
 } from './games.js';
-import { oddThingArt } from '../data/games.js';
+import { oddThingArt, oddRuleArt } from '../data/games.js';
+import { oddNote } from './notes.js';
 import { mountBoard, svgEl, replay, JUGNU_IMG } from './match.js';
 import { trackSinglePointer } from './input.js';
 import { logAttempt, readLastPlay, saveLastPlay } from './storage.js';
 import { chime, letterChime } from './audio.js';
 
-const NEXT_MS = 1300;     // a right answer glows, then the next row
+const NEXT_MS = 2000;     // a right answer glows and the band shows why, then the next row
 const HINT_DELAY_MS = 650; // the hint waits for the wrong card's wiggle to end
 const POINT_MS = 1300;    // show me: Jugnu points at the odd one this long, then she taps
 const JUGNU_SIZE = 110;
 const DONE_MS = 1600;     // the last row: everything glows, then back to the menu
 
 // game: 'odd-kinds' or 'odd-colors'. onDone(): five rows are done.
-// Returns { stop, pause, resume }.
-export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
+// onNote(text): the row's instruction line, for the top of the screen.
+// Returns { showMe, stop, pause, resume }.
+export function playOdd(view, { game, onDone = () => {}, onNote = () => {}, rand = Math.random }) {
   view.innerHTML = JUGNU_IMG;
   const buddy = view.querySelector('.buddy');
   const board = mountBoard(view);
@@ -45,6 +52,14 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
 
   // The progress dots: one per row, filled when it is done.
   const dots = ODD.dots.xs.map((x) => svgEl('circle', { class: 'od-dot', cx: x, cy: ODD.dots.y, r: 14 }, board.svg));
+
+  // The rule picture above the row, and the gold band that joins the three to it.
+  const rb = oddRuleBox();
+  const ruleEl = document.createElement('div');
+  ruleEl.className = 'od-rule';
+  Object.assign(ruleEl.style, { left: `${rb.x0}px`, top: `${rb.y0}px`, width: `${rb.x1 - rb.x0}px`, height: `${rb.y1 - rb.y0}px` });
+  board.el.appendChild(ruleEl);
+  const bandEl = svgEl('path', { class: 'od-band', d: '' }, board.svg);
 
   const opened = performance.now();
   let alive = true;
@@ -92,13 +107,28 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
       board.el.appendChild(el);
       return el;
     });
+    const rule = oddRule(row);
+    ruleEl.innerHTML = oddRuleArt(rule, oddRuleColor(row));
+    ruleEl.dataset.rule = rule;
+    ruleEl.classList.remove('on');
+    bandEl.setAttribute('d', oddBand(row).d);
+    bandEl.classList.remove('on');
+    onNote(oddNote(rule));
     busy = false;
   }
 
-  // Found: the odd one glows with a chime, its dot fills, then the next row.
+  // The three that match: a gold outline on each, and the band to the rule picture.
+  function showGroup() {
+    for (const { place } of oddBand(row).drops) cardEls[place].classList.add('od-group');
+    bandEl.classList.add('on');
+    ruleEl.classList.add('on');
+  }
+
+  // Found: the odd one glows with a chime, the three that match join the rule
+  // picture with the gold band (why it is different), its dot fills, then the next row.
   function found() {
     cardEls[row.odd].classList.add('od-right');
-    for (const [i, el] of cardEls.entries()) if (i !== row.odd) el.classList.add('od-rest');
+    showGroup();
     dots[rowNo - 1].classList.add('on');
     chime();
     busy = true;
@@ -111,8 +141,10 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
   }
 
   // Jugnu's demonstration on the current row (games.js oddDemoSteps): he hops
-  // onto each card in turn, each lifting a little while he looks, pauses, then
-  // flies to the different one and points at it; she taps it herself.
+  // onto each of the three that match, each lifting a little while he looks;
+  // the band joins them to the rule picture; he pauses, then flies to the
+  // different one and points at it; she taps it herself. The band stays until
+  // the row ends.
   // Resolves false if the game stopped.
   async function demo() {
     const cards = oddCards();
@@ -143,6 +175,10 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
         looking = cardEls[step.place];
         looking.classList.add('od-look');
         if (!(await tween(ODD_DEMO.hopMs * 0.45, () => {}))) { done(); return false; }
+      } else if (step.kind === 'ring') {
+        done();
+        showGroup();
+        if (!(await tween(ODD_DEMO.ringMs, () => {}))) return false;
       } else if (step.kind === 'pause') {
         if (!(await tween(ODD_DEMO.pauseMs, () => {}))) { done(); return false; }
         done();

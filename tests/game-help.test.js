@@ -184,16 +184,20 @@ test('the show me button: picture only, in the left column, at least 88 px, on g
 
 // ---- 3. a slower Odd one out demonstration ----
 
-test('odd one out: Jugnu looks at each of the four cards, pauses, then goes to the different one, in about 5 s', () => {
+test('odd one out: Jugnu looks at the three that match, the band joins them, he pauses, then goes to the different one, in about 5 s (Slice 5M)', () => {
   assert.equal(ODD.xs.length, 4);
   const total = oddDemoMs();
   assert.ok(total >= 4500 && total <= 5500, `${total} ms`);
-  assert.equal(total, 4 * ODD_DEMO.hopMs + ODD_DEMO.pauseMs + ODD_DEMO.flyMs);
+  assert.equal(total, 3 * ODD_DEMO.hopMs + ODD_DEMO.ringMs + ODD_DEMO.pauseMs + ODD_DEMO.flyMs);
   const row = { odd: 2 };
   assert.deepEqual(oddDemoSteps(row), [
-    { kind: 'look', place: 0 }, { kind: 'look', place: 1 }, { kind: 'look', place: 2 }, { kind: 'look', place: 3 },
-    { kind: 'pause' }, { kind: 'go', place: 2 },
+    { kind: 'look', place: 0 }, { kind: 'look', place: 1 }, { kind: 'look', place: 3 },
+    { kind: 'ring' }, { kind: 'pause' }, { kind: 'go', place: 2 },
   ]);
+  for (const odd of [0, 1, 2, 3]) {
+    const looks = oddDemoSteps({ odd }).filter((st) => st.kind === 'look').map((st) => st.place);
+    assert.deepEqual(looks, [0, 1, 2, 3].filter((i) => i !== odd), 'he never looks at the odd one before pointing');
+  }
 });
 
 // ---- 4. the U scene ----

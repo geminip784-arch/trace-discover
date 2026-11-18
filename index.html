@@ -590,7 +590,16 @@
     .gm-jugnu.gm-point { animation: bob 0.7s ease-in-out infinite; }
     .od-card > svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
     .od-card.od-right { border-color: #FFD43B; box-shadow: 0 0 30px rgba(255, 212, 59, 0.9), 0 6px 0 rgba(0, 0, 0, 0.08); animation: od-pop 0.5s ease; }
-    .od-card.od-rest { opacity: 0.55; }
+    /* Slice 5M: the rule picture above the row, and the gold band joining the three that match to it. */
+    .od-rule {
+      position: absolute; box-sizing: border-box; padding: 10px; background: #fff; border: 6px solid #F8C9DA; border-radius: 50%;
+      z-index: 3; pointer-events: none; transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .od-rule > svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .od-rule.on { border-color: #FFC21A; box-shadow: 0 0 26px rgba(255, 212, 59, 0.9); animation: od-pop 0.5s ease; }
+    .od-card.od-group { border-color: #FFC21A; background: #FFF6D0; box-shadow: 0 0 0 5px #FFE58A, 0 6px 0 rgba(0, 0, 0, 0.08); }
+    .od-band { fill: none; stroke: #FFC21A; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 0.5s; }
+    .od-band.on { opacity: 1; }
     @keyframes od-pop { 50% { transform: scale(1.08); } }
     .od-dot { fill: #fff; stroke: #F8C9DA; stroke-width: 5; transition: fill 0.4s; }
     .od-dot.on { fill: #FFD43B; stroke: #FFC21A; }

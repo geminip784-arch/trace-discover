@@ -4,7 +4,7 @@
 // data/finds.js (the countable things); the letter pictures and the shadows use
 // the find library's objects (OBJECTS); the rest are drawn here.
 
-import { THINGS, OBJECTS, ROOMS, BASKET } from './finds.js';
+import { THINGS, OBJECTS, ROOMS, BASKET, TOYBOX } from './finds.js';
 import { PICTURES } from './drawings.js';
 
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
@@ -728,6 +728,27 @@ export const oddThingArt = (id) => {
   const t = ODD_THINGS[id];
   return t.painted ? PAINTED[t.object](PAINTS[t.color]) : FIXED[id].art();
 };
+
+// Slice 5M: the picture of a row's rule, above the row (src/games.js oddRule).
+// color: a paint drop in the three alike's color; fruit: a fruit bowl; toy: the
+// toy box; animal: a paw print; clothes: a clothes hanger.
+const RULE_ART = {
+  color: (p) => svg('0 0 100 100', `<path d="M50 6 C50 6 16 46 16 66 A34 34 0 0 0 84 66 C84 46 50 6 50 6 Z" fill="${p.paint}" stroke="${p.edge}" stroke-width="4" stroke-linejoin="round"/>`
+    + '<ellipse cx="36" cy="64" rx="7" ry="12" fill="#fff" opacity=".55" transform="rotate(20 36 64)"/>'),
+  fruit: () => svg('0 0 100 100', '<path d="M64 30 Q74 10 92 22" stroke="#FFD43B" stroke-width="10" fill="none" stroke-linecap="round"/>'
+    + '<circle cx="30" cy="42" r="15" fill="#FF4D4D"/><path d="M30 28 q3 -8 9 -9" stroke="#35C46A" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    + '<circle cx="54" cy="38" r="15" fill="#FFA94D"/><circle cx="76" cy="44" r="13" fill="#35C46A"/>'
+    + '<path d="M6 50 H94 Q92 90 50 92 Q8 90 6 50 Z" fill="#4DB6E8" stroke="#2F8FC4" stroke-width="3" stroke-linejoin="round"/>'
+    + '<path d="M18 62 Q50 72 82 62" stroke="#fff" stroke-width="4" fill="none" opacity=".6" stroke-linecap="round"/>'),
+  toy: () => TOYBOX.replace('viewBox="0 0 150 150"', 'viewBox="0 20 150 130"'),
+  animal: () => svg('0 0 100 100', '<g fill="#9B6B43"><ellipse cx="50" cy="68" rx="24" ry="20"/>'
+    + '<ellipse cx="20" cy="42" rx="10" ry="12"/><ellipse cx="38" cy="22" rx="10" ry="12"/><ellipse cx="62" cy="22" rx="10" ry="12"/><ellipse cx="80" cy="42" rx="10" ry="12"/></g>'),
+  clothes: () => svg('0 0 100 100', '<path d="M42 20 Q42 8 50 8 Q60 8 60 18 Q60 26 50 30 V40" stroke="#8A94A6" stroke-width="5" fill="none" stroke-linecap="round"/>'
+    + '<path d="M50 40 L10 72 Q6 78 14 78 H86 Q94 78 90 72 Z" stroke="#9B6B43" stroke-width="7" fill="none" stroke-linejoin="round"/>'),
+};
+export const ODD_RULE_ART = RULE_ART;
+// color: the three alike's color, for a color row's paint drop.
+export const oddRuleArt = (rule, color = null) => (rule === 'color' ? RULE_ART.color(PAINTS[color] ?? PAINTS.red) : RULE_ART[rule]?.() ?? '');
 
 const tileGrid = (ids) => svg('0 0 200 160', ids.map((id, i) => oddThingArt(id).replace('<svg ', `<svg x="${[22, 108][i % 2]}" y="${[6, 84][Math.floor(i / 2)]}" width="70" height="70" `)).join(''));
 Object.assign(MENU, {

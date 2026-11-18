@@ -708,7 +708,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
     };
     const play = { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing }[kindOf(id)];
-    game = play(view, { game: id, onDone });
+    game = play(view, { game: id, onDone, onNote: showGameNote }); // onNote: Odd one out's line per row (Slice 5M)
     if (upright) game.pause();
   }
 
