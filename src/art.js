@@ -141,3 +141,39 @@ export function nameCardArt(word, star = false) {
   ${star ? `<g transform="translate(172 -4) scale(1.1)">${STAR.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>` : ''}
 </svg>`;
 }
+
+// ---------------------------------------------------------------------------
+// The practice page (Slice 5L). Pictures only, never text, nothing red.
+
+// A pencil: yellow body, wood tip, dark lead, pink-free eraser (lilac).
+const PENCIL_PATH = `
+  <g transform="rotate(-45 40 40)">
+    <rect x="10" y="31" width="44" height="18" rx="3" fill="#FFC21A" stroke="#C98A00" stroke-width="2.5"/>
+    <line x1="12" y1="40" x2="52" y2="40" stroke="#E0A800" stroke-width="2"/>
+    <rect x="2" y="31" width="10" height="18" rx="3" fill="#B39DDB" stroke="#7E57C2" stroke-width="2.5"/>
+    <path d="M54 31 L70 40 L54 49 Z" fill="#F4D7A8" stroke="#C98A00" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M64.5 37 L70 40 L64.5 43 Z" fill="#2A2370"/>
+  </g>`;
+
+// The board's pencil tile: a big pencil writing a little line, on lined paper.
+export const PENCIL_TILE = `<svg ${NS} viewBox="0 0 80 80" aria-hidden="true">
+  <line x1="8" y1="62" x2="72" y2="62" stroke="#8FB8E8" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="8" y1="70" x2="72" y2="70" stroke="#E0B84A" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M12 58 q6 -8 12 0 t12 0" fill="none" stroke="#1D2B8F" stroke-width="3" stroke-linecap="round"/>
+  ${PENCIL_PATH}
+</svg>`;
+
+// The badge a starred tile wears in practice mode.
+export const PENCIL_BADGE = `<svg ${NS} viewBox="0 0 80 80" aria-hidden="true">
+  <circle cx="40" cy="40" r="36" fill="#fff" stroke="#E0B84A" stroke-width="4"/>
+  ${PENCIL_PATH}
+</svg>`;
+
+// The big next-page tile: a fresh lined page and a fat arrow pointing on.
+export const NEXT_PAGE = `<svg ${NS} viewBox="0 0 120 120" aria-hidden="true">
+  <rect x="14" y="16" width="62" height="84" rx="8" fill="#fff" stroke="#C9DBF0" stroke-width="4"/>
+  <line x1="22" y1="44" x2="68" y2="44" stroke="#8FB8E8" stroke-width="3" stroke-linecap="round"/>
+  <line x1="22" y1="58" x2="68" y2="58" stroke="#8FB8E8" stroke-width="3" stroke-linecap="round" stroke-dasharray="5 6"/>
+  <line x1="22" y1="72" x2="68" y2="72" stroke="#7CB342" stroke-width="3" stroke-linecap="round"/>
+  <path d="M58 46 H86 V30 L112 60 L86 90 V74 H58 Z" fill="#35D07F" stroke="#1E9E5A" stroke-width="5" stroke-linejoin="round"/>
+</svg>`;

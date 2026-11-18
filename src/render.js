@@ -377,6 +377,46 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done, markers
   }
 }
 
+// The practice page's spaces (Slice 5L), on the guide layer after drawLines:
+// a faint dashed divider between spaces, and a soft gold wash behind the space
+// she is on now (`active`, or -1 for none). `spaces`: [{ x0, x1 }] in area px.
+// Pictures only, never text; the dividers never stop her writing anywhere.
+export const SPACES_LOOK = { divider: '#C9DBF0', dividerWidth: 0.012, dash: 0.05, wash: '#FFF3C4', washOpacity: 0.55, above: 0.18, radius: 0.08 };
+export function drawPracticeSpaces(svg, layout, spaces, active = -1) {
+  const { unit, top } = layout;
+  const look = SPACES_LOOK;
+  const make = (tag, attrs) => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    svg.appendChild(el);
+    return el;
+  };
+  // A little above the sky line and below the tail line, but always inside the white board.
+  const edge = BOARD.inset + BOARD.frame;
+  const y0 = Math.max(edge, top - look.above * unit);
+  const y1 = Math.min(layout.areaHeight - edge, top + (TAIL_LINE + look.above) * unit);
+  const g = make('g', { class: 'practice-spaces' });
+  const wash = spaces[active];
+  if (wash) {
+    const el = document.createElementNS(SVG_NS, 'rect');
+    for (const [k, v] of Object.entries({
+      x: wash.x0, y: y0, width: wash.x1 - wash.x0, height: y1 - y0, rx: look.radius * unit,
+      fill: look.wash, 'fill-opacity': look.washOpacity,
+    })) el.setAttribute(k, v);
+    // Behind the lines: first in the guide layer after the board.
+    svg.insertBefore(el, svg.querySelector('line, polyline, path') ?? g);
+  }
+  for (let k = 1; k < spaces.length; k++) {
+    const x = spaces[k].x0;
+    const el = document.createElementNS(SVG_NS, 'line');
+    for (const [key, v] of Object.entries({
+      x1: x, x2: x, y1: y0, y2: y1, stroke: look.divider, 'stroke-width': look.dividerWidth * unit,
+      'stroke-dasharray': `${look.dash * unit} ${look.dash * unit}`, 'stroke-linecap': 'round',
+    })) el.setAttribute(key, v);
+    g.appendChild(el);
+  }
+}
+
 // Her ink. Every point is stored in letter units ({ x, y }, as the character
 // file), never in px, so after any change of screen size (rotation, the browser
 // bar, split screen) resize() redraws all of it exactly on the letter again.

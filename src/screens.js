@@ -10,6 +10,7 @@
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, boardGrid, localDay,
   startScreen, navigate, tuneFor, bookOf, tileColorOf, REVIEW_ORDER, booksWithDue, pageNow, pageSwitch, NAME_BOOK,
+  hasPencil,
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
@@ -24,8 +25,9 @@ import { unlock, doorSound, popSound } from './audio.js';
 import { setMusicOn, setTune, resumeMusic } from './music.js';
 import { startGame, loadChar } from './game.js';
 import { startNameGame } from './name-game.js';
+import { startPractice } from './practice-game.js';
 import { NAME_ID, nameOf, nameWidth, nameFits } from './name.js';
-import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt } from './art.js';
+import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard } from './finds.js';
@@ -73,6 +75,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     today: localDay(now),
     forceDoor: params.get('door') === '1',
     char: params.get('char'),
+    practice: params.get('practice'), // ?practice=A opens A's practice page (for checks)
   });
   // index.html?scene=E opens the find (or count) scene of E straight away (for checks).
   const sceneChar = params.get('scene');
@@ -169,15 +172,16 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const { screen } = state;
     document.body.dataset.screen = screen;
     els.home.hidden = screen === 'door' || screen === 'shelf';
-    els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper', NAME_BOOK].includes(screen);
+    els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper', NAME_BOOK, 'practice'].includes(screen);
     els.music.hidden = screen === 'door';
     if (els.showme) els.showme.hidden = screen !== 'play';
     showGameNote(screen === 'play' ? gameNote(kindOf(state.game)) : null);
     setTune(tuneFor(screen));
 
-    const writing = screen === 'write';
+    const writing = screen === 'write' || screen === 'practice';
     els.area.hidden = !writing;
     els.shell.hidden = writing;
+    if (screen === 'practice') return startPracticePage();
     if (writing) return startWriting();
 
     els.shell.replaceChildren();
@@ -268,10 +272,13 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const grid = view.querySelector('.tiles');
     grid.classList.add(`script-${board.script}`);
     const page = pageNow(state);
-    const tiles = boardTiles(state.book, manifest, readStars(), dueNow(), page);
+    // Slice 5L: practice mode (the pencil tile is on): only starred tiles open, each to its practice page.
+    const practice = state.practice === true;
+    grid.classList.toggle('practice-mode', practice);
+    const tiles = boardTiles(state.book, manifest, readStars(), dueNow(), page, practice);
     for (const t of tiles) {
       const el = document.createElement('div');
-      el.className = `tile${t.bright ? ' bright' : ' faint'}`;
+      el.className = `tile${t.open ? ' bright' : ' faint'}`;
       el.style.setProperty('--c', t.color);
       el.setAttribute('role', 'button');
       el.setAttribute('aria-label', t.id);
@@ -290,15 +297,22 @@ export function startShell(els, { manifest, params, now = new Date() }) {
         star.innerHTML = STAR;
         el.appendChild(star);
       }
+      if (t.pencil) {
+        const badge = document.createElement('span');
+        badge.className = 'pencil-badge';
+        badge.innerHTML = PENCIL_BADGE;
+        el.appendChild(badge);
+      }
       el.addEventListener('click', () => {
         if (busy) return;
-        if (!t.bright) return wiggle(el, 'shake');
+        if (!t.open) return wiggle(el, 'shake');
         busy = true;
         popSound();
         el.classList.add('picked');
         setTimeout(() => {
           busy = false;
-          go(navigate(state, { type: 'openChar', id: t.id, manifest, review: t.due }));
+          if (practice) go(navigate(state, { type: 'openPractice', id: t.id, manifest, stars: readStars() }));
+          else go(navigate(state, { type: 'openChar', id: t.id, manifest, review: t.due }));
         }, TILE_PICK_MS);
       });
       grid.appendChild(el);
@@ -307,9 +321,27 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     // the page it turns to big and bright, the page she is on small and faint.
     const sw = pageSwitch(state.book, page, manifest, dueNow());
     if (sw) grid.appendChild(switchTile(sw));
+    // Slice 5L: the pencil tile, last (in the ABC book, just after the switch).
+    if (hasPencil(state.book)) grid.appendChild(pencilTile(practice));
     if (turning) grid.classList.add(`turn-${turning}`);
     turning = null;
     sizeBoard();
+  }
+
+  // Slice 5L: the pencil tile turns the board's practice mode on or off. The
+  // board is drawn again at once; leaving the board ends practice mode.
+  function pencilTile(on) {
+    const el = document.createElement('div');
+    el.className = `tile bright pencil-tile${on ? ' on' : ''}`;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'practice');
+    el.innerHTML = PENCIL_TILE;
+    el.addEventListener('click', () => {
+      if (busy) return;
+      popSound();
+      go(navigate(state, { type: 'togglePractice' }));
+    });
+    return el;
   }
 
   // The direction the page turns in (for the slide), or null.
@@ -668,6 +700,22 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       if (upright) {
         // Pausing holds every animation on the page: take the picture away for
         // that moment, so its own animation starts again when it comes back.
+        els.turn.hidden = true;
+        game.pause?.();
+        els.turn.hidden = false;
+      }
+    }
+  }
+
+  // Slice 5L: the practice page. Extra practice: it never touches stars,
+  // reviews, helper levels or the practice-more list. She leaves with back or home.
+  async function startPracticePage() {
+    const mine = state;
+    const running = await startPractice(els, { charId: state.char, manifest });
+    if (state !== mine) running.stop();
+    else {
+      game = running;
+      if (upright) {
         els.turn.hidden = true;
         game.pause?.();
         els.turn.hidden = false;
