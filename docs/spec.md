@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.11 · Nov 17, 2026 · describes the app as built through Slice 5L part 1 (the practice page for letters and numbers: the boards' pencil tile and practice mode, three practice spaces, fireflies, never stuck and a fresh page); before it, Slice 5K part 1 (testing feedback: practising is rounds 1 and 2, and the copy-it round moved to reviews on later days); before it, Slice 9C (her name's book: three rounds, the reward, her name card and reviews; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.12 · Nov 18, 2026 · describes the app as built through Slice 5L part 2 (page stickers on her shelf of finds); before it, Slice 5L part 1 (the practice page for letters and numbers: the boards' pencil tile and practice mode, three practice spaces, fireflies, never stuck and a fresh page); before it, Slice 5K part 1 (testing feedback: practising is rounds 1 and 2, and the copy-it round moved to reviews on later days); before it, Slice 9C (her name's book: three rounds, the reward, her name card and reviews; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -211,7 +211,8 @@ Extra practice for a letter or number that already has its gold star, opened fro
 - **Fireflies.** Three firefly lights at the top right, in place of the round lights: faint, now (a green ring) and lit. Each finished space lights one, with a chime.
 - **A fresh page.** When all three are done, her whole page glows, Jugnu says well done, and a big picture-only arrow tile (120 px: a lined page and a green arrow) appears in the left column between back and music, with Jugnu perched on it. A tap gives a fresh page with the same letter: space 1 guided again, spaces 2 and 3 blank. She can leave at any time with back (to that letter's board page, practice mode off) or home.
 - **Log:** a `practice` entry for space 1 when it is traced (misses, wrong starts, strokes traced the other way, helped) and for every judged copy in spaces 2 and 3 (the try, pass or fail, the reason, helped, and the copy-it round's details under `copy`), each with the page number of the sitting and the space. Her strokes are logged as usual, marked `in: 'practice'`. `?practice=A` opens A's practice page straight away (for checks).
-- Screenshots: `docs/screenshots/slice-5l/`. Coming in Slice 5L parts 2 and 3: a page sticker on her shelf of finds for each full page, and her name's practice page.
+- **Page stickers (part 2).** Each full page adds one to that character's page count (`td.pages`: `{ [id]: pages }`) and moves its page sticker (`{ pg: id }`) to the newest place on her shelf of finds: one sticker per character, never more (`addPageSticker` in `src/finds.js`, saved by `savePracticePage` in `src/storage.js`). Nothing else is saved: stars, reviews, helper levels, rounds and the practice-more list stay as they were (a test checks every other key).
+- Screenshots: `docs/screenshots/slice-5l/`. Coming in Slice 5L part 3: her name's practice page.
 
 ### Find scenes (letters) and count scenes (numbers)
 
@@ -234,7 +235,7 @@ Every find and every counted group joins her collection.
 
 ### Her shelf of finds
 
-The toy box on the bookshelf opens her collection: the newest 24 finds stand on wooden planks, and her name card (Slice 9C) once she has written her name. These are the objects she found and the groups she counted. Up to 500 are kept (`td.finds`).
+The toy box on the bookshelf opens her collection: the newest 24 finds stand on wooden planks, and her name card (Slice 9C) once she has written her name, and a page sticker for each letter or number she has filled a practice page with (Slice 5L part 2). A sticker is the letter, in its tile color, on a little lined page, with a stack of sheets behind it (one per page she has done, up to 5 in all) and the number of pages in a gold badge at the top right; it takes one place on a plank. Another page moves it to the newest place, with the new count. These are the objects she found and the groups she counted. Up to 500 are kept (`td.finds`).
 
 ### Games book
 

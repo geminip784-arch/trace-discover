@@ -102,13 +102,14 @@ Four pull requests, one at a time.
 Extra practice for a letter, number or her name once it has its gold star. Three pull requests, one at a time.
 
 1. **Letters and numbers (built):** one big pencil tile on the ABC and 123 boards (in ABC just after the "A a" tile). A tap turns practice mode on: starred tiles wear a pencil badge and open their practice page, every other tile is faint and wiggles; a second tap turns it off, and leaving the board ends it. Every tile stays at least 88 px (ABC 120 px, 123 95 px). The page: one set of four lines with 3 spaces side by side, sized to fit (20 is the smallest at 186 px), with the 45 px tolerance floor. Space 1 is traced like round 1 and stays as her model; spaces 2 and 3 are blank and judged like the copy-it round, with its reasons. Each finished space lights a firefly. Never stuck: Jugnu draws a stroke of space 1 after 5 misses on it (round 1's rule), and writes space 2 or 3 after 3 failed copies; the space counts as done, with help. When all 3 are done, a big arrow tile in the left column offers a fresh page. Back and home always leave. It never changes stars, reviews, helper levels or the practice-more list; each space is logged as a `practice` entry. Screenshots: `docs/screenshots/slice-5l/`.
-2. **Page stickers:** each full page adds a sticker for that letter to her shelf of finds, with a small stack of sheets and the number of pages in a gold badge.
+2. **Page stickers (built):** each full page adds one to that letter's count (`td.pages`) and moves its one sticker to the newest place on her shelf of finds: the letter on a little lined page, a stack of sheets behind it (up to 5) and the number of pages in a gold badge. Stars, reviews and helper levels stay untouched. Screenshot: `docs/screenshots/slice-5l/shelf-page-stickers.png`.
 3. **Her name:** one practice space per screen at her name book's line size, 3 screens make a page (screen 1 traced, screens 2 and 3 on her own), the 3 fireflies across all three screens; the same sticker and 3-try rule.
 
 **Done when:**
 - [ ] The pencil tile turns practice mode on and off; only starred tiles open a practice page
 - [ ] A full page lights 3 fireflies and offers a fresh page
 - [ ] Practising never changes a star, a review date or a helper level
+- [ ] Each full page moves that letter's sticker to the newest place on her shelf, with the new count
 
 ### 6 — Voice and phonics
 - A family voice recorder (clips stored in IndexedDB).

@@ -1,7 +1,7 @@
 // storage.js — settings and progress in localStorage. Every read and write is
 // wrapped in try/catch: a full or blocked storage must never stop the game.
 
-import { addFind, cleanFinds, addNameCard, isNameCard } from './finds.js';
+import { addFind, cleanFinds, addNameCard, isNameCard, addPageSticker, cleanPages, addPage } from './finds.js';
 import { cleanReviews, cleanPracticeMore, recordPractice } from './review.js';
 import { finishedEarlier } from './progress.js';
 
@@ -402,6 +402,33 @@ export function saveNameCard(store = activeStore()) {
     return true;
   } catch {
     return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page stickers (Slice 5L part 2). td.pages: { [character id]: full practice
+// pages done }. Practice pages never touch stars, reviews or helper levels.
+
+export const PAGES_KEY = 'td.pages';
+
+export function readPages(store = activeStore()) {
+  try {
+    return cleanPages(JSON.parse(store.getItem(PAGES_KEY) ?? '{}'));
+  } catch {
+    return {};
+  }
+}
+
+// A full practice page for `id`: one more in td.pages, and its sticker moves to
+// the newest place on her shelf of finds. Returns the new count (0 if not saved).
+export function savePracticePage(id, store = activeStore()) {
+  try {
+    const pages = addPage(readPages(store), id);
+    store.setItem(PAGES_KEY, JSON.stringify(pages));
+    store.setItem(FINDS_KEY, JSON.stringify(addPageSticker(readFinds(store), id)));
+    return pages[id];
+  } catch {
+    return 0;
   }
 }
 

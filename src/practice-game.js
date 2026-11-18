@@ -14,7 +14,8 @@
 //
 // Extra practice only: nothing here reads or saves stars, rounds, reviews,
 // helper levels or the practice-more list. It only adds 'practice' entries
-// (and her strokes, marked in: 'practice') to the attempt log.
+// (and her strokes, marked in: 'practice') to the attempt log, and each full
+// page adds to that character's page count and sticker (Slice 5L part 2).
 //
 // The rules of game.js hold here too: no text for her, never red, never a buzzer,
 // never snap her ink, and her whole letter fades only after a failed copy, once
@@ -35,7 +36,7 @@ import { traceNote, copyNote } from './notes.js';
 import {
   practiceLayout, startPage, finishTrace, judgeSpace, nextPage, fireflies, practiceLogEntry, toSpace, scoreSpace, spaceStatus,
 } from './practice.js';
-import { logAttempt, readProfile } from './storage.js';
+import { logAttempt, readProfile, savePracticePage } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, popSound, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { loadChar, pauseAnimations } from './game.js';
@@ -387,8 +388,11 @@ export async function startPractice(els, { charId, manifest = [] }) {
   }
 
   // The whole page glows; then the big arrow tile offers a fresh page.
+  // Slice 5L part 2: the page counts (td.pages), and its sticker moves to the
+  // newest place on her shelf of finds. Stars, reviews and helpers are untouched.
   async function finishPage() {
     phase = 'held';
+    savePracticePage(char.id);
     redraw();
     speak('letterDone');
     let lines = modelPaths().map((pts) => pts.map(toPx));

@@ -177,3 +177,31 @@ export const NEXT_PAGE = `<svg ${NS} viewBox="0 0 120 120" aria-hidden="true">
   <line x1="22" y1="72" x2="68" y2="72" stroke="#7CB342" stroke-width="3" stroke-linecap="round"/>
   <path d="M58 46 H86 V30 L112 60 L86 90 V74 H58 Z" fill="#35D07F" stroke="#1E9E5A" stroke-width="5" stroke-linejoin="round"/>
 </svg>`;
+
+// A page sticker on her shelf of finds (Slice 5L part 2): her letter on a
+// little lined page, a stack of sheets behind it (one sheet per page she has
+// done, up to 5 in all), and the number of pages in a gold badge at the top
+// right corner. 120 x 120, one place wide. `glyph` is a character id (a to z,
+// A to Z, 0 to 20; escaped all the same); `color` is its tile color.
+export const STICKER = { maxSheets: 5 };
+export function pageStickerArt(glyph, count = 1, color = '#1D2B8F') {
+  const n = Math.max(1, Math.round(Number(count)) || 1);
+  const sheets = Math.min(n, STICKER.maxSheets);
+  const behind = [];
+  // The back sheets peek out up and to the right, a little turned.
+  for (let i = sheets - 1; i >= 1; i--) {
+    behind.push(`<rect x="${18 + i * 4}" y="${20 - i * 4}" width="72" height="88" rx="7" fill="#FFFFFF" stroke="#C9DBF0" stroke-width="2.5" transform="rotate(${i * 2.5} ${54 + i * 4} ${64 - i * 4})"/>`);
+  }
+  const text = escapeText(glyph);
+  const size = text.length > 1 ? 40 : 56;
+  const label = String(n);
+  const badgeR = label.length > 2 ? 20 : 17;
+  return `<svg ${NS} viewBox="0 0 120 120" aria-hidden="true">
+  ${behind.join('\n  ')}
+  <rect x="18" y="20" width="72" height="88" rx="7" fill="#FFFDF5" stroke="#E0B84A" stroke-width="3"/>
+  <g stroke-linecap="round"><line x1="24" y1="44" x2="84" y2="44" stroke="#5bb8ff" stroke-width="2"/><line x1="24" y1="62" x2="84" y2="62" stroke="#9aa0b8" stroke-width="1.6" stroke-dasharray="4 3"/><line x1="24" y1="80" x2="84" y2="80" stroke="#4cc25a" stroke-width="2"/><line x1="24" y1="94" x2="84" y2="94" stroke="#b9834d" stroke-width="2.4"/></g>
+  <text x="54" y="80" text-anchor="middle" font-family="Fredoka, system-ui, sans-serif" font-weight="600" font-size="${size}" fill="${color}">${text}</text>
+  <circle cx="${104 - badgeR}" cy="${4 + badgeR}" r="${badgeR}" fill="#FFC21A" stroke="#D99400" stroke-width="3"/>
+  <text x="${104 - badgeR}" y="${4 + badgeR}" text-anchor="middle" dominant-baseline="central" font-family="Fredoka, system-ui, sans-serif" font-weight="600" font-size="${label.length > 2 ? 15 : 19}" fill="#5A3A00">${escapeText(label)}</text>
+</svg>`;
+}
