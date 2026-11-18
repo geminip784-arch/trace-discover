@@ -15,7 +15,7 @@ import {
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
-  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, readProfile, saveNameCard, readPages,
+  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, openProfiles, readProfile, saveNameCard, readPages,
   finishOldPractices,
 } from './storage.js';
 import {
@@ -70,6 +70,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   // testStore), so her real progress is never touched.
   const debugToday = debugOn && isDay(params.get('today')) ? params.get('today') : null;
   if (debugToday) useStore(testStore(globalThis.localStorage));
+  // Slice 8A: copy old progress to the first child once, then play as the saved child.
+  openProfiles();
   let state = startScreen({
     lastVisit: readLastVisit(),
     today: localDay(now),

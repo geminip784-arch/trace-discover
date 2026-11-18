@@ -4,6 +4,10 @@
 import { addFind, cleanFinds, addNameCard, isNameCard, addPageSticker, cleanPages, addPage } from './finds.js';
 import { cleanReviews, cleanPracticeMore, recordPractice } from './review.js';
 import { finishedEarlier } from './progress.js';
+import {
+  CHILDREN_KEY, CURRENT_KEY, MIGRATION_KEY, LEGACY_KEYS, childKey, isChildsKey,
+  cleanChildren, childById, currentOf, addChild, updateChild, removeChild, firstChild, migratedValue,
+} from './children.js';
 
 // ---------------------------------------------------------------------------
 // Test mode (?debug=1&today=...): her real progress must never change while a
@@ -24,6 +28,10 @@ export function testStore(real, prefix = TEST_PREFIX) {
     setItem(key, value) {
       real.setItem(prefix + key, value);
     },
+    // Only the test copy goes; her real data is never removed in test mode.
+    removeItem(key) {
+      real.removeItem?.(prefix + key);
+    },
   };
 }
 
@@ -32,7 +40,32 @@ let active = null;
 export function useStore(store) {
   active = store;
 }
-const activeStore = () => active ?? globalThis.localStorage;
+
+// ---------------------------------------------------------------------------
+// Children's profiles (Slice 8A). childStore(real, id) is a store where every
+// personal key is child `id`'s own copy (td.stars -> td.child.c1.stars, see
+// src/children.js childKey) and device settings (SHARED_KEYS) stay shared.
+// useChild(id) makes every function here use that child's copy; useChild(null)
+// goes back to the keys as they were before Slice 8A (only while the migration
+// has not finished, see openProfiles).
+
+export function childStore(real, id) {
+  return {
+    child: id,
+    getItem: (key) => real.getItem(childKey(id, key)),
+    setItem: (key, value) => real.setItem(childKey(id, key), value),
+    removeItem: (key) => real.removeItem?.(childKey(id, key)),
+  };
+}
+
+let child = null;
+export function useChild(id) {
+  child = id;
+}
+export const currentChild = () => child;
+// The store under the children: localStorage, or test mode's store.
+const baseStore = () => active ?? globalThis.localStorage;
+const activeStore = () => (child ? childStore(baseStore(), child) : baseStore());
 
 export const ATTEMPTS_KEY = 'td.attempts';
 export const MAX_ATTEMPTS = 2000;
@@ -54,14 +87,17 @@ export function readAttempts(store = activeStore()) {
 
 export function logAttempt(entry, store = activeStore()) {
   try {
-    store.setItem(ATTEMPTS_KEY, JSON.stringify(appendAttempt(readAttempts(store), entry)));
+    const stamped = store.child ? { ...entry, child: store.child } : entry; // Slice 8A: whose attempt
+    store.setItem(ATTEMPTS_KEY, JSON.stringify(appendAttempt(readAttempts(store), stamped)));
   } catch {
     // Storage full or blocked: carry on without logging.
   }
 }
 
-// The child's profile, set by a parent on index.html?setup=1.
-// { name, sayAs }: her name, and (optional) how the voice should say it.
+// The child's name, set by a parent on the setup page: { name, sayAs }: the
+// name, and (optional) how the voice should say it. Since Slice 8A it is the
+// playing child's (td.children). Before the migration has finished (no child
+// chosen) it is the old td.profile, as before.
 export const PROFILE_KEY = 'td.profile';
 const MAX_NAME = 40;
 
@@ -73,20 +109,170 @@ export function cleanProfile(p) {
 
 export function readProfile(store = activeStore()) {
   try {
+    if (store.child) return cleanProfile(childById(readChildren(store), store.child));
     return cleanProfile(JSON.parse(store.getItem(PROFILE_KEY) ?? '{}'));
   } catch {
     return cleanProfile(null);
   }
 }
 
-// Returns true when saved, false when storage is full or blocked.
+// Returns true when saved, false when storage is full or blocked. Only the name
+// and how to say it change; renaming never resets anything here (setup.js does).
 export function saveProfile(profile, store = activeStore()) {
   try {
-    store.setItem(PROFILE_KEY, JSON.stringify(cleanProfile(profile)));
+    const clean = cleanProfile(profile);
+    if (!store.child) {
+      store.setItem(PROFILE_KEY, JSON.stringify(clean));
+      return true;
+    }
+    const out = updateChild(readChildren(store), store.child, clean, { checkNames: false });
+    return out.ok && saveChildren(out.state, store);
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The children list (Slice 8A), shared by the whole device.
+
+export function readChildren(store = activeStore()) {
+  try {
+    return cleanChildren(JSON.parse(store.getItem(CHILDREN_KEY) ?? 'null'));
+  } catch {
+    return cleanChildren(null);
+  }
+}
+
+export function saveChildren(state, store = activeStore()) {
+  try {
+    store.setItem(CHILDREN_KEY, JSON.stringify(cleanChildren(state)));
     return true;
   } catch {
     return false;
   }
+}
+
+// The saved id of the child playing now (it may no longer be on the list).
+export function readCurrent(store = activeStore()) {
+  try {
+    return store.getItem(CURRENT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveCurrent(id, store = activeStore()) {
+  try {
+    store.setItem(CURRENT_KEY, id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// A parent adds a child: { ok, child } or { ok: false, reason } (children.js addChild).
+export function addChildProfile(fields, store = baseStore()) {
+  const out = addChild(readChildren(store), fields);
+  if (!out.ok) return out;
+  return saveChildren(out.state, store) ? out : { ok: false, reason: 'storage' };
+}
+
+// A parent changes a child's name, picture or color. A changed name is a new
+// word, so only that child's name book starts again (resetName).
+// { ok, child, renamed } or { ok: false, reason }.
+export function updateChildProfile(id, changes, { nameId = 'name', store = baseStore() } = {}) {
+  const out = updateChild(readChildren(store), id, changes);
+  if (!out.ok) return out;
+  if (!saveChildren(out.state, store)) return { ok: false, reason: 'storage' };
+  if (out.renamed) resetName(nameId, childStore(store, id));
+  return out;
+}
+
+// Every key in a store, when it can list them (localStorage can); null otherwise.
+function keysOf(store) {
+  try {
+    if (typeof store.key !== 'function' || !Number.isInteger(store.length)) return null;
+    const keys = [];
+    for (let i = 0; i < store.length; i++) keys.push(store.key(i));
+    return keys.filter((k) => typeof k === 'string');
+  } catch {
+    return null;
+  }
+}
+
+// A parent removes a child: off the list, and every one of that child's own
+// keys (test-mode copies too) is deleted. Nobody else's progress is touched.
+// Returns true when done.
+export function removeChildProfile(id, store = baseStore()) {
+  try {
+    const state = readChildren(store);
+    if (!childById(state, id)) return false;
+    const keys = keysOf(store) ?? LEGACY_KEYS.map((k) => childKey(id, k));
+    for (const key of keys) if (isChildsKey(key, id)) store.removeItem(key);
+    const left = removeChild(state, id);
+    saveChildren(left, store);
+    if (readCurrent(store) === id) {
+      const next = currentOf(left, null);
+      if (next) saveCurrent(next, store); else store.removeItem(CURRENT_KEY);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The migration (Slice 8A part 1; src/children.js). Before Slice 8A every
+// personal key was saved once, for one child. migrateProfiles copies each to
+// the first child (named from td.profile), leaving the old keys untouched as a
+// backup. Each copy is read back and compared with what it should hold, and
+// only then is td.migration set to 'done'. If anything fails part way (the app
+// closed, storage full), nothing is marked done and the next open runs it again
+// from the old keys, which were never changed. Children added since are kept.
+// Returns { ok, child }: ok true once done (now or before).
+
+export function migrateProfiles(store = baseStore()) {
+  try {
+    if (store.getItem(MIGRATION_KEY) === 'done') return { ok: true, child: null };
+    // An earlier run that stopped part way may have saved the list already.
+    let state = readChildren(store);
+    if (state.list.length === 0) {
+      let old = null;
+      try { old = JSON.parse(store.getItem(PROFILE_KEY) ?? 'null'); } catch { old = null; }
+      state = firstChild(cleanProfile(old)).state;
+    }
+    const first = state.list[0].id;
+    const copies = LEGACY_KEYS.map((key) => [childKey(first, key), migratedValue(key, store.getItem(key), first)]);
+    for (const [key, value] of copies) if (value !== null) store.setItem(key, value);
+    if (!saveChildren(state, store)) return { ok: false, child: null };
+    if (readCurrent(store) === null) saveCurrent(first, store);
+    // Check: every copy holds exactly what it should, and the list is saved.
+    const same = copies.every(([key, value]) => value === null || store.getItem(key) === value);
+    if (!same || !childById(readChildren(store), first)) return { ok: false, child: null };
+    store.setItem(MIGRATION_KEY, 'done');
+    return store.getItem(MIGRATION_KEY) === 'done' ? { ok: true, child: first } : { ok: false, child: null };
+  } catch {
+    return { ok: false, child: null };
+  }
+}
+
+// At every start: run the migration if it is still due, then play as the saved
+// child (or the first). If the migration could not finish, the app plays on
+// the old keys as before, and tries again next time. Returns the child's id, or null.
+export function openProfiles(store = baseStore()) {
+  const { ok } = migrateProfiles(store);
+  const id = ok ? currentOf(readChildren(store), readCurrent(store)) : null;
+  if (id && readCurrent(store) !== id) saveCurrent(id, store);
+  useChild(id);
+  return id;
+}
+
+// A child chooses their tile: from now on everything is theirs.
+export function chooseChild(id, store = baseStore()) {
+  if (!childById(readChildren(store), id)) return false;
+  saveCurrent(id, store);
+  useChild(id);
+  return true;
 }
 
 // ---------------------------------------------------------------------------

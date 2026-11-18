@@ -9,7 +9,7 @@ import {
   exportScript, wordsFor, clipState, progress, BACKUP_EXT,
 } from './voice.js';
 import { readClips, saveClip, saveClips } from './voice-store.js';
-import { readProfile } from './storage.js';
+import { readProfile, openProfiles } from './storage.js';
 
 const MAX_RECORD_MS = 10000; // a recording stops by itself after 10 seconds
 const STATE_TEXT = { recorded: 'Recorded', imported: 'Imported', missing: 'Missing' };
@@ -22,6 +22,7 @@ export async function startVoicePage(doc = document) {
     rec: $('rec'), play: $('play'), keep: $('keep'), again: $('again'), prev: $('prev'), next: $('next'),
     importFiles: $('import-files'), restoreFile: $('restore-file'),
   };
+  openProfiles();
   const profile = readProfile();
   let saved = await readClips();
   let filter = 'all';

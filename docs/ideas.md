@@ -25,6 +25,10 @@ Claude Code adds ideas here instead of building them mid-slice. Each idea is tag
 - **[later]** The mango picture is hard to recognize (Slice 5J part 2 testing). It needs a clearer drawing: a stronger mango shape and color, perhaps with a leaf.
 - **[later]** In round 3 at helper level 2, start dots on the stem (E's bars after an L) sit under her ink. They could be drawn on a layer above the ink, or nudged off the stem.
 
+- **[8A]** Slice 8A part 1 copied the old progress keys (`td.stars`, `td.rounds`, `td.helper`, `td.finds`, `td.games`, `td.drawings`, `td.lastPlay`, `td.missing`, `td.reviews`, `td.practiceMore`, `td.pages`, `td.attempts`, and the name in `td.profile`) to the first child and left the originals as a backup. Remove them in a later slice, once the copy is confirmed on the tablet. Until then they take space twice: if the tablet's storage were ever nearly full the copy could not finish, and the app would keep playing on the old keys (nothing lost) and try again at the next open.
+- **[8A]** Test-mode copies saved before Slice 8A (`test.td.stars` and friends) are not moved to the first child: test mode starts again from her real progress. Real progress is unaffected.
+- **[6]** With more than one child (Slice 8A), the voice pack's private lines with `{name}` need one recording per child.
+
 ## Slice 5C: objects each room still needs
 
 ✅ **[5G]** Superseded by Slice 5G's sound-first word list and its object-to-place table (`finds.html`). Kept for reference: the table below was the 5C wish list, and several of its words (hot dog, ice cube, eclair) do not start with the letter's sound.

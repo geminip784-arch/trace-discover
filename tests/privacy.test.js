@@ -1,5 +1,6 @@
 // Run: node --test tests/privacy.test.js
-// Her real name must never be in the project: not in the code, the tests, the
+// The children's real names must never be in the project (Slice 8A: both of
+// them). Her real name must never be in the project: not in the code, the tests, the
 // docs, the screenshots' file names or the mockups. It lives only on the tablet
 // (td.profile, set on the setup page). Everything in the project uses made-up
 // names such as "Sara".
@@ -20,8 +21,11 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-// SHA-256 of her first name, lowercase, and its length.
-const PRIVATE = [{ length: 5, sha256: '92cd83fdcfc0e88e27cecdbb53991254e427e5f3a8db4ce362a9e58e6974755d' }];
+// SHA-256 of each child's first name, lowercase, and its length (Slice 8A: one per child).
+const PRIVATE = [
+  { length: 5, sha256: '92cd83fdcfc0e88e27cecdbb53991254e427e5f3a8db4ce362a9e58e6974755d' },
+  { length: 6, sha256: 'a4b1cbd64cb2add6b95d48aa4e1891358efa731baca635512b8481c9801c497c' },
+];
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 
@@ -65,6 +69,16 @@ function trackedFiles() {
 // A file is text unless it has a zero byte near its start (pictures, fonts).
 const isText = (buf) => !buf.subarray(0, 8000).includes(0);
 
+test('every child has a hash, and the detector checks all of them', () => {
+  assert.equal(PRIVATE.length, 2, "one hash per child's name");
+  for (const { length, sha256: h } of PRIVATE) {
+    assert.ok(Number.isInteger(length) && length > 0);
+    assert.match(h, /^[0-9a-f]{64}$/);
+  }
+  const made = [{ length: 4, sha256: sha256('sara') }, { length: 4, sha256: sha256('omar') }];
+  assert.equal(findHashed('Sara and Omar', made).length, 2, 'two made-up names, both found');
+});
+
 test('the detector finds a hashed name in any case, inside longer words, and nowhere else', () => {
   const made = [{ length: 4, sha256: sha256('sara') }]; // a made-up name, to test the test
   assert.equal(findHashed('Sara traces her name.', made).length, 1);
@@ -73,7 +87,7 @@ test('the detector finds a hashed name in any case, inside longer words, and now
   assert.equal(findHashed('Sa ra, Saxa, arас', made).length, 0);
 });
 
-test('her real name is in no tracked file and no file name', () => {
+test("the children's real names are in no tracked file and no file name", () => {
   const files = trackedFiles();
   assert.ok(files.length > 50, 'the tracked files were listed');
   const hits = [];
@@ -87,5 +101,5 @@ test('her real name is in no tracked file and no file name', () => {
       hits.push(`${file}:${text.slice(0, at).split('\n').length}`);
     }
   }
-  assert.deepEqual(hits, [], `her real name appears in: ${hits.join(', ')}. Use a made-up name or "her".`);
+  assert.deepEqual(hits, [], `a real name appears in: ${hits.join(', ')}. Use a made-up name or "her".`);
 });

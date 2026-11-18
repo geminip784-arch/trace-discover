@@ -37,7 +37,6 @@ Details and "done when" checks for each are in `09-build-sequence.md`.
 ## Out of scope (do not build)
 
 - Any AI feature, any API key, any account, any server, any analytics
-- Multiple child profiles
 - Play Store packaging
 - Printable worksheets and the Go Find It camera (not on the roadmap; park ideas in `docs/ideas.md`)
 - Joined Urdu forms and Urdu numerals (later, after Slice 10)
