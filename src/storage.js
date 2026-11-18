@@ -5,7 +5,7 @@ import { addFind, cleanFinds, addNameCard, isNameCard, addPageSticker, cleanPage
 import { cleanReviews, cleanPracticeMore, recordPractice } from './review.js';
 import { finishedEarlier } from './progress.js';
 import {
-  CHILDREN_KEY, CURRENT_KEY, MIGRATION_KEY, LEGACY_KEYS, childKey, isChildsKey,
+  CHILDREN_KEY, CURRENT_KEY, MIGRATION_KEY, WELCOMED_KEY, LEGACY_KEYS, childKey, isChildsKey,
   cleanChildren, childById, currentOf, addChild, updateChild, removeChild, firstChild, migratedValue,
 } from './children.js';
 
@@ -164,6 +164,24 @@ export function readCurrent(store = activeStore()) {
 export function saveCurrent(id, store = activeStore()) {
   try {
     store.setItem(CURRENT_KEY, id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Has a parent seen the children page since Slice 8A part 2? (Shared by the device.)
+export function readWelcomed(store = activeStore()) {
+  try {
+    return store.getItem(WELCOMED_KEY) === 'yes';
+  } catch {
+    return true; // blocked storage: never trap the app on the children page
+  }
+}
+
+export function saveWelcomed(store = activeStore()) {
+  try {
+    store.setItem(WELCOMED_KEY, 'yes');
     return true;
   } catch {
     return false;

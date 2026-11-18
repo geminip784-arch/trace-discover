@@ -8,7 +8,7 @@
 // Names are never written in the code, the tests or the docs: tests use
 // made-up names ("Sara", "Omar").
 
-import { nameOf } from './name.js';
+import { nameOf, charName } from './name.js';
 
 export const MAX_CHILDREN = 6;
 export const MAX_NAME = 40;
@@ -33,7 +33,10 @@ export const SHARED_KEYS = [
   'td.music',     // music on or off
   'td.lastVisit', // the day the door was last opened (the daily door rule)
   'td.profile',   // the setup page's name before Slice 8A, kept as a backup
+  'td.welcomed',  // 'yes' once a parent has seen the children page (Slice 8A part 2)
 ];
+
+export const WELCOMED_KEY = 'td.welcomed';
 
 export const isChildId = (id) => typeof id === 'string' && /^c[1-9]\d*$/.test(id);
 export const childPrefix = (id) => `td.child.${id}.`;
@@ -163,4 +166,46 @@ export function migratedValue(key, text, id) {
 // The first child, from the setup page's old profile ({ name, sayAs }).
 export function firstChild(profile) {
   return addChild(emptyChildren(), { name: profile?.name ?? '', sayAs: profile?.sayAs ?? '' }, { checkNames: false });
+}
+
+// ---------------------------------------------------------------------------
+// The screens (Slice 8A part 2)
+
+// The first-run setup is needed while there is no child, or a child has no name
+// yet (a brand-new device, or old progress saved before a name was set).
+export const needsSetup = (state) => state.list.length === 0 || state.list.some((c) => c.name === '');
+
+// The gear on the front door opens the children page after a press and hold this long.
+export const LOCK_MS = 3000;
+
+// The children's tiles at the front door: as big as fits (up to TILES.max),
+// never smaller than TILES.min, in one row or two. The room is right of the
+// button column, as for the boards. Returns { size, cols, rows, gap }.
+export const TILES = { min: 160, max: 220, gap: 24, left: 136, right: 24, top: 24, bottom: 24 };
+export function childTileGrid(n, w, h, t = TILES) {
+  const count = Math.max(1, Math.min(MAX_CHILDREN, n));
+  const roomW = w - t.left - t.right;
+  const roomH = h - t.top - t.bottom;
+  let best = null;
+  for (let rows = 1; rows <= 2; rows++) {
+    const cols = Math.ceil(count / rows);
+    if (rows > 1 && cols * (rows - 1) >= count) continue; // an empty row
+    const size = Math.floor(Math.min(t.max, (roomW - (cols - 1) * t.gap) / cols, (roomH - (rows - 1) * t.gap) / rows));
+    if (!best || size > best.size) best = { size, cols, rows, gap: t.gap };
+  }
+  return best;
+}
+
+// The font size for a name on its tile (px): big, but the whole name fits.
+// An average letter of the tile font is about 0.58 of the font size wide.
+export const tileFontSize = (name, size) => Math.floor(Math.min(size * 0.17, (size * 0.86) / (0.58 * Math.max(1, [...name].length))));
+
+// The children page's line under the name field (parent-facing text).
+// check: checkName's result; word: the name as the name book will write it.
+export function childNameNote(check, word = '') {
+  if (check.ok) return `The name book will write: ${word}`;
+  if (check.reason === 'none') return '';
+  if (check.reason === 'taken') return 'Another child already has this name.';
+  if (check.reason === 'unsupported') return `The name book can only write the letters a to z. It cannot use: ${check.bad.map(charName).join(', ')}.`;
+  return '';
 }

@@ -205,3 +205,58 @@ export function pageStickerArt(glyph, count = 1, color = '#1D2B8F') {
   <text x="${104 - badgeR}" y="${4 + badgeR}" text-anchor="middle" dominant-baseline="central" font-family="Fredoka, system-ui, sans-serif" font-weight="600" font-size="${label.length > 2 ? 15 : 19}" fill="#5A3A00">${escapeText(label)}</text>
 </svg>`;
 }
+
+// ---------------------------------------------------------------------------
+// Children's profiles (Slice 8A part 2): the 8 animal pictures a child can
+// choose (src/children.js ANIMALS), each a friendly face on a white disc,
+// viewBox 0 0 100 100. No text.
+const face = (inner) => `<svg ${NS} viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#fff"/>${inner}</svg>`;
+const EYES = (y = 48, dx = 13, r = 5) => `<circle cx="${50 - dx}" cy="${y}" r="${r}" fill="#2A2370"/><circle cx="${50 + dx}" cy="${y}" r="${r}" fill="#2A2370"/>`
+  + `<circle cx="${50 - dx + 1.6}" cy="${y - 1.8}" r="${r * 0.35}" fill="#fff"/><circle cx="${50 + dx + 1.6}" cy="${y - 1.8}" r="${r * 0.35}" fill="#fff"/>`;
+const SMILE = (y = 64, w = 8) => `<path d="M${50 - w} ${y} q${w} ${w * 0.8} ${w * 2} 0" fill="none" stroke="#2A2370" stroke-width="3" stroke-linecap="round"/>`;
+const CHEEKS = (y = 60, dx = 24) => `<circle cx="${50 - dx}" cy="${y}" r="5" fill="#FF8FB8" opacity=".6"/><circle cx="${50 + dx}" cy="${y}" r="5" fill="#FF8FB8" opacity=".6"/>`;
+export const ANIMAL_ART = {
+  cat: face(`<path d="M22 40 L26 14 L44 30 Z M78 40 L74 14 L56 30 Z" fill="#F4A340" stroke="#C97A1E" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M28 34 L29 22 L38 30 Z M72 34 L71 22 L62 30 Z" fill="#FFC9D6"/>
+    <ellipse cx="50" cy="55" rx="31" ry="27" fill="#F4A340" stroke="#C97A1E" stroke-width="2.5"/>
+    <path d="M38 33 l3 9 M50 30 v10 M62 33 l-3 9" stroke="#C97A1E" stroke-width="3" stroke-linecap="round"/>
+    ${EYES(52)}<path d="M46 60 h8 l-4 5 z" fill="#FF8FB8"/>${SMILE(66, 5)}
+    <path d="M18 58 h14 M18 66 l14 -3 M82 58 h-14 M82 66 l-14 -3" stroke="#C97A1E" stroke-width="2" stroke-linecap="round"/>`),
+  dog: face(`<ellipse cx="50" cy="52" rx="28" ry="28" fill="#D9A066" stroke="#9C6B3A" stroke-width="2.5"/>
+    <path d="M24 30 q-14 4 -10 30 q4 8 12 2 q2 -18 6 -26 z M76 30 q14 4 10 30 q-4 8 -12 2 q-2 -18 -6 -26 z" fill="#8A5A2E"/>
+    <ellipse cx="50" cy="64" rx="15" ry="11" fill="#F6E1C3"/>${EYES(48, 12)}
+    <ellipse cx="50" cy="58" rx="6" ry="4.5" fill="#2A2370"/>${SMILE(65, 6)}<path d="M46 70 q4 9 8 0" fill="#FF8FB8"/>`),
+  rabbit: face(`<ellipse cx="38" cy="22" rx="8" ry="20" fill="#EDE7F6" stroke="#9E92C7" stroke-width="2.5"/><ellipse cx="62" cy="22" rx="8" ry="20" fill="#EDE7F6" stroke="#9E92C7" stroke-width="2.5"/>
+    <ellipse cx="38" cy="23" rx="3.5" ry="13" fill="#FFC9D6"/><ellipse cx="62" cy="23" rx="3.5" ry="13" fill="#FFC9D6"/>
+    <ellipse cx="50" cy="60" rx="28" ry="25" fill="#EDE7F6" stroke="#9E92C7" stroke-width="2.5"/>
+    ${EYES(56, 12)}${CHEEKS(66, 19)}<path d="M46 64 h8 l-4 4 z" fill="#FF8FB8"/>${SMILE(70, 5)}<rect x="46.5" y="72" width="7" height="6" rx="1.5" fill="#fff" stroke="#9E92C7" stroke-width="1.5"/>`),
+  bear: face(`<circle cx="27" cy="28" r="11" fill="#9C6B3A"/><circle cx="73" cy="28" r="11" fill="#9C6B3A"/><circle cx="27" cy="28" r="5" fill="#E0B07A"/><circle cx="73" cy="28" r="5" fill="#E0B07A"/>
+    <circle cx="50" cy="54" r="30" fill="#9C6B3A"/><ellipse cx="50" cy="64" rx="14" ry="11" fill="#E0B07A"/>
+    ${EYES(48, 12)}<ellipse cx="50" cy="59" rx="6" ry="4" fill="#2A2370"/>${SMILE(66, 5)}`),
+  owl: face(`<path d="M24 26 L32 38 L22 40 Z M76 26 L68 38 L78 40 Z" fill="#7E57C2"/>
+    <ellipse cx="50" cy="56" rx="29" ry="31" fill="#7E57C2"/><ellipse cx="50" cy="66" rx="17" ry="18" fill="#D1C4E9"/>
+    <circle cx="38" cy="46" r="11" fill="#fff" stroke="#5E35B1" stroke-width="2"/><circle cx="62" cy="46" r="11" fill="#fff" stroke="#5E35B1" stroke-width="2"/>
+    <circle cx="38" cy="46" r="5.5" fill="#2A2370"/><circle cx="62" cy="46" r="5.5" fill="#2A2370"/><circle cx="39.5" cy="44" r="2" fill="#fff"/><circle cx="63.5" cy="44" r="2" fill="#fff"/>
+    <path d="M45 55 h10 l-5 8 z" fill="#FFB300"/><path d="M42 72 q3 3 6 0 M52 72 q3 3 6 0" fill="none" stroke="#9575CD" stroke-width="2" stroke-linecap="round"/>`),
+  fox: face(`<path d="M20 22 L38 34 L26 48 Z M80 22 L62 34 L74 48 Z" fill="#EF6C00" stroke="#B84E00" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M24 30 L32 36 L27 42 Z M76 30 L68 36 L73 42 Z" fill="#3E2723"/>
+    <path d="M18 44 Q50 22 82 44 Q76 74 50 84 Q24 74 18 44 Z" fill="#EF6C00" stroke="#B84E00" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M22 50 Q38 56 50 84 Q30 76 22 50 Z M78 50 Q62 56 50 84 Q70 76 78 50 Z" fill="#fff"/>
+    ${EYES(52, 13, 4.5)}<ellipse cx="50" cy="74" rx="5" ry="4" fill="#2A2370"/>`),
+  elephant: face(`<ellipse cx="22" cy="48" rx="16" ry="22" fill="#90A4AE" stroke="#607D8B" stroke-width="2.5"/><ellipse cx="78" cy="48" rx="16" ry="22" fill="#90A4AE" stroke="#607D8B" stroke-width="2.5"/>
+    <ellipse cx="22" cy="48" rx="9" ry="14" fill="#F8BBD0"/><ellipse cx="78" cy="48" rx="9" ry="14" fill="#F8BBD0"/>
+    <circle cx="50" cy="46" r="24" fill="#B0BEC5" stroke="#607D8B" stroke-width="2.5"/>
+    <path d="M42 58 q-2 22 10 28 q6 2 8 -4 q-8 -4 -6 -24 z" fill="#B0BEC5" stroke="#607D8B" stroke-width="2.5" stroke-linejoin="round"/>
+    ${EYES(42, 10, 4.5)}${CHEEKS(52, 15)}`),
+  fish: face(`<path d="M70 50 L90 32 L90 68 Z" fill="#FFB300" stroke="#E08E00" stroke-width="2.5" stroke-linejoin="round"/>
+    <ellipse cx="46" cy="50" rx="30" ry="22" fill="#29B6F6" stroke="#0288D1" stroke-width="2.5"/>
+    <path d="M40 28 q8 -10 18 0 z M42 72 q6 8 12 0 z" fill="#FFB300"/>
+    <path d="M54 34 q6 16 0 32" fill="none" stroke="#0288D1" stroke-width="2.5"/>
+    <circle cx="32" cy="45" r="6" fill="#fff"/><circle cx="31" cy="45" r="3.5" fill="#2A2370"/><circle cx="32" cy="43.5" r="1.3" fill="#fff"/>
+    <path d="M20 56 q4 4 8 1" fill="none" stroke="#2A2370" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="44" cy="60" r="3" fill="#B3E5FC"/><circle cx="62" cy="44" r="2.5" fill="#B3E5FC"/>`),
+};
+
+// The gear on the front door (Slice 8A part 2), for a grown-up, 64 x 64.
+const TEETH = Array.from({ length: 8 }, (_, i) => `<rect x="27" y="4" width="10" height="14" rx="2" transform="rotate(${i * 45} 32 32)"/>`).join('');
+export const GEAR = icon(`<g fill="#5C6384">${TEETH}<circle cx="32" cy="32" r="19"/></g><circle cx="32" cy="32" r="8" fill="#fff"/>`);

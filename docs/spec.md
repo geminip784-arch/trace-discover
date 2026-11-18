@@ -1,6 +1,6 @@
 # Trace & Discover — App Spec v3
 
-Version 3.13 · Nov 18, 2026 · describes the app as built through Slice 8A part 1 (children's profiles: every personal key saved per child, and the old progress copied to the first child; nothing changes on screen yet); before it, Slice 5L part 2 (page stickers on her shelf of finds); before it, Slice 5L part 1 (the practice page for letters and numbers: the boards' pencil tile and practice mode, three practice spaces, fireflies, never stuck and a fresh page); before it, Slice 5K part 1 (testing feedback: practising is rounds 1 and 2, and the copy-it round moved to reviews on later days); before it, Slice 9C (her name's book: three rounds, the reward, her name card and reviews; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
+Version 3.14 · Nov 18, 2026 · describes the app as built through Slice 8A (children's profiles: the first-run setup, the children's tiles at the front door, the switch-child button and the children page behind the gear's lock; part 1 saved every personal key per child and copied the old progress to the first child); before it, Slice 5L part 2 (page stickers on her shelf of finds); before it, Slice 5L part 1 (the practice page for letters and numbers: the boards' pencil tile and practice mode, three practice spaces, fireflies, never stuck and a fresh page); before it, Slice 5K part 1 (testing feedback: practising is rounds 1 and 2, and the copy-it round moved to reviews on later days); before it, Slice 9C (her name's book: three rounds, the reward, her name card and reviews; before it, Slice 9B: the numbers 10 to 20 on the 123 board, in all three rounds and in count scenes with ten-frames; before it, Slice 9A: lowercase letters on four lines; before it, Slice 6A: the voice recorder page and voice pack; and Slice 5J part 2: the fading helper, M and N from the bottom, direction coached, child-style templates, game instructions, show me, the U umpire), and where it goes next.
 
 The order of the slices still to build is in `09-build-sequence.md`. What we dropped from v2, and why, is in **Retired** at the end.
 
@@ -29,9 +29,25 @@ Trace & Discover is a short, daily writing-practice app for one 4-year-old girl.
 
 ## The screens, as built
 
-### Front door
+### Front door (Slice 8A: the children's tiles)
 
-The first time she opens the app each day (by the tablet's own date), she sees the front of a house with a closed door. She taps the door, it swings open with a warm light and a door sound, and the bookshelf appears. Later visits that day go straight to the bookshelf. `?door=1` always shows the door.
+The front of a house with a closed door, and one big tile per child in front of it: the child's animal picture on their color, with their name under it (as big as fits, at least 160 px; one row, or two rows of up to 3; `childTileGrid` in `src/children.js`). A child taps their tile: the other tiles fade, the door swings open with a warm light and a door sound, and the bookshelf appears, as that child. A tap on the door itself wiggles the tiles.
+
+- **When it shows.** With 2 or more children, at every fresh open of the app. With 1 child, the first visit of the day (by the tablet's own date); later visits that day go straight to the bookshelf. `?door=1` always shows it, and so does the shelf's switch-child button.
+- **The gear** (bottom left, for a grown-up): press and hold for 3 seconds while a gold ring fills round it (`LOCK_MS`); a shorter press only wiggles it. Then the children page opens.
+
+### First run and the children page (Slice 8A part 2)
+
+A page for a grown-up (text is fine here): `src/setup.js`. It opens:
+- on the **first run** (no child, or a child with no name yet): "Welcome! Who will play?" with the form open. It can only be left (Start) once there is at least one child and every child has a name;
+- **once after the Slice 8A update** (`td.welcomed`), so a parent can add the other children; the first child already holds all the old progress;
+- from the **gear** on the front door, after its lock; and at `index.html?setup=1`.
+
+It lists each child (picture, name, how the voice says it) with Change and Remove, and Add a child (up to 6).
+- **Add or change:** the name (a to z, as the name book needs; not another child's name; a line under it shows how the name book will write it, or why it cannot, or that it is too long for one line), how the voice should say it (optional, with Test voice), one of 8 animal pictures (cat, dog, rabbit, bear, owl, fox, elephant, fish) and one of 8 colors (the board tile colors; no red). A new child gets a picture and color no one has yet.
+- **Changing a name** that the name book writes differently restarts only that child's name book (rounds, helper, star, review, practice-more entry and name card). A new picture or color resets nothing.
+- **Remove** asks twice ("Remove Sara?", then "Are you sure? This cannot be undone.") and deletes only that child's keys (test-mode copies too). The last child cannot be removed. Ids are never given again, so a new child never gets old progress.
+- **Done** goes back to the front door.
 
 ### Bookshelf (home)
 
@@ -41,7 +57,7 @@ The home button (top of the left column) always returns here. The back button go
 
 ### Her name's book (Slice 9C)
 
-The first book on the shelf is hers: her name is on its cover (with no name set, four little writing lines). It opens to one big tile with her name, written as she will write it: a capital first letter and the rest lowercase, whatever the setup page holds ("sara" and "SARA" are both "Sara"). Her name lives only on the tablet (`td.profile`); the code, tests and docs only ever use made-up names.
+The first book on the shelf is hers: her name is on its cover (with no name set, four little writing lines). It opens to one big tile with her name, written as she will write it: a capital first letter and the rest lowercase, whatever the setup page holds ("sara" and "SARA" are both "Sara"). Since Slice 8A it is the playing child's name and book. Names live only on the tablet (`td.children`); the code, tests and docs only ever use made-up names.
 
 - **When it cannot open.** The tile is faint and shakes, and one grey parent line at the top says why: no name set ("Add her name on the setup page"), a character other than a to z ("Her name can use the letters a to z only"), or too long for one line. The setup page says the same under the name field, naming each character it cannot use (space, hyphen, é...), or shows how the name will be written.
 - **On the lines.** The whole name sits on the four lines as one word. Each letter is its own character file, with its own glyph and plans, box after box, so the spacing is normal print spacing. The name is centred in her writing room, right of the button column, so no letter is under a button. The lines shrink to fit it and keep that size in every round, reviews included: one unit is the smallest of a single letter's unit, the size that leaves room above the lines for the copy-it round's model card (2.3 units of height below the round lights), and the size at which her room is 1.2 times the name's width (`NAME_FIT` in `src/name.js`). Sara: 242 px at 1280 x 626 and 317 px at 1280 x 800; an 8-letter name such as Muhammad: 148 px; the widest 8 letters possible: 114 px. **Longer names:** the rule is the width, not the count: a name fits while its unit is at least 112 px on her tablet (most 9 to 11 letter names do); a wider one gets the "too long" line.
@@ -298,7 +314,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 
 ### Parent tools (built so far)
 
-- `index.html?setup=1`: her name and how to say it. Since Slice 9C it shows how her name book will write the name, or why it cannot.
+- `index.html?setup=1`: the children page (Slice 8A; before it, her name and how to say it). It shows how the name book will write each name, or why it cannot.
 - `recorder.html`: the stroke recorder, for hand-recorded characters.
 - `glyphs.html`: a review page for the generated characters (`npm run glyphs`): capitals, digits and lowercase on the four lines, with each allowed stroke plan as a dashed card.
 - `finds.html`: a review sheet of every find picture by letter, with its word and places, and every place's backdrop.
@@ -312,7 +328,7 @@ Gentle background music is generated in the browser (Web Audio, no files). There
 The tablet can hold up to 6 children (`td.children`: each has an id `c1`, `c2`, ... never given twice, a name, how to say it, one of 8 animals and a color; `src/children.js`). Everything personal is saved per child: stars, rounds, helper levels, reviews and the practice-more list, finds and stickers, the name book, the last play per game, missing-piece rounds, drawing stars and the attempt log, under `td.child.<id>.` (td.stars for c1 is `td.child.c1.stars`). Each log entry also carries `child`. Shared by the device: music, the last visit (the daily door rule), the voice pack and the recorder. `td.current` remembers who plays.
 
 - **The migration.** The first open after the update copies every old key to the first child, named from the setup page's old `td.profile`. The old keys stay untouched as a backup. Each copy is read back and compared, and only then is `td.migration` set to `done`. If it stops part way (the app closed, storage full) the app plays on the old keys as before and copies again at the next open, so nothing is lost.
-- **For now** (until part 2 adds the child tiles, the switch button and the children page) the app plays as the first child, and `?setup=1` edits that child's name. Test mode (`?debug=1&today=`) works per child in the same way.
+- **Switch child.** On the bookshelf, under the toy box, a picture-only button (the child's own animal on their color) goes back to the children's tiles. Test mode (`?debug=1&today=`) works per child in the same way.
 
 ### Voice, for now
 

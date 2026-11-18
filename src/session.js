@@ -223,7 +223,12 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 // Screens and navigation
 //
 // A screen state is { screen, book?, char? }:
-//   door   the house front (first visit of the day, or ?door=1)
+//   door   the house front with one tile per child (Slice 8A): the first visit
+//          of the day, every fresh open with 2 or more children, ?door=1, or
+//          the shelf's switch-child button
+//   children the children page for a parent (Slice 8A part 2), from the door's
+//          gear (after its press-and-hold lock). first: true on the first run,
+//          before any child has a name: it can only be left once every child has one
 //   shelf  the bookshelf (home)
 //   board  a letter board: book is 'abc', 'num' or 'urdu'; page is 'lower' on the
 //          ABC book's lowercase page (Slice 9A), otherwise left out (the first page)
@@ -244,10 +249,17 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 
 // The first screen. ?char=X goes straight to writing X; ?door=1 always shows the door.
 // ?practice=X (for checks, Slice 5L) goes straight to X's practice page.
-export function startScreen({ lastVisit = null, today, forceDoor = false, char = null, practice = null } = {}) {
+// Slice 8A: setup (no child, or a child with no name yet: src/children.js
+// needsSetup) opens the children page as the first run; welcomed false (the
+// parent has not seen the children page since the update) opens it once;
+// children: how many there are. With 2 or more the door (their tiles) shows at
+// every fresh open; with 1 the daily door rule stays.
+export function startScreen({ lastVisit = null, today, forceDoor = false, char = null, practice = null, setup = false, welcomed = true, children = 1 } = {}) {
   if (practice && hasPencil(bookOf(practice))) return { screen: 'practice', char: practice, book: bookOf(practice) };
   if (char) return { screen: 'write', char, book: bookOf(char) };
-  if (forceDoor || isFirstVisitToday(lastVisit, today)) return { screen: 'door' };
+  if (setup) return { screen: 'children', first: true };
+  if (!welcomed) return { screen: 'children' };
+  if (forceDoor || children >= 2 || isFirstVisitToday(lastVisit, today)) return { screen: 'door' };
   return { screen: 'shelf' };
 }
 
@@ -275,7 +287,10 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 
 // The next screen after an event. An event that does not apply changes nothing
 // (the same state comes back). Events:
-//   { type: 'openDoor' }                 door  -> shelf
+//   { type: 'openDoor' }                 door  -> shelf (a child's tile was tapped)
+//   { type: 'switchChild' }              shelf -> door (Slice 8A: the children's tiles)
+//   { type: 'openParents' }              door  -> children (after the gear's lock)
+//   { type: 'closeParents', ready }      children -> door (ready: false, a child still has no name: no change)
 //   { type: 'openBook', book }           shelf -> board or games (locked books: no change)
 //   { type: 'turnPage' }                 board -> the book's other page (ABC only)
 //   { type: 'openChar', id, manifest, review } board -> write (faint characters: no change);
@@ -303,9 +318,15 @@ export function navigate(state, event) {
   const { screen } = state;
   switch (event?.type) {
     case 'home':
-      return screen === 'shelf' ? state : SHELF;
+      return screen === 'shelf' || screen === 'children' ? state : SHELF;
     case 'openDoor':
       return screen === 'door' ? SHELF : state;
+    case 'switchChild':
+      return screen === 'shelf' ? { screen: 'door' } : state;
+    case 'openParents':
+      return screen === 'door' ? { screen: 'children' } : state;
+    case 'closeParents':
+      return screen === 'children' && event.ready === true ? { screen: 'door' } : state;
     case 'openBook': {
       if (screen !== 'shelf' || !isBookOpen(event.book)) return state;
       if (event.book === 'games') return { screen: 'games' };
