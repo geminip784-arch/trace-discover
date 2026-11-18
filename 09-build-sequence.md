@@ -99,7 +99,7 @@ Four pull requests, one at a time.
 - [ ] A letter she left in the old round 3 has its star (if she had no help) and is due for review
 
 ### 5L — The practice page
-Extra practice for a letter, number or her name once it has its gold star. Three pull requests, one at a time; parts 1 and 2 are built, part 3 waits for Slice 8A.
+Extra practice for a letter, number or her name once it has its gold star. Three pull requests, one at a time; parts 1 and 2 are built, part 3 waits for Slice 8A (below).
 
 1. **Letters and numbers (built):** one big pencil tile on the ABC and 123 boards (in ABC just after the "A a" tile). A tap turns practice mode on: starred tiles wear a pencil badge and open their practice page, every other tile is faint and wiggles; a second tap turns it off, and leaving the board ends it. Every tile stays at least 88 px (ABC 120 px, 123 95 px). The page: one set of four lines with 3 spaces side by side, sized to fit (20 is the smallest at 186 px), with the 45 px tolerance floor. Space 1 is traced like round 1 and stays as her model; spaces 2 and 3 are blank and judged like the copy-it round, with its reasons. Each finished space lights a firefly. Never stuck: Jugnu draws a stroke of space 1 after 5 misses on it (round 1's rule), and writes space 2 or 3 after 3 failed copies; the space counts as done, with help. When all 3 are done, a big arrow tile in the left column offers a fresh page. Back and home always leave. It never changes stars, reviews, helper levels or the practice-more list; each space is logged as a `practice` entry. Screenshots: `docs/screenshots/slice-5l/`.
 2. **Page stickers (built):** each full page adds one to that letter's count (`td.pages`) and moves its one sticker to the newest place on her shelf of finds: the letter on a little lined page, a stack of sheets behind it (up to 5) and the number of pages in a gold badge. Stars, reviews and helper levels stay untouched. Screenshot: `docs/screenshots/slice-5l/shelf-page-stickers.png`.
@@ -110,6 +110,18 @@ Extra practice for a letter, number or her name once it has its gold star. Three
 - [ ] A full page lights 3 fireflies and offers a fresh page
 - [ ] Practising never changes a star, a review date or a helper level
 - [ ] Each full page moves that letter's sticker to the newest place on her shelf, with the new count
+
+### 8A — Children's profiles
+One tablet, more than one child. Each child has a name (a to z, as the name book needs), one of 8 animal pictures and a color; up to 6 children. Two pull requests:
+
+1. **Per-child storage and migration (nothing changes on screen):** everything personal is saved per child: stars, rounds, helper levels, reviews and the practice-more list, finds and stickers, the name book, the last play per game, first-time flags and the attempt log (each entry also carries the child's id). Music and other device settings stay shared. On the first open after the update, all saved progress is copied to the first child, named from the setup page. The old keys are left untouched as a backup, and the migration is only marked done once the copy has been checked against the original; an interrupted migration simply runs again on the next open. The privacy test checks both children's real names (hashes only).
+2. **The screens:** a first-run setup screen (at least one child to continue); the front door shows one big tile per child (at least 160 px, name and picture), and tapping it opens the bookshelf as that child; with 2 or more children the tiles show every time the app opens fresh, with 1 child the daily door rule stays. A small picture-only "switch child" button on the shelf returns to the tiles. A gear on the front door, behind a 3-second press-and-hold lock with a filling ring, opens the children page: add, rename (and change picture and color), or remove a child (asked twice; only that child's progress is deleted). Renaming restarts only that child's name book. After the migration the parent is shown the children page once. Screenshots: `docs/screenshots/slice-8a/`.
+
+**Done when:**
+- [ ] Nothing saved before the update is lost: it is all on the first child
+- [ ] A star earned by one child never shows for another
+- [ ] Six children's tiles fit at 1280 x 626 and 1280 x 800
+- [ ] Removing a child deletes only that child's progress
 
 ### 6 — Voice and phonics
 - A family voice recorder (clips stored in IndexedDB).
