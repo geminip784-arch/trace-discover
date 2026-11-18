@@ -15,7 +15,7 @@ import {
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
-  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, readProfile, saveNameCard,
+  readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, readProfile, saveNameCard, readPages,
   finishOldPractices,
 } from './storage.js';
 import {
@@ -27,10 +27,10 @@ import { startGame, loadChar } from './game.js';
 import { startNameGame } from './name-game.js';
 import { startPractice } from './practice-game.js';
 import { NAME_ID, nameOf, nameWidth, nameFits } from './name.js';
-import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE } from './art.js';
+import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
-import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard } from './finds.js';
+import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard, isPageSticker } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
 import { GAME_KINDS, gamesOf, kindStars, gameTile, kindOf } from './games.js';
 import { gameNote, nameNote } from './notes.js';
@@ -635,8 +635,15 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     // Her name card (Slice 9C part 2): her name from the profile, with the name's star when earned.
     const word = nameOf(readProfile().name).word;
     const nameStar = readStars().includes(NAME_ID);
+    // Page stickers (Slice 5L part 2): the letter on a little lined page, with its page count.
+    const pages = readPages();
+    const artOf = (f) => {
+      if (isNameCard(f)) return word ? nameCardArt(word, nameStar) : null;
+      if (isPageSticker(f)) return pageStickerArt(f.pg, pages[f.pg] ?? 1, tileColorOf(f.pg) ?? undefined);
+      return findArt(f);
+    };
     for (const f of readFinds().slice(-SHELF_SHOWS).reverse()) {
-      const art = isNameCard(f) ? (word ? nameCardArt(word, nameStar) : null) : findArt(f);
+      const art = artOf(f);
       if (!art) continue;
       const places = (f.g && f.n >= 3) || isNameCard(f) ? 2 : 1;
       if (used + places > 8) { row += 1; used = 0; }

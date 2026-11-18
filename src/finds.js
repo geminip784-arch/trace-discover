@@ -304,6 +304,7 @@ export function cleanFinds(list) {
   return list.filter((e) => (e && typeof e === 'object')
     && ((typeof e.o === 'string' && OBJECTS.some((o) => o.id === e.o))
       || e.nm === 1 // her name card (Slice 9C part 2)
+      || isPageSticker(e) // a page sticker (Slice 5L part 2)
       || (typeof e.g === 'string' && THINGS[e.g] && Number.isInteger(e.n) && e.n >= 1 && e.n <= 20))); // 10 to 20: Slice 9B
 }
 
@@ -320,6 +321,35 @@ export function findArt(entry, objects = OBJECTS) {
 export const NAME_CARD = { nm: 1 };
 export const isNameCard = (e) => e?.nm === 1;
 export const addNameCard = (list, max = MAX_FINDS) => addFind(list.filter((e) => !isNameCard(e)), NAME_CARD, max);
+
+// A page sticker (Slice 5L part 2): { pg: character id }, one per character.
+// Each full practice page moves that character's sticker to the newest place
+// (an old one is taken out first). How many pages she has done is kept apart,
+// in td.pages (src/practice.js addPage); the shelf reads it when it draws the sticker.
+export const PAGE_ID = /^([A-Za-z0-9]|1\d|20)$/; // a capital, a lowercase letter, or 0 to 20
+export const isPageSticker = (e) => typeof e?.pg === 'string' && PAGE_ID.test(e.pg);
+export const pageSticker = (id) => ({ pg: id });
+export const addPageSticker = (list, id, max = MAX_FINDS) =>
+  addFind(list.filter((e) => !(isPageSticker(e) && e.pg === id)), pageSticker(id), max);
+
+// ---------------------------------------------------------------------------
+// Page counts (Slice 5L part 2): td.pages is { [character id]: pages done }.
+// Each full page adds one, and moves that character's page sticker to the
+// newest place on her shelf of finds (addPageSticker, above).
+
+// Only whole counts of 1 or more, for a character id, survive a load.
+export function cleanPages(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [id, n] of Object.entries(raw)) if (PAGE_ID.test(id) && Number.isInteger(n) && n >= 1) out[id] = n;
+  return out;
+}
+
+// One more full page for `id`.
+export function addPage(pages, id) {
+  const clean = cleanPages(pages);
+  return { ...clean, [id]: (clean[id] ?? 0) + 1 };
+}
 
 // The kind of her last counted group (so the next number scene can avoid it).
 export function lastGroupKind(list) {
