@@ -52,9 +52,8 @@ export const MENU_TILE = { max: 200, min: 140, gap: 28, left: 136, right: 24, sp
 export const menuTileSize = (w, h, n, m = MENU_TILE) =>
   Math.min(m.max, (w - m.left - m.right - (n - 1) * m.gap) / n, h - m.spare);
 
-// Jugnu shows the first move on the first set of every game, then she carries on.
-export const FIRST_MOVE_DELAY_MS = 700;
-export const showsFirstMove = (setNo) => setNo === 1;
+// Slice 5M: Jugnu never makes a move for her. Every set of every game is hers
+// from the start; the instruction line and "show me" (below) help instead.
 export const SETS_PER_PLAY = 3;   // match games: three sets of 4 make one play
 export const PAIRS = 4;
 export const RELEASE_MARGIN_PX = 40; // a release this close to a card counts as on it
@@ -209,9 +208,6 @@ export const setKey = (set) => set.pairs.map((p) => `${p.left.label}=${p.right.l
 
 // A match play: SETS_PER_PLAY sets, none from the last play. last: its set keys.
 export const matchPlay = (game, last = [], rand = Math.random) => freshPlay(() => makeSet(game, rand), setKey, SETS_PER_PLAY, last);
-
-// The pair Jugnu matches when he shows the first move: the one on the top left card.
-export const firstMovePair = (set) => set.rows.left[0];
 
 // Every card of a set with its box in units: { side, row, pair, x0, y0, x1, y1, anchor }.
 // anchor: where its line starts or ends (the inner edge, half way down).
@@ -389,9 +385,6 @@ export function missRoad(misses, animal) {
 // The board is done when every animal is home.
 export const boardDone = (home, things) => things.every((a) => home.includes(a));
 
-// The road Jugnu travels when he shows the first move: the top one.
-export const firstMoveRoad = (roads) => roads[0];
-
 // ---------------------------------------------------------------------------
 // Sort it: drag 6 things into the right one of two baskets. Two boards make a play.
 
@@ -462,9 +455,6 @@ export function dropThing(state, thing, to) {
   return { state: { ...state, wrongInRow: hint === null ? wrongInRow : 0 }, ok: false, counted: true, hint, done: false };
 }
 
-// The thing Jugnu carries when he shows the first move: the leftmost one.
-export const firstMoveThing = (board) => board.things.find((t) => t.spot === 0);
-
 // ---------------------------------------------------------------------------
 // Odd one out: a row of four pictures, three alike and one different. She taps
 // the different one. Five rows make a play.
@@ -487,7 +477,7 @@ export const ODD = {
   dots: { y: 78, xs: [540, 590, 640, 690, 740] }, // the progress dots
   kindRowKinds: ['fruit', 'toy', 'animal', 'clothes'],
   colorRowKinds: ['fruit', 'toy', 'clothes', 'kitchen', 'school'],
-  // The first row of a play, which Jugnu taps: the easiest of its kind.
+  // The first row of a play, a warm-up: the easiest of its kind.
   easy: { kinds: { alike: 'fruit', odd: 'toy' }, colors: { alike: 'red', odd: 'blue' } },
 };
 
@@ -576,7 +566,7 @@ export function colorRow(rand = Math.random, easy = false) {
 // A row's key: its four pictures, whatever their places.
 export const oddKey = (row) => row.items.map((t) => t.id).sort().join('|');
 
-// A play: five rows, the first the easiest (Jugnu taps it), none from the last play.
+// A play: five rows, the first the easiest (a warm-up), none from the last play.
 export function oddPlay(game, rand = Math.random, last = []) {
   const make = game === 'odd-colors' ? colorRow : kindRow;
   return freshPlay((i) => make(rand, i === 0), oddKey, ODD.rows, last);
@@ -955,9 +945,6 @@ export function dropPiece(state, round, piece, to) {
   return { state: { ...state, wrongInRow: hint === null ? wrongInRow : 0 }, ok: false, counted: true, hint, done: false };
 }
 
-// Jugnu's first move: the right piece for the first gap.
-export const firstMovePiece = (round) => round.pieces.find((p) => p.right === 0);
-
 // The log's names: 'red-circle-q-tl' (paint, shape or picture, part).
 export const pieceLabel = (p) => `${p.paint}-${p.shape}-${p.part}`;
 
@@ -971,7 +958,7 @@ export const pieceLabel = (p) => `${p.paint}-${p.shape}-${p.part}`;
 //                thing), to (the basket's id, or null away from both), ok, ms
 //   follow the path: game 'path' or 'path-rooms', road (the animal or the
 //                furniture), ok (home reached) or not (left the road), ms.
-//   ms: since the game opened. Jugnu's first move is not logged: it is not hers.
+//   ms: since the game opened. Jugnu's "show me" is logged as help (below), never as hers.
 export function gameLogEntry({ game, set, from, to, road, ok, ms, now = new Date() }) {
   const entry = { type: 'game', time: now.toISOString(), game };
   if (set !== undefined) entry.set = set;

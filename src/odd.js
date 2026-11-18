@@ -3,23 +3,22 @@
 // draws a row and plays it.
 // A row of four cards; she taps the one that is different. Right: it glows
 // gold with a chime, then the next row. Wrong: that card wiggles, no sound.
-// After 3 wrong taps in a row the odd one wiggles once. In the first row (the
-// easiest) Jugnu flies to the odd one and taps it himself. Five dots along the
-// top fill as the rows are done. Five rows make a play. Everything is in board
-// units (1280 x 640). Every tap on a card goes into the attempt log as a
-// "game" entry; Jugnu's does not.
+// After 3 wrong taps in a row the odd one wiggles once. The first row is the
+// easiest, a warm-up. Five dots along the top fill as the rows are done. Five
+// rows make a play. Everything is in board units (1280 x 640). Every tap on a
+// card goes into the attempt log as a "game" entry.
+// Slice 5M: Jugnu never taps a card for her; every row is hers.
 // Slice 5H: no row repeats a row of her last play. (Here a tap is her answer,
 // so a plain tap is played as one, unlike the drag games.)
 // Child-screen rules: no text, no failure sound, nothing red as feedback, every
 // card at least 88 px, Jugnu the only character.
 // Slice 5J part 2: Jugnu's demonstration is slower (about 5 s, games.js
-// ODD_DEMO): he hops onto each card in turn, each lifting a little while he
-// looks, pauses, then flies to the different one and taps it. showMe() plays
-// the same look along the row on the current row, then he points at the
-// different card and she taps it herself (logged as help, never her move).
+// ODD_DEMO): showMe() has him hop onto each card in turn, each lifting a
+// little while he looks, pause, then point at the different card; she taps it
+// herself (logged as help, never her move).
 
 import {
-  ODD, oddPlay, oddKey, oddCards, hitOdd, startOdd, tapOdd, marginUnits, gameLogEntry, showsFirstMove, FIRST_MOVE_DELAY_MS,
+  ODD, oddPlay, oddKey, oddCards, hitOdd, startOdd, tapOdd, marginUnits, gameLogEntry,
   ODD_DEMO, oddDemoSteps, showMeOdd, showMeLogEntry,
 } from './games.js';
 import { oddThingArt } from '../data/games.js';
@@ -94,10 +93,6 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
       return el;
     });
     busy = false;
-    if (showsFirstMove(rowNo)) {
-      busy = true;
-      later(firstMove, FIRST_MOVE_DELAY_MS);
-    }
   }
 
   // Found: the odd one glows with a chime, its dot fills, then the next row.
@@ -117,10 +112,9 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
 
   // Jugnu's demonstration on the current row (games.js oddDemoSteps): he hops
   // onto each card in turn, each lifting a little while he looks, pauses, then
-  // flies to the different one. tap: he taps it (the first row's first move,
-  // not logged: it is not her tap); otherwise he points at it and she taps it.
+  // flies to the different one and points at it; she taps it herself.
   // Resolves false if the game stopped.
-  async function demo({ tap }) {
+  async function demo() {
     const cards = oddCards();
     const top = (place) => [(cards[place].x0 + cards[place].x1) / 2, cards[place].y0 + 10];
     const j = document.createElement('img');
@@ -157,24 +151,14 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
         if (!(await fly(at, to, ODD_DEMO.flyMs, 120))) return false;
       }
     }
-    if (tap) {
-      replay(cardEls[row.odd], 'od-tap');
-      state = tapOdd(state, row, row.odd).state;
-      found();
-    } else {
-      // Show me: he points (the card lifts and he bobs over it); the tap is hers.
-      cardEls[row.odd].classList.add('od-look');
-      j.classList.add('gm-point');
-      if (!(await tween(POINT_MS, () => {}))) return false;
-      cardEls[row.odd]?.classList.remove('od-look');
-    }
+    // He points (the card lifts and he bobs over it); the tap is hers.
+    cardEls[row.odd].classList.add('od-look');
+    j.classList.add('gm-point');
+    if (!(await tween(POINT_MS, () => {}))) return false;
+    cardEls[row.odd]?.classList.remove('od-look');
     j.classList.add('gm-fading');
     later(() => { j.remove(); buddy.classList.remove('away'); }, 450);
     return true;
-  }
-
-  async function firstMove() {
-    await demo({ tap: true });
   }
 
   // Show me (Slice 5J part 2): the demonstration again on this row, ending with
@@ -184,7 +168,7 @@ export function playOdd(view, { game, onDone = () => {}, rand = Math.random }) {
     if (busy || paused || showMeOdd(row, state) === null) return false;
     busy = true;
     logAttempt(showMeLogEntry({ game, set: rowNo, ms: performance.now() - opened }));
-    const ok = await demo({ tap: false });
+    const ok = await demo();
     if (ok) busy = false;
     return ok;
   }

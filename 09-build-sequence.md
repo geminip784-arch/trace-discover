@@ -112,6 +112,19 @@ Extra practice for a letter, number or her name once it has its gold star. Three
 - [ ] Practising never changes a star, a review date or a helper level
 - [ ] Each full page moves that letter's sticker to the newest place on her shelf, with the new count
 
+### 5M — Clearer games and better pictures
+Four pull requests, one at a time.
+
+1. **No automatic first move (built):** Jugnu never makes a move for her in any game. The first-move code is gone from Match, Follow the path, Sort it, Odd one out and Missing piece; every set takes her touch at once. The instruction line and "show me" stay. `tests/no-first-move.test.js` checks that a move is made only from her own touch.
+2. **Odd one out, made clear:** a specific instruction line per row, by rule ("Find the one that is a different color", "Find the one that is not a fruit", ...); a picture of the rule above the row; show me visits the three that match, a ring groups them with the rule picture, then Jugnu points at the odd one; a right answer shows the same ring.
+3. **Twemoji find pictures:** the find pictures switch to Twemoji (CC BY 4.0), copied into the repo; the credit in the README and on a credits screen on the parent page; a word list approved first; shadow and look-alike checks re-run; a review sheet.
+4. **Twemoji game pictures:** the game pictures switch the same way (Twemoji is never recolored; Odd one out's color rows get their own plan); color checks re-run; a review sheet.
+
+**Done when:**
+- [ ] No game makes a move by itself: every first set waits for her
+- [ ] Every Odd one out row has its own instruction and rule picture
+- [ ] The review sheets of the new pictures are checked on the tablet
+
 ### 8A — Children's profiles ✅
 One tablet, more than one child. Each child has a name (a to z, as the name book needs), one of 8 animal pictures and a color; up to 6 children. Two pull requests:
 

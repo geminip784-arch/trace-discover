@@ -7,7 +7,7 @@ import { MISSING_CUTS } from '../data/missing-cuts.js';
 import {
   MISSING, MISSING_GAMES, missingLevel, GAME_ROWS, GAMES, kindOf, SHAPE_POLYS, PARTS, partPoly, partKind, bbox,
   sameForm, missingRound, checkRound, fits, roundKey, missingPlay, missingLevelOpen, shapeBoxes, partCentre, gapBox,
-  trayOf, pieceTrayScale, pieceHome, hitGap, hitPiece, startMissing, dropPiece, firstMovePiece, pieceLabel,
+  trayOf, pieceTrayScale, pieceHome, hitGap, hitPiece, startMissing, dropPiece, pieceLabel,
   pieceAllowed, boardFit, BOARD, gameLogEntry,
 } from '../src/games.js';
 import { navigate } from '../src/session.js';
@@ -246,9 +246,8 @@ test('hint: after 3 wrong tries in a row, the right piece for the gap she last t
   assert.equal(s.wrongInRow, 0, 'the count starts again after a hint');
 });
 
-test('Jugnu\'s first move is the first gap\'s right piece; the log names paint, shape and part', () => {
+test('the log names paint, shape and part', () => {
   const r = ALL[2][0];
-  assert.equal(firstMovePiece(r).right, 0);
   assert.match(pieceLabel(r.gaps[0]), /^[a-z]+-(circle|square|triangle|rectangle)-(q|h|c)-[a-z]+$/);
   const e = gameLogEntry({ game: 'missing-2', set: 1, from: pieceLabel(r.pieces[0]), to: pieceLabel(r.gaps[0]), ok: false, ms: 500, now: new Date(0) });
   assert.deepEqual(Object.keys(e), ['type', 'time', 'game', 'set', 'from', 'to', 'ok', 'ms']);

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { ODD_THINGS, PAINTS, oddThingArt, MENU } from '../data/games.js';
 import {
   GAME_ROWS, ODD, singledOut, fairRow, kindRow, colorRow, oddPlay, startOdd, tapOdd, oddCards, hitOdd,
-  showsFirstMove, marginUnits, boardFit, BOARD, gameLogEntry,
+  marginUnits, boardFit, BOARD, gameLogEntry,
 } from '../src/games.js';
 import { family, biggestColor, hsl } from './art-colors.js';
 
@@ -142,8 +142,6 @@ test('a play: five rows; the first (Jugnu taps it) is the easiest: three fruit a
     assert.ok(alikeOf(colors[0]).every((t) => t.color === 'red'));
     assert.equal(colors[0].items[colors[0].odd].color, 'blue');
   }
-  assert.equal(showsFirstMove(1), true);
-  assert.equal(showsFirstMove(2), false);
 });
 
 test('rows vary: every kind and every color turns up as the three alike', () => {

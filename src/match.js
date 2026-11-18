@@ -1,7 +1,8 @@
 // match.js — draw a line to match, on screen (Slices 5D and 5F): numbers,
-// colors, letters, shadows and shapes all share this one engine. On the first
-// set, Jugnu matches the top left card himself, then she carries on. games.js decides what is in a set and
-// whether a drop is right; this file draws it and plays it.
+// colors, letters, shadows and shapes all share this one engine. games.js
+// decides what is in a set and whether a drop is right; this file draws it and
+// plays it. Slice 5M: Jugnu never makes a move for her; every set is hers from
+// the start (the instruction line and "show me" help instead).
 // Slice 5H: the three sets of a play are drawn at the start, none the same as
 // a set of her last play of this game; a plain tap on a card makes it wiggle
 // (not a try, not logged).
@@ -16,7 +17,7 @@
 import { makeGroup } from './finds.js';
 import {
   BOARD, boardFit, SETS_PER_PLAY, matchPlay, setKey, cardsOf, hitCard, marginUnits, startMatch, dropCard,
-  partnerCard, gameLogEntry, showsFirstMove, firstMovePair, FIRST_MOVE_DELAY_MS, isPlainTap, CARD_GAP, matViewBoxes,
+  partnerCard, gameLogEntry, isPlainTap, CARD_GAP, matViewBoxes,
   showMeMatch, showMeLogEntry,
 } from './games.js';
 import {
@@ -34,7 +35,7 @@ const SPARKLE_MS = 900;   // the star on a right partner
 const HINT_DELAY_MS = 650; // the hint wiggle waits for the first wiggle to end
 const SET_GLOW_MS = 1500; // all 4 matched: everything glows, then the next set
 const CURVE = 190;        // how far a matched curve bows out of each card, in units
-const FIRST_MOVE_MS = 1600; // Jugnu draws the first line
+const DEMO_MS = 1600;       // show me: Jugnu draws a line
 const JUGNU_SIZE = 110;
 
 export const JUGNU_IMG = '<img class="buddy at-left" src="assets/jugnu.svg" alt="" draggable="false">';
@@ -181,10 +182,6 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
       c.el = el;
     }
     busy = false;
-    if (showsFirstMove(setNo)) {
-      busy = true;
-      later(firstMove, FIRST_MOVE_DELAY_MS);
-    }
   }
 
   // Jugnu draws the line from the left card of `pair` to its partner. Resolves
@@ -200,7 +197,7 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
     buddy.classList.add('away');
     from.el.classList.add('gm-lift');
     const place = ([x, y]) => Object.assign(j.style, { left: `${x - JUGNU_SIZE / 2}px`, top: `${y - JUGNU_SIZE * 0.75}px`, width: `${JUGNU_SIZE}px` });
-    await tween(FIRST_MOVE_MS, (f) => {
+    await tween(DEMO_MS, (f) => {
       const e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
       const p = [from.anchor[0] + (to.anchor[0] - from.anchor[0]) * e, from.anchor[1] + (to.anchor[1] - from.anchor[1]) * e];
       place(p);
@@ -212,17 +209,6 @@ export function playMatch(view, { game, onDone = () => {}, rand = Math.random })
     j.classList.add('gm-fading');
     later(() => { j.remove(); buddy.classList.remove('away'); }, FADE_MS);
     return { from, to };
-  }
-
-  // The first move: Jugnu draws the line from the top left card to its partner,
-  // then that pair is matched like one of hers (not logged: it is not her move).
-  async function firstMove() {
-    const demo = await drawDemo(firstMovePair(set));
-    if (!demo) return;
-    const r = dropCard(state, demo.from, demo.to);
-    state = r.state;
-    matched(demo.from, r);
-    later(() => { if (!r.done) busy = false; }, FADE_MS);
   }
 
   // Show me (Slice 5J part 2): Jugnu draws the line for the first pair she has
