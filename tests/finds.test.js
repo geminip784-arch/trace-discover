@@ -40,7 +40,7 @@ const WORDS = {
   J: ['jug', 'jellyfish', 'juice'], K: ['kite', 'key', 'kettle'], L: ['lamp', 'lemon', 'lion', 'lunchbox'],
   M: ['moon', 'mango', 'milk'], N: ['nest', 'nut', 'net'], O: ['octopus', 'orange', 'olive'],
   P: ['pencil', 'pear', 'parrot'], Q: ['queen', 'quilt'], R: ['rabbit', 'ring', 'rainbow'],
-  S: ['sun', 'sock', 'star'], T: ['tiger', 'tomato', 'toys'], U: ['umbrella', 'umpire'], V: ['van', 'vase', 'violin'],
+  S: ['sun', 'sock', 'star'], T: ['tiger', 'tomato', 'teddy'], U: ['umbrella', 'umpire'], V: ['van', 'vase', 'violin'],
   W: ['watch', 'whale', 'worm'], X: [], Y: ['yo-yo', 'yak', 'yogurt'], Z: ['zebra', 'zip'],
 };
 
@@ -58,7 +58,7 @@ const TABLE = {
   moon: 'bedroom', mango: 'kitchen', milk: 'kitchen', nest: 'garden', nut: 'kitchen garden', net: 'sea',
   octopus: 'sea', orange: 'kitchen', olive: 'kitchen', pencil: 'study', pear: 'kitchen garden', parrot: 'zoo',
   queen: 'bedroom', quilt: 'bedroom', rabbit: 'garden', ring: 'bedroom', rainbow: 'garden',
-  sun: 'sea', sock: 'bedroom', star: 'bedroom study', tiger: 'study bedroom', tomato: 'kitchen', toys: 'living bedroom',
+  sun: 'sea', sock: 'bedroom', star: 'bedroom study', tiger: 'study bedroom', tomato: 'kitchen', teddy: 'living bedroom',
   umbrella: 'sea living', umpire: 'living garden', van: 'living bedroom', vase: 'living', violin: 'living study',
   watch: 'bedroom', whale: 'sea', worm: 'garden', yoyo: 'bedroom living', yak: 'zoo', yogurt: 'kitchen',
   zebra: 'zoo', zip: 'bedroom',

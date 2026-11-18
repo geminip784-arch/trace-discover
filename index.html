@@ -429,43 +429,23 @@
     @keyframes rw-openlid { to { transform: rotate(-56deg); } }
     .sc-obj.rw-lunch .pop { animation: rw-popup 1.6s .7s ease forwards; }
     @keyframes rw-popup { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(-58px); opacity: 1; } }
-    .sc-obj.rw-flag .cloth { animation: rw-flutter .5s ease-in-out infinite alternate; }
-    @keyframes rw-flutter { from { transform: skewY(-7deg); } to { transform: skewY(7deg); } }
-    .sc-obj.rw-egg .egg { animation: rw-wobble .5s ease-in-out infinite alternate; }
     @keyframes rw-wobble { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
-    .sc-obj.rw-hat .swing { animation: rw-swing .8s ease-in-out infinite alternate; }
     @keyframes rw-swing { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
-    .sc-obj.rw-heart .beat { animation: rw-beat .7s ease-in-out infinite; }
     @keyframes rw-beat { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.14); } }
     .sc-obj.rw-ink .bottle { animation: rw-rub .5s ease-in-out infinite alternate; }
     .sc-obj.rw-ink .drop { animation: rw-dropfall 1.1s ease-in infinite; }
     @keyframes rw-dropfall { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(120px); opacity: 0; } }
-    .sc-obj.rw-insect .bug { animation: rw-crawl .6s ease-in-out infinite alternate; }
-    @keyframes rw-crawl { from { transform: translateX(-12px) rotate(-6deg); } to { transform: translateX(12px) rotate(6deg); } }
-    .sc-obj.rw-toys .tb1 { animation: rw-hop2 .8s ease-in-out infinite; }
-    .sc-obj.rw-toys .tb2 { animation: rw-hop2 .8s .2s ease-in-out infinite; }
-    .sc-obj.rw-toys .tcar { animation: rw-drive 1s ease-in-out infinite alternate; }
     @keyframes rw-hop2 { 50% { transform: translateY(-16px); } }
-    @keyframes rw-drive { from { transform: translateX(-12px); } to { transform: translateX(4px); } }
-    .sc-obj.rw-tiger .tilt { animation: rw-tilt .7s ease-in-out infinite alternate; }
-    @keyframes rw-tilt { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
     .sc-obj.rw-fork .fk { animation: rw-wobble .4s ease-in-out infinite alternate; }
-    .sc-obj.rw-honey .jar { animation: rw-wobble .6s ease-in-out infinite alternate; }
-    .sc-obj.rw-honey .drip { animation: rw-dropfall 1.1s ease-in infinite; }
-    .sc-obj.rw-ice .scoop2 { animation: rw-popin .5s .3s ease both; }
-    .sc-obj.rw-ice .cherry { animation: rw-cherryup .5s .3s ease both; }
-    @keyframes rw-popin { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes rw-cherryup { to { transform: translateY(-44px); } }
-    .sc-obj.rw-lemon .lem { animation: rw-wobble .45s ease-in-out infinite alternate; }
-    .sc-obj.rw-lemon .drops { opacity: 1; animation: rw-rise 1.4s ease-out infinite; }
     .sc-obj.rw-tomato .tom { animation: rw-hop2 .6s ease-in-out infinite; }
-    /* Slice 5G pictures: each moves its <g class="anim"> one of three ways. */
+    /* Slice 5G pictures (and Slice 5M's Twemoji): each moves its <g class="anim"> one of these ways. */
     .sc-obj.rw-hop .anim { animation: rw-hop2 .7s ease-in-out infinite; }
     .sc-obj.rw-wobble .anim { animation: rw-wobble .5s ease-in-out infinite alternate; }
     .sc-obj.rw-swing .anim { animation: rw-swing .8s ease-in-out infinite alternate; }
+    /* Slice 5M part 3: the Twemoji find pictures hop, wobble or swing the same way; the heart beats. */
+    .sc-obj.rw-beat .anim { animation: rw-beat .7s ease-in-out infinite; }
     .art .num { opacity: 0; }
     .art .steam, .art .scoop2, .art .drops { opacity: 0; }
-    @keyframes rw-rise { from { transform: translateY(60px); opacity: 0; } 30% { opacity: .75; } to { transform: translateY(-80px); opacity: 0; } }
 
     /* ---- her shelf of finds (mockup4): planks, the newest 24, a tap wiggles one ---- */
     .toybox-btn { position: absolute; left: 16px; top: 16px; width: 96px; height: 96px; padding: 6px; box-sizing: border-box; border-radius: 50%; background: #fff; box-shadow: 0 7px 0 rgba(0, 0, 0, 0.18); touch-action: none; cursor: pointer; z-index: 3; }

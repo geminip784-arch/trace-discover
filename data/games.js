@@ -10,6 +10,11 @@ import { PICTURES } from './drawings.js';
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 const svg = (vb, body) => `<svg ${NS} viewBox="${vb}" class="art" style="overflow:visible">${body}</svg>`;
 const objectArt = (id) => OBJECTS.find((o) => o.id === id).art; // a find-library picture (200 x 240)
+// Slice 5M part 3: the find pictures became Twemoji; the games' own things keep
+// the drawings (`drawn`) until part 4. Letter to picture, Shadow, Missing piece
+// and the number groups show the find pictures themselves.
+const drawnArt = (id) => OBJECTS.find((o) => o.id === id).drawn;
+const drawnThing = (id) => THINGS[id].drawn;
 
 // ---- colors to things ----
 
@@ -67,7 +72,7 @@ const NEW_THINGS = {
 // Every object of the colors game, as an SVG. Most come from the countable
 // things, Sort it and the find library; the pink frock is the library's frock
 // painted pink (its own dress is cream with pink dots, so cream is its main fill).
-const PINK_FROCK = () => objectArt('frock')
+const PINK_FROCK = () => drawnArt('frock')
   .replace('fill="#FFF3E3" stroke="#F2D9A8"', 'fill="#FF8FD6" stroke="#E066B3"')
   .replace('fill="#F2D9A8"/>', 'fill="#E066B3"/>')
   .replace('<g fill="#FF8FB8">', '<g fill="#FFFFFF">')
@@ -77,15 +82,15 @@ const COLOR_ART = {
   banana: () => sortThingArt('banana'),
   'blue-ball': () => sortThingArt('blue-ball'),
   duck: () => ANIMALS.duck.art,
-  whale: () => objectArt('whale'),
-  alligator: () => objectArt('alligator'),
-  parrot: () => objectArt('parrot'),
-  olive: () => objectArt('olive'),
-  fish: () => objectArt('fish'),
-  juice: () => objectArt('juice'),
+  whale: () => drawnArt('whale'),
+  alligator: () => drawnArt('alligator'),
+  parrot: () => drawnArt('parrot'),
+  olive: () => drawnArt('olive'),
+  fish: () => drawnArt('fish'),
+  juice: () => drawnArt('juice'),
   frock: PINK_FROCK,
 };
-export const colorThingArt = (id) => (COLOR_ART[id] ? COLOR_ART[id]() : svg('0 0 60 60', NEW_THINGS[id] ?? THINGS[id].art));
+export const colorThingArt = (id) => (COLOR_ART[id] ? COLOR_ART[id]() : svg('0 0 60 60', NEW_THINGS[id] ?? drawnThing(id)));
 
 // The first object of a color (the menu tile and Odd one out use these).
 export const colorThing = (color) => colorThingArt(COLORS[color].things[0]);
@@ -186,8 +191,8 @@ Object.assign(ANIMALS, {
       + '<path d="M38 24 q2 -10 10 -10" stroke="#2F74D9" stroke-width="3" fill="none" stroke-linecap="round"/>'
       + '<ellipse cx="46" cy="64" rx="7" ry="4" fill="#fff" opacity=".35" transform="rotate(-30 46 64)"/>'),
   },
-  fish: { home: 'bowl', art: objectArt('fish') },
-  rabbit: { home: 'hutch', art: objectArt('rabbit') },
+  fish: { home: 'bowl', art: drawnArt('fish') },
+  rabbit: { home: 'hutch', art: drawnArt('rabbit') },
   cow: {
     home: 'barn',
     art: svg('0 0 120 120',
@@ -224,7 +229,7 @@ Object.assign(ANIMALS, {
 });
 
 Object.assign(HOMES, {
-  nest: objectArt('nest'),
+  nest: drawnArt('nest'),
   bowl: svg('0 0 140 140',
     '<ellipse cx="70" cy="132" rx="44" ry="6" fill="#000" opacity=".1"/>'
     + '<path d="M40 128 H100 L94 118 H46 Z" fill="#B7814A" stroke="#8A5A2E" stroke-width="3" stroke-linejoin="round"/>'
@@ -321,7 +326,7 @@ export const MENU = {
     + `<g transform="translate(104 34)"><g transform="translate(0 0)">${THINGS.cup.art}</g><g transform="translate(36 46)">${THINGS.cup.art}</g><g transform="translate(0 86) scale(1)">${THINGS.cup.art}</g></g>`),
   colors: svg('0 0 200 160',
     `<g transform="translate(6 30) scale(1.6)">${blob('red').replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`
-    + `<g transform="translate(104 30) scale(1.6)">${THINGS.apple.art}</g>`),
+    + `<g transform="translate(104 30) scale(1.6)">${drawnThing('apple')}</g>`),
   path: svg('0 0 200 160',
     '<path d="M20 120 C70 150 80 20 130 60 S170 110 186 40" stroke="#B7814A" stroke-width="30" fill="none" stroke-linecap="round"/>'
     + '<path d="M20 120 C70 150 80 20 130 60 S170 110 186 40" stroke="#F2D9A8" stroke-width="22" fill="none" stroke-linecap="round"/>'
@@ -361,11 +366,13 @@ export function letterArt(char, color = LETTER_INK) {
 // Any find-library picture with an outline of its own (Slice 5H), ice cream and
 // eraser included. Left out: plain round fruit and balls, and plain oblongs
 // (a framed poster, a quilt, an envelope, a zip close-up), whose shadows are
-// just a circle or a box; and the toys, a heap rather than one thing.
-export const SHADOW_LEFT_OUT = ['tomato', 'orange', 'mango', 'nut', 'ball', 'tiger', 'quilt', 'envelope', 'zip', 'toys'];
+// just a circle or a box. Slice 5M part 3: the teddy (once a heap of toys) has
+// a clear outline of its own and joins in.
+export const SHADOW_LEFT_OUT = ['tomato', 'orange', 'mango', 'nut', 'ball', 'tiger', 'quilt', 'envelope', 'zip'];
 export const SHADOW_THINGS = OBJECTS.map((o) => o.id).filter((id) => !SHADOW_LEFT_OUT.includes(id));
 // Shadows that look alike: a set never holds two of one group. Checked by eye on
-// a sheet of every shadow side by side (horse and zebra share one outline).
+// a sheet of every shadow side by side (horse and zebra share one outline);
+// checked again on the Twemoji pictures in Slice 5M part 3 (docs/screenshots/slice-5m/).
 export const SHADOW_LOOKALIKES = [
   ['horse', 'zebra', 'goat', 'yak'],     // four legs, a long head
   ['apple', 'lemon', 'yoyo'],            // round, with a bit on top
@@ -379,6 +386,8 @@ export const SHADOW_LOOKALIKES = [
   ['kettle', 'jug'],                     // a spout and a handle
   ['grapes', 'olive'],                   // a bunch of small rounds
   ['insect', 'ant'],                     // a bug with legs
+  ['cake', 'cup', 'drum'],               // Slice 5M: a round heap (Twemoji)
+  ['cat', 'dog'],                        // Slice 5M: four legs and a tail, side on (Twemoji)
 ];
 export const SHADOW_GREY = '#4A4F5C';
 const SHADOW_FILTER = '<filter id="td-shadow" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" '
@@ -633,7 +642,7 @@ const BLUE_CAR = inner(PICTURES.car.art).replace(/#FF8FB8/g, '#7FB8FF');
 // Every thing Sort it shows, as an SVG.
 export function sortThingArt(id) {
   if (id === 'car') return svg('0 4 100 100', BLUE_CAR);
-  return svg('0 0 60 60', SORT_NEW[id] ?? NEW_THINGS[id] ?? THINGS[id].art);
+  return svg('0 0 60 60', SORT_NEW[id] ?? NEW_THINGS[id] ?? drawnThing(id));
 }
 
 // The two sets. Each basket: its id (for the log), the sample on its front
@@ -684,10 +693,10 @@ const PAINTED = {
     + `<path d="M11 38 C20 46 40 46 49 38" stroke="${p.light}" stroke-width="5" fill="none"/>`),
   car: (p) => svg('0 4 100 100', recolor(inner(PICTURES.car.art), { '#4D96FF': p.paint, '#2F74D9': p.edge, '#7FB8FF': p.light, '#FF8FB8': p.light })),
   balloon: (p) => svg('0 0 60 60', recolor(SORT_NEW.balloon, { '#4D96FF': p.paint, '#2F74D9': p.edge })),
-  cup: (p) => svg('0 0 60 60', recolor(THINGS.cup.art, { '#4D96FF': p.paint })),
-  sock: (p) => svg('0 0 60 60', recolor(THINGS.sock.art, { '#FF8FD6': p.paint })),
-  book: (p) => svg('0 0 60 60', recolor(THINGS.book.art, { '#4D96FF': p.paint })),
-  crayon: (p) => svg('0 0 60 60', recolor(THINGS.crayon.art, { '#FF6B6B': p.paint })),
+  cup: (p) => svg('0 0 60 60', recolor(drawnThing('cup'), { '#4D96FF': p.paint })),
+  sock: (p) => svg('0 0 60 60', recolor(drawnThing('sock'), { '#FF8FD6': p.paint })),
+  book: (p) => svg('0 0 60 60', recolor(drawnThing('book'), { '#4D96FF': p.paint })),
+  crayon: (p) => svg('0 0 60 60', recolor(drawnThing('crayon'), { '#FF6B6B': p.paint })),
   tshirt: (p) => svg('0 0 60 60', `<path d="M20 8 L8 16 L4 28 L14 31 L16 24 L16 54 L44 54 L44 24 L46 31 L56 28 L52 16 L40 8 Q30 16 20 8 Z" fill="${p.paint}" stroke="${p.edge}" stroke-width="2.5" stroke-linejoin="round"/>`
     + '<path d="M22 9 Q30 15 38 9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>'
     + `<rect x="16" y="38" width="28" height="5" fill="${p.light}"/>`),
@@ -700,19 +709,19 @@ const PAINTED = {
 // Every thing Odd one out shows: its kind and its color. A painted thing's id
 // is '<object>-<color>' (ball-red, cup-blue); the same object in two colors are twins.
 const FIXED = {
-  apple: { kind: 'fruit', color: 'red', art: () => svg('0 0 60 60', THINGS.apple.art) },
+  apple: { kind: 'fruit', color: 'red', art: () => svg('0 0 60 60', drawnThing('apple')) },
   strawberry: { kind: 'fruit', color: 'red', art: () => sortThingArt('strawberry') },
   banana: { kind: 'fruit', color: 'yellow', art: () => sortThingArt('banana') },
-  lemon: { kind: 'fruit', color: 'yellow', art: () => svg('0 0 60 60', THINGS.lemon.art) },
+  lemon: { kind: 'fruit', color: 'yellow', art: () => svg('0 0 60 60', drawnThing('lemon')) },
   grapes: { kind: 'fruit', color: 'purple', art: () => colorThing('purple') },
   orange: { kind: 'fruit', color: 'orange', art: () => colorThing('orange') },
-  block: { kind: 'toy', color: 'yellow', art: () => svg('0 0 60 60', THINGS.block.art) },
+  block: { kind: 'toy', color: 'yellow', art: () => svg('0 0 60 60', drawnThing('block')) },
   teddy: { kind: 'toy', color: 'brown', art: () => sortThingArt('teddy') },
   top: { kind: 'toy', color: 'purple', art: () => sortThingArt('top') },
   bee: { kind: 'animal', color: 'yellow', art: () => ANIMALS.bee.art },
   duck: { kind: 'animal', color: 'yellow', art: () => ANIMALS.duck.art },
   dog: { kind: 'animal', color: 'brown', art: () => ANIMALS.dog.art },
-  elephant: { kind: 'animal', color: 'grey', art: () => objectArt('elephant') },
+  elephant: { kind: 'animal', color: 'grey', art: () => drawnArt('elephant') },
 };
 const PAINTED_KIND = { ball: 'toy', car: 'toy', balloon: 'toy', sock: 'clothes', tshirt: 'clothes', cap: 'clothes', cup: 'kitchen', book: 'school', crayon: 'school' };
 
@@ -763,12 +772,15 @@ Object.assign(MENU, {
 // Level 4: find-library pictures on a square card tinted with their color.
 // Each has one main color (tests/missing.test.js reads the art), and a round
 // never shows two of one color, so the picture tells its pieces apart.
+// Slice 5M part 3: re-paired for the Twemoji pictures: the fish is blue, the
+// star golden orange, the juice box yellow and the cup a brown cup of tea, so
+// lemon, orange and tiger came in.
 export const MISSING_PICTURES = {
   apple: 'red', heart: 'red',
-  banana: 'yellow', star: 'yellow',
-  whale: 'blue', cup: 'blue',
+  banana: 'yellow', lemon: 'yellow',
+  whale: 'blue', fish: 'blue',
   pear: 'green', parrot: 'green',
-  fish: 'orange', juice: 'orange',
+  orange: 'orange', tiger: 'orange',
   grapes: 'purple', octopus: 'purple',
   sock: 'pink',
 };

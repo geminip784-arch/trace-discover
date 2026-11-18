@@ -40,7 +40,7 @@ test('the Slice 5D games are still on the menu; every picture is inline SVG with
 
 test('the colors still start from the red apple, yellow lemon and blue cup; each has 3 or 4 things', () => {
   assert.deepEqual(['red', 'yellow', 'blue'].map((c) => COLORS[c].things[0]), ['apple', 'lemon', 'cup']);
-  assert.ok(colorThing('red').includes(THINGS.apple.art));
+  assert.ok(colorThing('red').includes(THINGS.apple.drawn), 'the games keep the drawn apple until Slice 5M part 4');
   for (const c of Object.values(COLORS)) assert.ok(c.things.length >= 3 && c.things.length <= 4);
 });
 

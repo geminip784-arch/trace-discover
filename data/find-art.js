@@ -1,7 +1,9 @@
 // data/find-art.js — the pictures Slice 5G adds to the find library, drawn in
 // docs/mockups/mockup4.html's flat style: soft outlines a shade darker than the
 // fill, a white shine, a ground shadow, and on food and animals the same little
-// face (dark eyes with a white glint, a smile, pink cheeks).
+// face (dark eyes with a white glint, a smile, pink cheeks). Slice 5M part 3:
+// most of these became Twemoji (data/finds.js TWEMOJI_FINDS); the drawings
+// that stayed lost their faces (people and animals keep their eyes).
 // Each object is 200 x 240 units, standing on y = 224, like data/finds.js.
 // The moving part of each picture is <g class="anim">, so a found object can
 // hop, wobble or swing (its `reward` in data/finds.js; CSS in index.html).
@@ -274,7 +276,7 @@ export const ART = {
 
   nut: art(`<path d="M100 54 C150 68 172 140 156 180 C146 208 54 208 44 180 C28 140 50 68 100 54 Z" ${outline('#B5733A', '#8B5A2B')}/>`
     + `<path d="M44 176 C56 214 144 214 156 176 C130 192 70 192 44 176 Z" ${outline('#E8C9A0', '#C49A6C', 3)}/>`
-    + '<path d="M100 56 L95 38 L108 44 Z" fill="#8B5A2B"/>' + shine(72, 110, 9, 22, 15) + face(104, 132)),
+    + '<path d="M100 56 L95 38 L108 44 Z" fill="#8B5A2B"/>' + shine(72, 110, 9, 22, 15)),
 
   net: art('<path d="M22 216 L104 112" stroke="#C0853F" stroke-width="10" stroke-linecap="round"/>'
     + '<path d="M102 98 Q86 196 150 214 Q194 168 178 64 Z" fill="#E3F2FF" opacity=".85" stroke="#8DB6F0" stroke-width="3" stroke-linejoin="round"/>'
@@ -318,7 +320,7 @@ export const ART = {
     + '<path d="M70 94 Q66 58 100 58 Q134 58 130 94 Q124 72 100 72 Q76 72 70 94 Z" fill="#5B3A12"/>'
     + `<path d="M70 62 L72 26 L88 46 L100 16 L112 46 L128 26 L130 62 Z" ${outline('#FFD43B', '#E7B500', 3)}/>`
     + '<circle cx="100" cy="50" r="6" fill="#FF6B6B"/><circle cx="80" cy="54" r="4" fill="#4D96FF"/><circle cx="120" cy="54" r="4" fill="#4D96FF"/>'
-    + eyes(90, 110, 92, 4) + smile(100, 102, 7) + cheeks(82, 118, 102, 5)),
+    + eyes(90, 110, 92, 4) + smile(100, 102, 7)),
 
   // Slice 5J part 2: a cricket umpire, a doll drawn like the queen: a long white
   // coat, dark trousers, a white sun hat, and one finger raised high.
@@ -336,7 +338,7 @@ export const ART = {
     + '<path d="M72 86 Q74 74 84 72 L80 92 Z M128 86 Q126 74 116 72 L120 92 Z" fill="#5B3A12"/>'
     + `<ellipse cx="100" cy="68" rx="44" ry="9" ${outline('#FFFFFF', '#AEB8C8', 3)}/>`
     + `<path d="M74 66 Q74 38 100 38 Q126 38 126 66 Z" ${outline('#FFFFFF', '#AEB8C8', 3)}/><path d="M75 60 H125" stroke="#4D96FF" stroke-width="5"/>`
-    + eyes(90, 110, 92, 4) + smile(100, 102, 7) + cheeks(82, 118, 102, 5)),
+    + eyes(90, 110, 92, 4) + smile(100, 102, 7)),
 
   quilt: art(`<rect x="26" y="88" width="150" height="128" rx="10" ${outline('#FFFFFF', '#E0B0C8')}/>${quiltPatches}`
     + '<path d="M26 98 Q26 88 36 88 H166 Q176 88 176 98 V108 H26 Z" fill="#E86F95"/><path d="M26 108 H176" stroke="#C9507A" stroke-width="3"/>', { rx: 86 }),

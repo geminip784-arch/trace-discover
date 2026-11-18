@@ -92,7 +92,8 @@ export function family(hex, minS = 0.4) {
   if (c0.s < minS || c0.l < 0.2 || c0.l > 0.85) return null;
   const { h, s } = hsl(hex);
   if (h <= 15 || h >= 345) return 'red';
-  if (h < 45) return s < 0.75 ? 'brown' : 'orange';
+  // Slice 5M part 3: yellow starts at hue 40, so Twemoji's yellow (#FFCC4D, hue 43) reads as yellow.
+  if (h < 40) return s < 0.75 ? 'brown' : 'orange';
   if (h <= 70) return 'yellow';
   if (h >= 75 && h <= 170) return 'green';
   if (h >= 190 && h <= 250) return 'blue';

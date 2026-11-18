@@ -16,7 +16,7 @@ import {
   COLORS, ROAD_LAYOUTS, LANES, LETTER_WORDS, SHADOW_THINGS, SHADOW_LOOKALIKES, SHAPES, ANIMALS, FURNITURE, SORT_SETS,
   ODD_THINGS, PAINTS,
 } from '../data/games.js';
-import { shuffle, groupWord } from './finds.js';
+import { shuffle, groupWord, looksAlike } from './finds.js';
 
 // The menu: one row of picture tiles per kind of game, one tile per set. Each
 // tile is its own game: it earns its own star and its id goes in the log.
@@ -163,10 +163,14 @@ function withOrder(pairs, rand) {
 }
 
 // Letter to picture: 4 letters, each with one of its sound-first find pictures.
+// No two pictures that look alike in one set (Slice 5M part 3: apple and tomato).
 export function lettersSet(rand = Math.random) {
   const letters = shuffle(Object.keys(LETTER_WORDS), rand).slice(0, PAIRS);
+  const chosen = [];
   const pairs = letters.map((l) => {
-    const object = pick(LETTER_WORDS[l], rand);
+    const fine = LETTER_WORDS[l].filter((o) => !chosen.some((c) => looksAlike(c, o)));
+    const object = pick(fine.length ? fine : LETTER_WORDS[l], rand);
+    chosen.push(object);
     return { key: l, left: { letter: l, label: l }, right: { object, label: object } };
   });
   return withOrder(pairs, rand);
@@ -174,7 +178,7 @@ export function lettersSet(rand = Math.random) {
 
 // Two shadows that look alike (data/games.js SHADOW_LOOKALIKES).
 const lookalikeGroup = (id) => SHADOW_LOOKALIKES.findIndex((g) => g.includes(id));
-export const shadowsClash = (a, b) => a === b || (lookalikeGroup(a) >= 0 && lookalikeGroup(a) === lookalikeGroup(b));
+export const shadowsClash = (a, b) => a === b || looksAlike(a, b) || (lookalikeGroup(a) >= 0 && lookalikeGroup(a) === lookalikeGroup(b));
 
 // Thing to its shadow: 4 different things, no two whose shadows look alike;
 // the right column shows their shadows.

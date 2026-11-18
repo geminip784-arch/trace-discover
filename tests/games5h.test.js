@@ -105,9 +105,10 @@ test('every color thing\'s main fill is its color, and most of its colored area 
 test('the main-fill check turns away many-colored pictures', () => {
   // The tiger poster (a brown frame), the cream frock with pink dots, the
   // kite and the umbrella (several colors each): none could stand for one color.
-  assert.notEqual(mainFill(object('tiger').art).family, 'orange');
-  assert.notEqual(mainFill(object('frock').art).family, 'pink');
-  for (const id of ['kite', 'umbrella', 'yoyo']) assert.ok(mainFill(object(id).art).share < MAIN_SHARE, id);
+  // Slice 5M part 3: these are the drawings the Match colors game keeps (`drawn`).
+  assert.notEqual(mainFill(object('tiger').drawn).family, 'orange');
+  assert.notEqual(mainFill(object('frock').drawn).family, 'pink');
+  for (const id of ['kite', 'umbrella', 'yoyo']) assert.ok(mainFill(object(id).drawn).share < MAIN_SHARE, id);
   // The pink frock is the library's frock, painted pink.
   assert.equal(mainFill(colorThingArt('frock')).family, 'pink');
 });

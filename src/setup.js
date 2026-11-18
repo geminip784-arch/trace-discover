@@ -15,6 +15,7 @@ import {
 import { speak, setProfile, unlock } from './audio.js';
 import { nameOf, nameWidth, nameFits, NAME_ID } from './name.js';
 import { charFile } from './session.js';
+import { CREDITS } from '../data/credits.js';
 import {
   ANIMALS, CHILD_COLORS, MAX_CHILDREN, checkName, childById, freshLook, needsSetup, childNameNote,
 } from './children.js';
@@ -51,6 +52,11 @@ const CSS = `
   .kids .choices button[aria-pressed=true] { outline-color: #FFD43B; }
   .kids .choices button svg { width: 100%; height: 100%; display: block; pointer-events: none; }
   .kids .choices.colors button { width: 56px; height: 56px; border-radius: 50%; }
+  .kids .credits-link { margin-top: 32px; }
+  .kids .credits-link button { background: transparent; color: #b8bdd6; outline: 1px solid #5a6088; font-size: 17px; }
+  .kids .credits { background: #2a2f52; border-radius: 12px; padding: 20px; margin: 24px 0; }
+  .kids .credits dt { font-weight: 700; color: #fff; margin-top: 12px; }
+  .kids .credits dd { margin: 4px 0 0; color: #b8bdd6; font-size: 17px; overflow-wrap: anywhere; }
   .kids .note { margin: -8px 0 16px; font-size: 17px; }
   .kids .status { min-height: 1.4em; color: #fff; }
   .kids .done { margin-top: 32px; }
@@ -81,6 +87,9 @@ export function drawChildrenPage(root, { first = false, onDone = () => {}, doneL
     <form hidden autocomplete="off"></form>
     <p class="status" role="status"></p>
     <div class="row done"><button type="button" class="main finish">${doneLabel ?? (first ? 'Start' : 'Done')}</button><span class="why"></span></div>
+    <div class="row credits-link"><button type="button" class="show-credits" aria-expanded="false">Credits</button></div>
+    <section class="credits" hidden><h2>Credits</h2><dl>${CREDITS.map((c) => `<dt>${esc(c.name)}</dt><dd>${esc(c.text)}</dd>`).join('')}</dl>
+      <div class="row"><button type="button" class="hide-credits">Close</button></div></section>
   </main>`;
   root.appendChild(page);
   const $ = (sel) => page.querySelector(sel);
@@ -226,6 +235,14 @@ export function drawChildrenPage(root, { first = false, onDone = () => {}, doneL
   }
 
   $('.add').addEventListener('click', () => { status.textContent = ''; openForm('new'); });
+  // Credits (Slice 5M part 3): Twemoji's CC BY 4.0 credit and the others (data/credits.js).
+  const showCredits = (on) => {
+    $('.credits').hidden = !on;
+    $('.show-credits').setAttribute('aria-expanded', String(on));
+    if (on) $('.credits').scrollIntoView?.({ block: 'start' });
+  };
+  $('.show-credits').addEventListener('click', () => showCredits($('.credits').hidden));
+  $('.hide-credits').addEventListener('click', () => showCredits(false));
   $('.finish').addEventListener('click', () => {
     if (needsSetup(readChildren())) return draw();
     saveWelcomed();

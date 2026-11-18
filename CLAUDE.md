@@ -63,7 +63,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
   - Games book: `games.js` (*pure*: every game's rules), `match.js`, `path.js`, `sort.js`, `odd.js`, `missing.js` (each game on screen).
   - Drawing book: `drawing.js` (*pure*: levels and dots), `dots.js` (dot to dot on screen), `paper.js` (free drawing), `strokes.js` (crayon and eraser ink), `hold.js` (press-and-hold buttons).
   - Parent tools: `setup.js` (the children page: first run, the door's gear and `?setup=1`, Slice 8A), `recorder.js` and `recording.js` (*pure*) for `recorder.html`, `glyphs-page.js` and `glyph-points.js` (*pure*) for `glyphs.html`, `finds-page.js` for `finds.html`.
-  - Data lives in `data/`: `chars/`, `glyphs.js`, `stroke-order.js`, `finds.js` (the find library and places), `find-art.js` (Slice 5G pictures and outdoor backdrops), `games.js`, `missing-cuts.js` (written by `npm run missing-cuts`), `drawings.js`, `child-shapes.js` (round 3's child-style templates).
+  - Data lives in `data/`: `chars/`, `glyphs.js`, `stroke-order.js`, `finds.js` (the find library and places), `find-art.js` (Slice 5G pictures and outdoor backdrops), `twemoji.js` (the Twemoji pictures, CC BY 4.0, written by `npm run twemoji`; Slice 5M), `credits.js` (the credits screen's text), `games.js`, `missing-cuts.js` (written by `npm run missing-cuts`), `drawings.js`, `child-shapes.js` (round 3's child-style templates).
 - When the slice is done: run `npm test`, then give me a numbered list of what to check on the tablet.
 - At the end of each slice, open a pull request. I merge it on GitHub.
 - If you think something outside the slice is needed, write it in `docs/ideas.md` instead of building it.
