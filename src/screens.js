@@ -16,8 +16,11 @@ import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
   readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
   readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, openProfiles, readProfile, saveNameCard, readPages,
-  finishOldPractices,
+  finishOldPractices, readChildren, chooseChild, currentChild, readWelcomed,
 } from './storage.js';
+import { needsSetup, childTileGrid, tileFontSize, childById, LOCK_MS } from './children.js';
+import { drawChildrenPage } from './setup.js';
+import { createHold } from './hold.js';
 import {
   enrolStars, pickToday, dueToday, recordPractice, recordReview, reviewLogEntry, isDay,
 } from './review.js';
@@ -27,7 +30,7 @@ import { startGame, loadChar } from './game.js';
 import { startNameGame } from './name-game.js';
 import { startPractice } from './practice-game.js';
 import { NAME_ID, nameOf, nameWidth, nameFits } from './name.js';
-import { HOUSE, DOOR, ICONS, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt } from './art.js';
+import { HOUSE, DOOR, ICONS, ANIMAL_ART, GEAR, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard, isPageSticker } from './finds.js';
@@ -56,12 +59,13 @@ const GAME_COLORS = {
 const KIND_COLORS = { match: '#1E88E5', path: '#43A047', sort: '#E8590C', odd: '#C2185B', missing: '#5E35B1' };
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
+const TILES_AWAY_MS = 450; // Slice 8A: the other children's tiles fade, then the door opens
 const BOOK_OPEN_MS = 650;  // a book's cover opens, then its screen
 const TILE_PICK_MS = 220;  // a bright character pops, then writing starts
 
 const JUGNU_IMG = '<img class="buddy" src="assets/jugnu.svg" alt="" draggable="false">';
 
-// els: { shell, area, lines, ink, fx, jugnu, rounds, home, back, music, turn }
+// els: { shell, area, lines, ink, fx, jugnu, rounds, home, back, music, turn, switch }
 // options: { manifest, params (URLSearchParams), now (Date) }
 export function startShell(els, { manifest, params, now = new Date() }) {
   const debugOn = params.get('debug') === '1';
@@ -72,7 +76,11 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   if (debugToday) useStore(testStore(globalThis.localStorage));
   // Slice 8A: copy old progress to the first child once, then play as the saved child.
   openProfiles();
+  const kids = readChildren();
   let state = startScreen({
+    setup: needsSetup(kids),
+    welcomed: readWelcomed(),
+    children: kids.list.length,
     lastVisit: readLastVisit(),
     today: localDay(now),
     forceDoor: params.get('door') === '1',
@@ -133,6 +141,12 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   setMusicOn(musicOn);
 
   els.home.addEventListener('click', () => go(navigate(state, { type: 'home' })));
+  // Slice 8A: the shelf's switch-child button (the child's own picture) goes back to the tiles.
+  els.switch?.addEventListener('click', () => {
+    if (busy) return;
+    popSound();
+    go(navigate(state, { type: 'switchChild' }));
+  });
   els.back.addEventListener('click', () => go(navigate(state, { type: 'back' })));
   // Slice 5J part 2: Jugnu shows the current set again; the game decides what, and never moves for her.
   els.showme?.addEventListener('click', () => { if (state.screen === 'play') game?.showMe?.(); });
@@ -173,9 +187,15 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   function render(extra = {}) {
     const { screen } = state;
     document.body.dataset.screen = screen;
-    els.home.hidden = screen === 'door' || screen === 'shelf';
+    els.home.hidden = ['door', 'shelf', 'children'].includes(screen);
+    if (els.switch) {
+      els.switch.hidden = screen !== 'shelf';
+      const me = childById(readChildren(), currentChild());
+      els.switch.innerHTML = me ? ANIMAL_ART[me.animal] : '';
+      els.switch.style.background = me?.color ?? '';
+    }
     els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper', NAME_BOOK, 'practice'].includes(screen);
-    els.music.hidden = screen === 'door';
+    els.music.hidden = screen === 'door' || screen === 'children';
     if (els.showme) els.showme.hidden = screen !== 'play';
     showGameNote(screen === 'play' ? gameNote(kindOf(state.game)) : null);
     setTune(tuneFor(screen));
@@ -191,6 +211,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     view.className = `view view-${screen}${screen === 'play' ? ` view-play-${state.game}` : ''}`;
     els.shell.appendChild(view);
     if (screen === 'door') drawDoor(view);
+    else if (screen === 'children') drawChildren(view);
     else if (screen === 'shelf') drawShelf(view);
     else if (screen === 'board') drawBoard(view, extra.newStar);
     else if (screen === NAME_BOOK) drawNameBook(view, extra.newStar);
@@ -203,23 +224,105 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     else if (screen === 'toys') drawToys(view);
   }
 
-  // ---- the front door ----
+  // ---- the front door (Slice 8A: one tile per child; the gear for a grown-up) ----
   function drawDoor(view) {
+    const kids = readChildren().list;
     view.innerHTML = `<div class="house">${HOUSE}
       <div class="door ready" role="button" aria-label="Open the door">${DOOR}</div>
-      ${JUGNU_IMG.replace('buddy', 'buddy by-door')}</div>`;
+      ${JUGNU_IMG.replace('buddy', 'buddy by-door')}</div>
+      <div class="kid-tiles"></div>
+      <div class="gear" role="button" aria-label="Children (press and hold)">${GEAR}<svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="100"/></svg></div>`;
     const door = view.querySelector('.door');
-    door.addEventListener('click', () => {
+    const tiles = view.querySelector('.kid-tiles');
+    const grid = childTileGrid(kids.length, innerWidth, innerHeight);
+    tiles.style.setProperty('--size', `${grid.size}px`);
+    tiles.style.setProperty('--gap', `${grid.gap}px`);
+    tiles.style.gridTemplateColumns = `repeat(${grid.cols}, ${grid.size}px)`;
+    for (const kid of kids) {
+      const el = document.createElement('div');
+      el.className = 'kid-tile';
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', kid.name);
+      el.style.background = kid.color;
+      el.innerHTML = `<div class="kid-pic">${ANIMAL_ART[kid.animal]}</div><div class="kid-name"></div>`;
+      const label = el.querySelector('.kid-name');
+      label.textContent = kid.name;
+      label.style.fontSize = `${tileFontSize(kid.name, grid.size)}px`;
+      el.addEventListener('click', () => enter(kid, el));
+      tiles.appendChild(el);
+    }
+
+    // A child taps their tile: the other tiles fade, the door swings open, and
+    // the bookshelf opens as that child.
+    function enter(kid, el) {
       if (busy) return;
       busy = true;
-      door.classList.remove('ready');
-      door.classList.add('open');
-      doorSound();
-      saveLastVisit(localDay(new Date()));
+      chooseChild(kid.id);
+      finishOldPractices(todayNow(), { nameId: NAME_ID }); // as at the start, for this child
+      el.classList.add('chosen');
+      tiles.classList.add('going');
+      popSound();
       setTimeout(() => {
-        busy = false;
-        go(navigate(state, { type: 'openDoor' }));
-      }, DOOR_OPEN_MS);
+        door.classList.remove('ready');
+        door.classList.add('open');
+        doorSound();
+        saveLastVisit(localDay(new Date()));
+        setTimeout(() => {
+          busy = false;
+          go(navigate(state, { type: 'openDoor' }));
+        }, DOOR_OPEN_MS);
+      }, TILES_AWAY_MS);
+    }
+    // The door itself is a picture now: a tap wiggles the tiles, to show where to tap.
+    door.addEventListener('click', () => { if (!busy) wiggle(tiles); });
+
+    // The gear: press and hold for LOCK_MS (a ring fills round it) to open the children page.
+    const gear = view.querySelector('.gear');
+    const ring = gear.querySelector('.ring circle');
+    let holdId = null;
+    const hold = createHold({
+      ms: LOCK_MS,
+      onProgress: (f) => {
+        ring.style.strokeDashoffset = String(100 * (1 - f));
+        gear.classList.toggle('holding', f > 0 && f < 1);
+      },
+      onDone: () => { holdId = null; if (!busy) go(navigate(state, { type: 'openParents' })); },
+      onShort: () => wiggle(gear),
+    });
+    const step = (now) => {
+      if (!hold.holding()) return;
+      hold.tick(now);
+      requestAnimationFrame(step);
+    };
+    gear.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (busy || holdId !== null) return;
+      holdId = e.pointerId;
+      try { gear.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
+      hold.press(performance.now());
+      requestAnimationFrame(step);
+    });
+    const letGo = (e) => {
+      if (e.pointerId !== holdId) return;
+      holdId = null;
+      hold.release(performance.now());
+    };
+    gear.addEventListener('pointerup', letGo);
+    gear.addEventListener('lostpointercapture', letGo);
+    gear.addEventListener('pointercancel', (e) => {
+      if (e.pointerId !== holdId) return;
+      holdId = null;
+      hold.cancel();
+    });
+  }
+
+  // ---- the children page (Slice 8A part 2), for a grown-up ----
+  function drawChildren(view) {
+    drawChildrenPage(view, {
+      first: state.first === true,
+      onDone: () => {
+        go(navigate(state, { type: 'closeParents', ready: !needsSetup(readChildren()) }));
+      },
     });
   }
 

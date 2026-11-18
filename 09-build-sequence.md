@@ -22,6 +22,7 @@ What the app does today is in `docs/spec.md`.
 | 5E ✅ | The Drawing book: free paper, dot to dot in three levels, the eraser |
 | 5F ✅ | More games: match sets (letters, shadows, shapes), furniture to rooms, Sort it, Odd one out. Every capital and digit generated |
 | 5G ✅ | Docs and housekeeping; sound-first find pictures for every letter but U and X, the farm-garden, zoo and sea, and `finds.html` |
+| 8A ✅ | Children's profiles: up to 6 children, each with their own progress; first-run setup, the children's tiles at the door, switch child, and the children page behind a 3-second lock |
 
 ---
 
@@ -111,11 +112,11 @@ Extra practice for a letter, number or her name once it has its gold star. Three
 - [ ] Practising never changes a star, a review date or a helper level
 - [ ] Each full page moves that letter's sticker to the newest place on her shelf, with the new count
 
-### 8A — Children's profiles
+### 8A — Children's profiles ✅
 One tablet, more than one child. Each child has a name (a to z, as the name book needs), one of 8 animal pictures and a color; up to 6 children. Two pull requests:
 
 1. **Per-child storage and migration (built; nothing changes on screen):** everything personal is saved per child: stars, rounds, helper levels, reviews and the practice-more list, finds and stickers, the name book, the last play per game, first-time flags and the attempt log (each entry also carries the child's id). Music and other device settings stay shared. On the first open after the update, all saved progress is copied to the first child, named from the setup page. The old keys are left untouched as a backup, and the migration is only marked done once the copy has been checked against the original; an interrupted migration simply runs again on the next open. The privacy test checks both children's real names (hashes only).
-2. **The screens:** a first-run setup screen (at least one child to continue); the front door shows one big tile per child (at least 160 px, name and picture), and tapping it opens the bookshelf as that child; with 2 or more children the tiles show every time the app opens fresh, with 1 child the daily door rule stays. A small picture-only "switch child" button on the shelf returns to the tiles. A gear on the front door, behind a 3-second press-and-hold lock with a filling ring, opens the children page: add, rename (and change picture and color), or remove a child (asked twice; only that child's progress is deleted). Renaming restarts only that child's name book. After the migration the parent is shown the children page once. Screenshots: `docs/screenshots/slice-8a/`.
+2. **The screens (built):** a first-run setup screen (at least one child to continue); the front door shows one big tile per child (at least 160 px, name and picture), and tapping it opens the bookshelf as that child; with 2 or more children the tiles show every time the app opens fresh, with 1 child the daily door rule stays. A small picture-only "switch child" button on the shelf returns to the tiles. A gear on the front door, behind a 3-second press-and-hold lock with a filling ring, opens the children page: add, rename (and change picture and color), or remove a child (asked twice; only that child's progress is deleted). Renaming restarts only that child's name book. After the migration the parent is shown the children page once. Screenshots: `docs/screenshots/slice-8a/`.
 
 **Done when:**
 - [ ] Nothing saved before the update is lost: it is all on the first child

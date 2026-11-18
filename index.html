@@ -168,6 +168,36 @@
     .by-door { left: 56%; top: 57%; width: 9%; animation-name: bob, glow; animation-duration: 2.6s, 1.4s; animation-iteration-count: infinite; }
     @keyframes glow { 50% { filter: drop-shadow(0 0 26px #FFE066) brightness(1.15); } }
 
+    /* Slice 8A: one tile per child in front of the house (at least 160 px:
+       src/children.js childTileGrid), and the gear for a grown-up, bottom left. */
+    .kid-tiles {
+      position: absolute; left: 136px; right: 24px; top: 24px; bottom: 24px;
+      display: grid; justify-content: center; align-content: center; gap: var(--gap, 24px);
+      transition: opacity 0.4s ease; z-index: 2;
+    }
+    .kid-tile {
+      width: var(--size); height: var(--size); box-sizing: border-box; padding: calc(var(--size) * 0.07);
+      border-radius: 28px; border: 6px solid #fff; display: flex; flex-direction: column; align-items: center;
+      box-shadow: 0 9px 0 rgba(0, 0, 0, 0.18), 0 0 0 0 #FFE066; touch-action: none;
+      transition: transform 0.35s ease, opacity 0.35s ease, box-shadow 0.35s ease;
+    }
+    .kid-tile:active { transform: translateY(4px); }
+    .kid-pic { flex: 1; min-height: 0; aspect-ratio: 1; pointer-events: none; }
+    .kid-pic svg { width: 100%; height: 100%; display: block; }
+    .kid-name { color: #fff; line-height: 1.15; white-space: nowrap; pointer-events: none; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
+    .kid-tiles.going .kid-tile:not(.chosen) { opacity: 0; transform: scale(0.8); }
+    .kid-tiles.going .kid-tile.chosen { transform: scale(1.08); box-shadow: 0 0 40px 10px #FFE066; opacity: 0; transition-delay: 0s, 0.25s, 0s; }
+    .kid-tiles.wiggle .kid-tile { animation: wiggle 0.6s ease; }
+    .gear { position: absolute; left: 24px; bottom: 24px; width: 72px; height: 72px; border-radius: 50%; background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.15); touch-action: none; z-index: 3; }
+    .gear > svg:first-child { width: 48px; height: 48px; margin: 12px; display: block; pointer-events: none; }
+    .gear .ring { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); transform: rotate(-90deg); pointer-events: none; overflow: visible; }
+    .gear .ring circle { fill: none; stroke: #FFD43B; stroke-width: 9; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
+    .gear.wiggle { animation: wiggle 0.6s ease; }
+    /* The shelf's switch-child button: the child's own picture on their color, under the toy box. */
+    #switch { top: 128px; padding: 8px; border: 4px solid #fff; box-sizing: border-box; }
+    #switch svg { width: 100%; height: 100%; }
+
     /* The bookshelf: seven books face-out on a wooden shelf against a warm wall. */
     .view-shelf {
       background-color: #FDE9C9;
@@ -684,6 +714,8 @@
   <button id="back" class="btn" type="button" aria-label="Back" hidden></button>
   <button id="showme" class="btn" type="button" aria-label="Show me" hidden></button>
   <button id="music" class="btn" type="button" aria-label="Music" hidden></button>
+  <!-- Slice 8A: on the shelf, the child's own picture: back to the children's tiles. -->
+  <button id="switch" class="btn" type="button" aria-label="Switch child" hidden></button>
   <!-- Slice 5L: the practice page's big next-page tile (a picture only), shown when a page is done. -->
   <button id="nextpage" class="next-tile" type="button" aria-label="Next page" hidden></button>
   <div id="turn" aria-hidden="true" hidden></div>
@@ -699,7 +731,7 @@
     const $ = (id) => document.getElementById(id);
     // index.html?setup=1 is the parent setup page. Every other address is the app.
     if (params.get('setup') === '1') {
-      for (const id of ['shell', 'home', 'back', 'music', 'rounds', 'note', 'turn', 'nextpage']) $(id).remove();
+      for (const id of ['shell', 'home', 'back', 'music', 'switch', 'rounds', 'note', 'turn', 'nextpage']) $(id).remove();
       const { showSetup } = await import('./src/setup.js');
       showSetup();
     } else {
@@ -712,7 +744,7 @@
       const { startShell } = await import('./src/screens.js');
       startShell({
         shell: $('shell'), area: $('area'), lines: $('lines'), ink: $('ink'), fx: $('fx'), jugnu: $('jugnu'), rounds: $('rounds'), note: $('note'),
-        home: $('home'), back: $('back'), showme: $('showme'), music: $('music'), turn: $('turn'), next: $('nextpage'),
+        home: $('home'), back: $('back'), showme: $('showme'), music: $('music'), turn: $('turn'), next: $('nextpage'), switch: $('switch'),
       }, { manifest, params });
     }
   </script>
