@@ -67,6 +67,17 @@ export const GAME_NOTES = {
 
 export const gameNote = (kind) => GAME_NOTES[kind] ?? null;
 
+// Odd one out (Slice 5M): one line per row, by its rule (src/games.js oddRule).
+// The kind line names what the three share; the odd one is what is not.
+export const ODD_NOTES = {
+  color: 'Find the one that is a different color',
+  fruit: 'Find the one that is not a fruit',
+  toy: 'Find the one that is not a toy',
+  animal: 'Find the one that is not an animal',
+  clothes: 'Find the one that is not something to wear',
+};
+export const oddNote = (rule) => ODD_NOTES[rule] ?? GAME_NOTES.odd;
+
 // Her name's book (Slice 9C): one grey line on the name page when there is no
 // name to write yet (src/name.js nameOf reasons, and 'too-long'). For a grown-up.
 export const NAME_NOTES = {

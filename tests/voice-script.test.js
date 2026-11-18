@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SCRIPT, SCRIPT_IDS, CATEGORIES, PARTS, LOOKALIKE_IDS, clipById, clipForText, recordFirst, SOUNDS } from '../data/voice-script.js';
 import { OBJECTS, THINGS } from '../data/finds.js';
-import { TRACE_NOTES, COPY_NOTES, GAME_NOTES, copyNote } from '../src/notes.js';
+import { TRACE_NOTES, COPY_NOTES, GAME_NOTES, ODD_NOTES, copyNote } from '../src/notes.js';
 import { LINES } from '../src/audio.js';
 import { GLYPHS, plansOf } from '../data/glyphs.js';
 import { exportScript, wordsFor } from '../src/voice.js';
@@ -72,9 +72,13 @@ test('the five game instructions each have a clip', () => {
   for (const [kind, words] of Object.entries(GAME_NOTES)) assert.equal(clipById(`game-${kind}`)?.words, words);
 });
 
+test('Odd one out\'s line for each rule has a clip (Slice 5M)', () => {
+  for (const [rule, words] of Object.entries(ODD_NOTES)) assert.equal(clipById(`game-odd-${rule}`)?.words, words);
+});
+
 test('every line src/notes.js can show has a clip with exactly those words', () => {
   const lines = new Set([
-    ...Object.values(TRACE_NOTES), ...Object.values(COPY_NOTES), ...Object.values(GAME_NOTES),
+    ...Object.values(TRACE_NOTES), ...Object.values(COPY_NOTES), ...Object.values(GAME_NOTES), ...Object.values(ODD_NOTES),
     copyNote({ ok: false, reason: 'missing-stroke' }),
     copyNote({ ok: false, reason: 'some-new-reason' }),
     ...PARTS.map((part) => copyNote({ ok: false, reason: 'looks-like', lookalike: 'R', missing: { part } })),

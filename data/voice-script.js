@@ -15,7 +15,7 @@
 
 import { OBJECTS, THINGS } from './finds.js';
 import { GLYPHS, plansOf } from './glyphs.js';
-import { TRACE_NOTES, COPY_NOTES, GAME_NOTES, copyNote } from '../src/notes.js';
+import { TRACE_NOTES, COPY_NOTES, GAME_NOTES, ODD_NOTES, copyNote } from '../src/notes.js';
 import { LINES, fillLine } from '../src/audio.js';
 
 // The groups on voice.html, in order.
@@ -183,6 +183,10 @@ function buildScript() {
   }
   for (const [kind, words] of Object.entries(GAME_NOTES)) {
     push({ id: `game-${kind}`, words, hint: 'Calm and clear, so she can follow it.', category: 'games' });
+  }
+  // Slice 5M: Odd one out's line for each rule.
+  for (const [rule, words] of Object.entries(ODD_NOTES)) {
+    push({ id: `game-odd-${rule}`, words, hint: 'Calm and clear, so she can follow it.', category: 'games' });
   }
   clips.push(...noteClips(), ...jugnuClips());
   return clips;

@@ -473,8 +473,12 @@ export const ODD = {
   hintAfter: 3,                      // wrong taps in a row, then the odd one wiggles
   card: 220,                         // a card's width and height, in units
   xs: [250, 510, 770, 1030],         // the four places, left to right
-  y: 350,
+  y: 380,                            // Slice 5M: lower, to leave room for the rule picture
   dots: { y: 78, xs: [540, 590, 640, 690, 740] }, // the progress dots
+  // Slice 5M: the rule picture above the row (its centre and size), and the
+  // gold band that joins the three alike cards to it.
+  rule: { x: 640, y: 160, size: 104 },
+  band: { y: 238, gap: 6, hop: 70, rise: 48 }, // gap: drops stop this short of a card; hop/rise: the arch over the odd card
   kindRowKinds: ['fruit', 'toy', 'animal', 'clothes'],
   colorRowKinds: ['fruit', 'toy', 'clothes', 'kitchen', 'school'],
   // The first row of a play, a warm-up: the easiest of its kind.
@@ -582,6 +586,43 @@ export function tapOdd(state, row, index) {
   const wrongInRow = state.wrongInRow + 1;
   const hint = wrongInRow >= ODD.hintAfter ? row.odd : null;
   return { state: { wrongInRow: hint === null ? wrongInRow : 0, found: false }, ok: false, hint, done: false };
+}
+
+// Slice 5M: a row's rule, which names its instruction line (src/notes.js
+// ODD_NOTES) and its rule picture (data/games.js oddRuleArt): 'color' for a
+// color row, else the kind the three alike share (fruit, toy, animal, clothes).
+export const oddRule = (row) => (row.by === 'color' ? 'color' : row.items.find((_, i) => i !== row.odd).kind);
+// The color a color row's rule picture is painted (the three alike's), else null.
+export const oddRuleColor = (row) => (row.by === 'color' ? row.items.find((_, i) => i !== row.odd).color : null);
+// Every rule a row can have.
+export const ODD_RULES = ['color', ...ODD.kindRowKinds];
+// The places of the three that match, left to right.
+export const oddAlike = (row) => ODD.xs.map((_, i) => i).filter((i) => i !== row.odd);
+
+// The rule picture's box, in units.
+export const oddRuleBox = (r = ODD.rule) => ({ x0: r.x - r.size / 2, y0: r.y - r.size / 2, x1: r.x + r.size / 2, y1: r.y + r.size / 2 });
+// The gold band (Slice 5M): a line across above the row, a drop down to each
+// of the three alike cards (none to the odd one) and a stem up to the rule
+// picture. When the odd card lies between two of them, the line hops over it
+// in a small arch, so it plainly leaves that one out.
+// Returns { d, drops: [{ place, x }], span: [left, right], hop: x of the arch or null } in units.
+export function oddBand(row) {
+  const { y, gap, hop: h, rise } = ODD.band;
+  const cardTop = ODD.y - ODD.card / 2;
+  const drops = oddAlike(row).map((place) => ({ place, x: ODD.xs[place] }));
+  const xs = [...drops.map((p) => p.x), ODD.rule.x];
+  const left = Math.min(...xs);
+  const right = Math.max(...xs);
+  const ox = ODD.xs[row.odd];
+  const hop = ox > left && ox < right ? ox : null;
+  const across = hop === null ? `M${left} ${y} H${right}`
+    : `M${left} ${y} H${hop - h} Q${hop} ${y - rise} ${hop + h} ${y} H${right}`;
+  const d = [
+    across,
+    ...drops.map((p) => `M${p.x} ${y} V${cardTop - gap}`),
+    `M${ODD.rule.x} ${oddRuleBox().y1 + gap} V${y}`,
+  ].join(' ');
+  return { d, drops, span: [left, right], hop };
 }
 
 // The place a tap lands on: inside a card, or within `margin` units of it.
@@ -1005,11 +1046,15 @@ export function showMeLogEntry({ game, set, ms, now = new Date() }) {
   return entry;
 }
 
-// Odd one out's demonstration (Slice 5J part 2), about 5 seconds: Jugnu hops
-// onto each of the four cards in turn (each lifts a little while he looks),
-// pauses, then flies to the different one and taps it (or, for "show me",
-// points at it and she taps).
-export const ODD_DEMO = { hopMs: 800, pauseMs: 500, flyMs: 1200 };
-export const oddDemoMs = (cards = ODD.xs.length, d = ODD_DEMO) => cards * d.hopMs + d.pauseMs + d.flyMs;
-// The demonstration's steps, in order: [{ kind: 'look', place } x4, { kind: 'pause' }, { kind: 'go', place: odd }].
-export const oddDemoSteps = (row) => [...ODD.xs.map((_, place) => ({ kind: 'look', place })), { kind: 'pause' }, { kind: 'go', place: row.odd }];
+// Odd one out's demonstration ("show me"), about 5 seconds. Slice 5M: Jugnu
+// hops onto the three cards that match (each lifts a little while he looks),
+// the gold band joins them to the rule picture, he pauses, then flies to the
+// different one and points at it. She taps it herself.
+export const ODD_DEMO = { hopMs: 800, ringMs: 900, pauseMs: 500, flyMs: 1200 };
+export const oddDemoMs = (alike = ODD.xs.length - 1, d = ODD_DEMO) => alike * d.hopMs + d.ringMs + d.pauseMs + d.flyMs;
+// The demonstration's steps, in order:
+// [{ kind: 'look', place } x3 (the alike), { kind: 'ring' }, { kind: 'pause' }, { kind: 'go', place: odd }].
+export const oddDemoSteps = (row) => [
+  ...oddAlike(row).map((place) => ({ kind: 'look', place })),
+  { kind: 'ring' }, { kind: 'pause' }, { kind: 'go', place: row.odd },
+];
