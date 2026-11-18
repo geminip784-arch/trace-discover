@@ -327,6 +327,10 @@ test('test mode: a later check carries on from the test copy, and the real data 
 
 test('every function in storage.js uses the active store (no direct localStorage default)', () => {
   const src = readFileSync(new URL('../src/storage.js', import.meta.url), 'utf8');
-  assert.equal(src.match(/globalThis\.localStorage/g).length, 1); // only activeStore itself
-  assert.equal(src.match(/store = activeStore\(\)/g).length, src.match(/store = /g).length);
+  assert.equal(src.match(/globalThis\.localStorage/g).length, 1); // only baseStore itself
+  // Slice 8A: the children list's own functions act on the whole device (baseStore:
+  // localStorage or test mode's store); every other function on the playing child's copy.
+  const device = src.match(/store = baseStore\(\)/g).length;
+  assert.equal(device, 6, 'addChildProfile, updateChildProfile, removeChildProfile, migrateProfiles, openProfiles, chooseChild');
+  assert.equal(src.match(/store = activeStore\(\)/g).length + device, src.match(/store = /g).length);
 });

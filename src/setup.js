@@ -1,8 +1,9 @@
 // setup.js — the parent setup page, shown only for index.html?setup=1.
 // Plain and grown-up: text is fine here, she never sees this page.
-// Her name is never written in the code: it lives only in localStorage (td.profile).
+// Names are never written in the code: they live only in localStorage (td.children).
+// Slice 8A part 1: this page edits the child who plays now (the first child).
 
-import { readProfile, saveProfile, resetName } from './storage.js';
+import { readProfile, saveProfile, resetName, openProfiles } from './storage.js';
 import { speak, setProfile, unlock } from './audio.js';
 import { nameOf, charName, nameWidth, nameFits, NAME_ID } from './name.js';
 import { charFile } from './session.js';
@@ -28,6 +29,7 @@ export function showSetup(doc = document) {
   doc.body.classList.add('setup');
   for (const id of ['area', 'ear']) doc.getElementById(id)?.remove();
 
+  openProfiles();
   const saved = readProfile();
   const main = doc.createElement('main');
   main.innerHTML = `

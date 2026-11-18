@@ -8,7 +8,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 ## Stack (fixed — do not change without asking)
 - Plain HTML, CSS and vanilla JavaScript ES modules. No frameworks, no bundler, no runtime npm packages.
 - Guide lines and letter tracks: SVG. Her ink: one `<canvas>` layered on top.
-- Settings and progress: `localStorage`. Audio clips only: IndexedDB.
+- Settings and progress: `localStorage`. Since Slice 8A every personal key is saved per child (`childStore` in `src/storage.js`); only the device settings in `SHARED_KEYS` (`src/children.js`) are shared. Audio clips only: IndexedDB.
 - Tests: Node's built-in runner: `npm test`. No test libraries.
 - Hosting: GitHub Pages (HTTPS). Installed on the tablet from Chrome as a home-screen web app (PWA).
 
@@ -36,7 +36,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - The copy-it round has a fading helper per character (`HELPER` in `src/progress.js`, saved in `td.helper`): level 1 a dotted ghost and the first start dot, level 2 start dots only, level 3 nothing.
 - Thresholds live in `DEFAULTS.stages`. Do not change them unless I ask. Her name (Slice 9C) uses `withMinLeeway`: no tolerance narrower than 45 px on screen; `DEFAULTS` itself is unchanged.
 - Run `npm test` after any change to `src/geometry.js`.
-- Her real name must never be in a tracked file: `tests/privacy.test.js` checks every file against a hash of it. Use made-up names ("Sara") everywhere.
+- The children's real names must never be in a tracked file: `tests/privacy.test.js` checks every file against a hash of each. Use made-up names ("Sara") everywhere.
 
 ## Child-screen rules (every screen she sees)
 - She never needs to read. All prompts are audio, pictures and Jugnu. An ear button replays the last prompt.
@@ -57,7 +57,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - Build one slice at a time from `09-build-sequence.md`. Never start the next slice on your own.
 - Before writing code: restate the slice goal, list the files you will create or change, and wait for my OK.
 - Keep one module per concern in `src/`. Pure-logic modules (no DOM, no storage, no audio) are marked *pure* and are tested in `tests/`.
-  - Shell: `screens.js` (every screen and its animations), `session.js` (*pure*: boards, books, navigation), `art.js` (the shell's SVG pictures), `music.js` (background tunes), `storage.js` (localStorage), `audio.js` (chimes and speech).
+  - Shell: `screens.js` (every screen and its animations), `session.js` (*pure*: boards, books, navigation), `children.js` (*pure*: children's profiles, per-child keys and the migration, Slice 8A), `art.js` (the shell's SVG pictures), `music.js` (background tunes), `storage.js` (localStorage), `audio.js` (chimes and speech).
   - Tracing: `input.js` (single-pointer tracking), `render.js` (lines, tracks, ink), `game.js` (one character's rounds on screen), `name-game.js` (her name's rounds on screen, Slice 9C), `practice-game.js` (the practice page on screen, Slice 5L), `practice.js` (*pure*: the practice page's spaces, layout and log entry), `name.js` (*pure*: her name as she writes it, its layout and log entry), `name-copy.js` (*pure*: judging her copied name letter by letter), `progress.js` (*pure*: strokes, help and rounds), `copy.js` (*pure*: the copy-it round's whole-letter judging), `pdollar.js` (*pure*: the $P point-cloud recognizer), `notes.js` (*pure*: the parent-facing lines), `review.js` (*pure*: reviews on later days and the practice-more list), `variants.js` (*pure*: accepted joined versions and stroke plans), `geometry.js` (*pure*: scoring), `jugnu.js` (Jugnu on screen), `debug.js` (the `?debug=1` panel).
   - Find and count: `scene.js` (on screen), `finds.js` (*pure*: what a scene holds).
   - Games book: `games.js` (*pure*: every game's rules), `match.js`, `path.js`, `sort.js`, `odd.js`, `missing.js` (each game on screen).
