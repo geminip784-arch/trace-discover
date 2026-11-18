@@ -9,7 +9,7 @@ import { PICTURES } from '../data/drawings.js';
 import { hsl, chromatic, HUES, colorsOf } from './art-colors.js';
 import {
   GAME_ROWS, SORT, sortBoard, thingHome, basketBoxes, hitBasket, hitThing, basketSlot, startSort, dropThing,
-  firstMoveThing, showsFirstMove, marginUnits, RELEASE_MARGIN_PX, boardFit, BOARD, gameLogEntry,
+  marginUnits, RELEASE_MARGIN_PX, boardFit, BOARD, gameLogEntry,
 } from '../src/games.js';
 
 function seeded(seed) {
@@ -209,16 +209,6 @@ test('a board is done when all 6 are in their baskets; two boards make a play', 
     assert.equal(r.done, st.placed.length === 6);
   }
   assert.ok(r.done);
-});
-
-test('Jugnu carries the leftmost thing on the first board only, and it counts as sorted', () => {
-  const b = sortBoard('sort-kinds', seeded(17));
-  const t = firstMoveThing(b);
-  assert.equal(t.spot, 0);
-  assert.equal(showsFirstMove(1), true);
-  assert.equal(showsFirstMove(2), false);
-  const r = dropThing(startSort(), t, t.basket);
-  assert.ok(r.ok && !r.done, 'five are left for her');
 });
 
 // ---- the log ----

@@ -1,10 +1,8 @@
 // path.js — follow the path, on screen (Slices 5D and 5F). games.js holds the
 // roads and decides whether her finger is on one; this file draws the board and
 // plays it. Set 1 ('path'): three animals on the left, their homes on the right.
-// Set 2 ('path-rooms'): three pieces of furniture and their rooms. First,
-// Jugnu flies the top road himself and its traveller hops home; then she
-// carries on. three wide roads that
-// cross, the later road drawn over the earlier with its outline, like a bridge.
+// Set 2 ('path-rooms'): three pieces of furniture and their rooms. Three wide
+// roads that cross, the later road drawn over the earlier with its outline, like a bridge.
 // Her trace glows while she stays on the road. Leaving it fades the trace and
 // the animal wiggles (no sound); after 3 times off the same road, Jugnu flies
 // it once. Reaching the home, the animal hops in with a chime. Everything is in
@@ -12,10 +10,11 @@
 // the attempt log as a "game" entry.
 // Slice 5H: set 1 picks 3 of 8 animals, never the same three as her last play;
 // a plain tap on a traveller makes it wiggle (not a try, not logged).
+// Slice 5M: Jugnu never takes a traveller home for her; every road is hers.
 
 import {
   PATH, pathBoard, pathPlay, pathKey, isPlainTap, startsAtAnimal, startTrace, stepTrace, startMisses, missRoad, boardDone,
-  gameLogEntry, firstMoveRoad, FIRST_MOVE_DELAY_MS, showMePath, showMeLogEntry,
+  gameLogEntry, showMePath, showMeLogEntry,
 } from './games.js';
 import { ANIMALS, HOMES, FURNITURE, ROOM_HOME, roomArt } from '../data/games.js';
 import { mountBoard, svgEl, replay, JUGNU_IMG } from './match.js';
@@ -50,7 +49,7 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
   let alive = true;
   let paused = false;
   let trace = null;     // { road, state, pts }
-  let demoing = true;   // Jugnu is flying a road: touches wait (he shows the first move)
+  let demoing = false;  // Jugnu is flying a road (a hint or show me): touches wait
   let misses = startMisses();
   const home = [];      // animals that are home
   const timers = new Set();
@@ -171,10 +170,9 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
     return true;
   }
 
-  // Home: the traveller hops in with a chime. mine: she traced it (logged);
-  // otherwise it was Jugnu's first move.
-  async function arrive(r, mine = true) {
-    if (mine) log(r.animal, true);
+  // Home: she traced it; the traveller hops in with a chime (logged).
+  async function arrive(r) {
+    log(r.animal, true);
     home.push(r.animal);
     trace = null;
     drawTrace();
@@ -243,12 +241,6 @@ export function playPath(view, { game = 'path', onDone = () => {}, rand = Math.r
     logAttempt(showMeLogEntry({ game, ms: performance.now() - opened }));
     return demo(r);
   }
-
-  // Jugnu's first move: he flies the top road and its traveller follows him home.
-  later(async () => {
-    const r = firstMoveRoad(roads);
-    if (await demo(r)) arrive(r, false);
-  }, FIRST_MOVE_DELAY_MS);
 
   return {
     showMe,

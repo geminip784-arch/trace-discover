@@ -7,11 +7,10 @@
 // with no sound; letting go away from every gap, it floats back (not a try).
 // A plain tap on a piece makes it wiggle (not a try, not logged). After 3
 // wrong tries in a row, the right piece for the gap she last tried wiggles.
-// In the first round, Jugnu carries the first piece in himself. Three rounds
-// make a play; every finished round counts toward opening the next level.
+// Slice 5M: Jugnu never puts a piece in for her. Three rounds make a play; every finished round counts toward opening the next level.
 // Everything is drawn in one SVG in board units (1280 x 640), so a resize only
 // rescales the board. Every release goes into the attempt log as a "game"
-// entry; Jugnu's move does not.
+// entry.
 // Child-screen rules: no text, no failure sound, nothing red as feedback,
 // every piece's touch area at least 88 px, Jugnu the only character.
 // Slice 5J part 2: showMe() (the "show me" button) has Jugnu carry the right
@@ -20,8 +19,8 @@
 
 import {
   MISSING, missingPlay, roundKey, missingLevel, partPoly, bbox, SHAPE_POLYS, shapeBoxes, partCentre, pieceHome,
-  trayOf, pieceTrayScale, hitGap, hitPiece, startMissing, dropPiece, firstMovePiece, pieceLabel, marginUnits, gameLogEntry,
-  showsFirstMove, FIRST_MOVE_DELAY_MS, isPlainTap, showMeMissing, showMeLogEntry,
+  trayOf, pieceTrayScale, hitGap, hitPiece, startMissing, dropPiece, pieceLabel, marginUnits, gameLogEntry,
+  isPlainTap, showMeMissing, showMeLogEntry,
 } from './games.js';
 import { COLORS, MISSING_PICTURES, missingPictureArt } from '../data/games.js';
 import { MISSING_CUTS } from '../data/missing-cuts.js';
@@ -33,7 +32,7 @@ import { chime, letterChime } from './audio.js';
 const SNAP_MS = 300;       // a right piece settles into its gap
 const BOUNCE_MS = 650;     // a wrong gap: the piece bounces back to its place
 const FLOAT_MS = 380;      // let go away from every gap: it floats back
-const CARRY_MS = 1600;     // Jugnu carries the first piece
+const CARRY_MS = 1600;     // show me: Jugnu carries a piece
 const HINT_DELAY_MS = 400;
 const SLIDE_BACK_MS = 700; // show me: the piece slides back to the shelf
 const ROUND_GLOW_MS = 1600; // every gap filled: everything glows, then the next round
@@ -184,10 +183,6 @@ export function playMissing(view, { game, onDone = () => {}, rand = Math.random 
       place(p, x, y, trayScale(p));
     }
     busy = false;
-    if (showsFirstMove(roundNo)) {
-      busy = true;
-      later(firstMove, FIRST_MOVE_DELAY_MS);
-    }
   }
 
   // Glide a piece to (x, y) at size k, with an easing.
@@ -249,18 +244,6 @@ export function playMissing(view, { game, onDone = () => {}, rand = Math.random 
     j.classList.add('gm-fading');
     later(() => { j.remove(); buddy.classList.remove('away'); then(); }, 450);
   };
-
-  // Jugnu flies to the first gap's piece and carries it in (not logged).
-  async function firstMove() {
-    const p = firstMovePiece(round);
-    const j = await carry(p, 0);
-    if (!j) return;
-    const r = dropPiece(state, round, p, 0);
-    state = r.state;
-    await snapIn(p, 0, r);
-    if (!alive) return;
-    flyAway(j, () => { busy = false; });
-  }
 
   // Show me (Slice 5J part 2): Jugnu carries the right piece to the first empty
   // gap, then it slides back to the shelf. Nothing is filled; state is

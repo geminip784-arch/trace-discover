@@ -13,8 +13,8 @@ import {
 } from '../data/games.js';
 import {
   GAME_ROWS, GAMES, MATCH_GAMES, kindOf, PAIRS, makeSet, lettersSet, shadowsSet, shapesSet, cardsOf,
-  dropCard, startMatch, partnerCard, showsFirstMove, firstMovePair, PATH, pathThings, pathBoard,
-  boardDone, firstMoveRoad, startsAtAnimal, stepTrace, startTrace, gameLogEntry, boardFit,
+  dropCard, startMatch, partnerCard, PATH, pathThings, pathBoard,
+  boardDone, startsAtAnimal, stepTrace, startTrace, gameLogEntry, boardFit,
 } from '../src/games.js';
 import { navigate, charFile } from '../src/session.js';
 
@@ -220,24 +220,6 @@ test('every match set: 4 pairs, each card has one partner, a set is done after 4
   }
 });
 
-// ---- Jugnu shows the first move ----
-
-test('Jugnu shows the first move on the first set only: the top left card to its partner', () => {
-  assert.equal(showsFirstMove(1), true);
-  assert.equal(showsFirstMove(2), false);
-  assert.equal(showsFirstMove(3), false);
-  for (const game of MATCH_GAMES) {
-    const set = makeSet(game, seeded(7));
-    const pair = firstMovePair(set);
-    const cards = cardsOf(set);
-    const from = cards.find((c) => c.side === 'left' && c.row === 0);
-    assert.equal(from.pair, pair);
-    const r = dropCard(startMatch(), from, partnerCard(cards, from));
-    assert.ok(r.ok && !r.done, 'his move counts as matched; three pairs are left for her');
-    assert.equal(r.state.wrongInRow, 0);
-  }
-});
-
 // ---- follow the path, set 2: furniture to rooms ----
 
 test('furniture to rooms: bed, stove, bathtub, sofa to bedroom, kitchen, bathroom, living room', () => {
@@ -282,7 +264,6 @@ test('a furniture road plays like an animal road; the board is done when all thr
   assert.ok(step.done);
   assert.equal(boardDone(['sofa', 'bed'], things), false);
   assert.equal(boardDone(['bathtub', 'sofa', 'bed'], things), true);
-  assert.equal(firstMoveRoad(roads), roads[0], 'Jugnu flies the top road first');
 });
 
 test('a room picture is at least 88 px tall and fits on the board', () => {
