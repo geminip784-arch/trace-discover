@@ -4,7 +4,7 @@
 // collection list and the attempt-log entry. scene.js draws and plays them.
 // Every random choice takes `rand` (Math.random by default) so tests can repeat it.
 
-import { OBJECTS, ROOMS, PLACES, THINGS } from '../data/finds.js';
+import { OBJECTS, ROOMS, PLACES, THINGS, LOOKALIKES, RENAMED_FINDS } from '../data/finds.js';
 
 export const FINDS = 3;          // right objects in a letter scene, when the letter has 3 or more
 export const MIN_FINDS = 2;      // a letter with fewer find pictures than this has no scene
@@ -60,6 +60,21 @@ export function roomFor(letter, rand = Math.random, objects = OBJECTS) {
   return pick(Object.keys(counts).filter((r) => counts[r] === most), rand);
 }
 
+// Slice 5M part 3: two pictures too alike to share a scene or a game set
+// (data/finds.js LOOKALIKES: Twemoji's apple and our tomato).
+export const looksAlike = (a, b, groups = LOOKALIKES) => a !== b && groups.some((g) => g.includes(a) && g.includes(b));
+// The ids of `list` in order, leaving out any that looks like one kept before
+// it (or like one of `taken`). key: an entry's id.
+export function withoutLookalikes(list, taken = [], key = (x) => x) {
+  const kept = [];
+  for (const x of list) {
+    const id = key(x);
+    if ([...taken, ...kept.map(key)].some((t) => looksAlike(t, id))) continue;
+    kept.push(x);
+  }
+  return kept;
+}
+
 // `count` objects from `list`: the place's own first; then, borrowed from other
 // places, portable things (food, toys, small objects) before animals, so a horse
 // never turns up in the kitchen while a cup could have come instead.
@@ -78,8 +93,10 @@ export function letterScene(letter, rand = Math.random, objects = OBJECTS) {
   if (!hasLetterScene(letter, objects)) return null;
   const room = roomFor(letter, rand, objects);
   const targets = targetsFor(letter, objects);
-  const right = preferPlace(objectsFor(letter, objects), room, targets, rand);
-  const others = preferPlace(objects.filter((o) => inScenes(o) && o.letter !== sceneLetter(letter)), room, SPOTS - targets, rand);
+  const right = withoutLookalikes(preferPlace(objectsFor(letter, objects), room, Infinity, rand), [], (o) => o.id).slice(0, targets);
+  // No two pictures that look alike in one scene (Slice 5M part 3).
+  const candidates = preferPlace(objects.filter((o) => inScenes(o) && o.letter !== sceneLetter(letter)), room, Infinity, rand);
+  const others = withoutLookalikes(candidates, right.map((o) => o.id), (o) => o.id).slice(0, SPOTS - targets);
   const spots = shuffle(PLACES[room].spots, rand);
   const items = [...right.map((o) => ({ ...o, right: true })), ...others.map((o) => ({ ...o, right: false }))]
     .map((o, i) => ({ ...o, spot: spots[i] }));
@@ -146,7 +163,8 @@ export function numberScene(n, { lastKind = null, rand = Math.random } = {}) {
   const { pool } = ROOMS[room];
   const spots = frames ? ROW_SPOTS : ROOMS[room].groups;
   const kinds = [pick(pool.filter((k) => k !== lastKind), rand)];
-  kinds.push(...shuffle(pool.filter((k) => k !== kinds[0]), rand).slice(0, 2));
+  // Three different kinds, no two that look alike (Slice 5M part 3).
+  kinds.push(...withoutLookalikes(shuffle(pool.filter((k) => k !== kinds[0]), rand), [kinds[0]]).slice(0, 2));
   const counts = [n, ...(frames ? teenCounts(n, rand) : shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9].filter((c) => c !== n), rand).slice(0, 2))];
   const gold = rand() < GOLD_CHANCE ? Math.floor(rand() * n) : -1;
   const order = shuffle([0, 1, 2], rand); // which placemat each group goes on
@@ -301,7 +319,8 @@ export function addFind(list, entry, max = MAX_FINDS) {
 // Only well-formed entries survive a load.
 export function cleanFinds(list) {
   if (!Array.isArray(list)) return [];
-  return list.filter((e) => (e && typeof e === 'object')
+  // A picture that was renamed (Slice 5M: toys became teddy) keeps its place on her shelf.
+  return list.map((e) => (e && typeof e === 'object' && RENAMED_FINDS[e.o] ? { ...e, o: RENAMED_FINDS[e.o] } : e)).filter((e) => (e && typeof e === 'object')
     && ((typeof e.o === 'string' && OBJECTS.some((o) => o.id === e.o))
       || e.nm === 1 // her name card (Slice 9C part 2)
       || isPageSticker(e) // a page sticker (Slice 5L part 2)

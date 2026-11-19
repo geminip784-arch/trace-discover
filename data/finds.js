@@ -3,7 +3,8 @@
 // (Slice 5G took every find-object shape out of them: window suns became clouds,
 // the framed star a landscape, the bedroom's wallpaper stars dots, the chalk circle a triangle),
 // the small countable things and their pools, the basket and the toy box.
-// The Slice 5C art was generated once from the mockup and is not hand-edited;
+// The Slice 5C art was generated once from the mockup and is not hand-edited
+// (Slice 5M part 3 took the little faces off the drawings that stayed);
 // Slice 5G's pictures and outdoor places are drawn in data/find-art.js.
 // Slice 5H: the lunchbox's printed star became two stripes, so it is never taken for a star.
 //
@@ -13,6 +14,7 @@
 // left button column on screens from 1280 x 800 to 1280 x 626 (tests/finds.test.js).
 
 import { ART, BACKDROPS } from './find-art.js';
+import { TWEMOJI } from './twemoji.js';
 
 // One word per object, always the same. letter: the capital it starts with
 // (and its first sound: words start with the letter's sound, not its name).
@@ -28,7 +30,7 @@ export const OBJECTS = [
   },
   {
     id: 'eraser', word: 'eraser', letter: 'E', places: ['study'], finds: false, reward: 'eraser',
-    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="224" rx="74" ry="9" fill="#000" opacity=".12"/><g transform="rotate(-10 100 170)"><g class="wob" style="transform-origin:100px 170px"><rect x="26" y="126" width="148" height="88" rx="16" fill="#FF9EC4"/><rect x="26" y="126" width="54" height="88" rx="16" fill="#4D96FF"/><rect x="62" y="126" width="18" height="88" fill="#4D96FF"/><circle cx="116" cy="162" r="7" fill="#2A2370"/><circle cx="148" cy="162" r="7" fill="#2A2370"/><circle cx="118" cy="160" r="2.5" fill="#fff"/><circle cx="150" cy="160" r="2.5" fill="#fff"/><path d="M118 184 Q132 198 146 184" fill="none" stroke="#2A2370" stroke-width="4" stroke-linecap="round"/><circle cx="102" cy="180" r="6" fill="#FF6B8A" opacity=".6"/><circle cx="162" cy="180" r="6" fill="#FF6B8A" opacity=".6"/></g></g></svg>`,
+    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="224" rx="74" ry="9" fill="#000" opacity=".12"/><g transform="rotate(-10 100 170)"><g class="wob" style="transform-origin:100px 170px"><rect x="26" y="126" width="148" height="88" rx="16" fill="#FF9EC4"/><rect x="26" y="126" width="54" height="88" rx="16" fill="#4D96FF"/><rect x="62" y="126" width="18" height="88" fill="#4D96FF"/></g></g></svg>`,
   },
   {
     id: 'elephant', word: 'elephant', letter: 'E', places: ['bedroom', 'living'], reward: 'elephant',
@@ -36,7 +38,7 @@ export const OBJECTS = [
   },
   {
     id: 'fan', word: 'fan', letter: 'F', places: ['kitchen', 'living'], reward: 'fan',
-    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="226" rx="58" ry="12" fill="#3F6FB5"/><rect x="92" y="150" width="16" height="76" rx="6" fill="#5B8FD9"/><circle cx="100" cy="92" r="68" fill="#E8F3FF" stroke="#4D96FF" stroke-width="8"/><g class="blades" style="transform-origin:100px 92px"><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF"/><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF" transform="rotate(90 100 92)"/><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF" transform="rotate(180 100 92)"/><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF" transform="rotate(270 100 92)"/></g><circle cx="100" cy="92" r="15" fill="#FFD43B" stroke="#E7B500" stroke-width="4"/><circle cx="95" cy="88" r="3" fill="#2A2370"/><circle cx="106" cy="88" r="3" fill="#2A2370"/></svg>`,
+    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="226" rx="58" ry="12" fill="#3F6FB5"/><rect x="92" y="150" width="16" height="76" rx="6" fill="#5B8FD9"/><circle cx="100" cy="92" r="68" fill="#E8F3FF" stroke="#4D96FF" stroke-width="8"/><g class="blades" style="transform-origin:100px 92px"><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF"/><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF" transform="rotate(90 100 92)"/><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF" transform="rotate(180 100 92)"/><ellipse cx="100" cy="56" rx="17" ry="32" fill="#4D96FF" transform="rotate(270 100 92)"/></g><circle cx="100" cy="92" r="15" fill="#FFD43B" stroke="#E7B500" stroke-width="4"/></svg>`,
   },
   {
     id: 'flag', word: 'flag', letter: 'F', places: ['study'], reward: 'flag',
@@ -87,7 +89,7 @@ export const OBJECTS = [
     art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="224" rx="74" ry="9" fill="#000" opacity=".12"/><g class="pop"><circle cx="100" cy="124" r="26" fill="#FF3B3B"/><path d="M100 98 q4 -16 18 -18" stroke="#2F9E5B" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="114" cy="90" rx="10" ry="6" fill="#35D07F" transform="rotate(-30 114 90)"/></g><rect x="22" y="126" width="156" height="92" rx="16" fill="#FF6B6B"/><rect x="22" y="156" width="156" height="11" fill="#FFD43B"/><rect x="22" y="180" width="156" height="11" fill="#FFD43B"/><g class="lid" style="transform-origin:22px 126px"><rect x="22" y="98" width="156" height="32" rx="12" fill="#E84C4C"/><path d="M70 98 C70 70 130 70 130 98" stroke="#7A4E2D" stroke-width="10" fill="none" stroke-linecap="round"/><rect x="90" y="120" width="20" height="16" rx="4" fill="#FFD43B"/></g></svg>`,
   },
   {
-    id: 'toys', word: 'toys', letter: 'T', places: ['living', 'bedroom'], reward: 'toys',
+    id: 'teddy', word: 'teddy', letter: 'T', places: ['living', 'bedroom'], reward: 'hop', // Slice 5M: was 'toys' (old saved finds of 'toys' show as teddy)
     art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="228" rx="86" ry="9" fill="#000" opacity=".12"/><g class="tcar"><rect x="104" y="188" width="82" height="26" rx="10" fill="#4D96FF"/><path d="M122 188 L132 168 H166 L176 188 Z" fill="#7FB8FF"/><circle cx="126" cy="216" r="11" fill="#2A2370"/><circle cx="168" cy="216" r="11" fill="#2A2370"/><circle cx="126" cy="216" r="4" fill="#fff"/><circle cx="168" cy="216" r="4" fill="#fff"/></g><g class="tb1"><rect x="14" y="166" width="60" height="58" rx="8" fill="#FF6B6B"/><rect x="22" y="174" width="44" height="10" rx="4" fill="#fff" opacity=".4"/></g><g class="tb2"><rect x="24" y="108" width="52" height="54" rx="8" fill="#FFD43B"/><rect x="31" y="115" width="38" height="9" rx="4" fill="#fff" opacity=".5"/></g><g class="tbear" transform="translate(70,6) scale(.64)"><ellipse cx="100" cy="230" rx="64" ry="10" fill="#000" opacity=".12"/><ellipse cx="66" cy="214" rx="26" ry="20" fill="#B07A4F"/><ellipse cx="134" cy="214" rx="26" ry="20" fill="#B07A4F"/><ellipse cx="66" cy="216" rx="14" ry="10" fill="#E8C9A6"/><ellipse cx="134" cy="216" rx="14" ry="10" fill="#E8C9A6"/><ellipse cx="100" cy="164" rx="58" ry="58" fill="#B07A4F"/><ellipse cx="100" cy="172" rx="36" ry="40" fill="#E8C9A6"/><ellipse cx="46" cy="152" rx="16" ry="30" fill="#B07A4F" transform="rotate(20 46 152)"/><g class="arm" style="transform-origin:148px 132px"><ellipse cx="156" cy="148" rx="16" ry="30" fill="#B07A4F" transform="rotate(-20 156 148)"/></g><circle cx="62" cy="52" r="20" fill="#B07A4F"/><circle cx="62" cy="52" r="11" fill="#E8C9A6"/><circle cx="138" cy="52" r="20" fill="#B07A4F"/><circle cx="138" cy="52" r="11" fill="#E8C9A6"/><circle cx="100" cy="86" r="52" fill="#B07A4F"/><ellipse cx="100" cy="102" rx="24" ry="18" fill="#E8C9A6"/><ellipse cx="100" cy="94" rx="8" ry="6" fill="#3B2416"/><path d="M92 108 Q100 116 108 108" fill="none" stroke="#3B2416" stroke-width="3" stroke-linecap="round"/><circle cx="80" cy="78" r="6" fill="#3B2416"/><circle cx="120" cy="78" r="6" fill="#3B2416"/><circle cx="82" cy="76" r="2" fill="#fff"/><circle cx="122" cy="76" r="2" fill="#fff"/><polygon points="100,138 78,126 78,150" fill="#FF6B6B"/><polygon points="100,138 122,126 122,150" fill="#FF6B6B"/><circle cx="100" cy="138" r="7" fill="#E84C4C"/></g></svg>`,
   },
   {
@@ -96,7 +98,7 @@ export const OBJECTS = [
   },
   {
     id: 'tomato', word: 'tomato', letter: 'T', places: ['kitchen'], reward: 'tomato',
-    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="228" rx="64" ry="9" fill="#000" opacity=".12"/><g class="tom" style="transform-origin:100px 220px"><circle cx="100" cy="152" r="72" fill="#FF4D3D"/><ellipse cx="70" cy="122" rx="16" ry="10" fill="#fff" opacity=".35" transform="rotate(-30 70 122)"/><path d="M100 84 l10 -16 4 18 18 -6 -12 14 16 8 -20 2 z M100 84 l-10 -16 -4 18 -18 -6 12 14 -16 8 20 2 z" fill="#35A853"/><circle cx="82" cy="150" r="6" fill="#3B2416"/><circle cx="118" cy="150" r="6" fill="#3B2416"/><path d="M88 168 Q100 180 112 168" fill="none" stroke="#3B2416" stroke-width="3.5" stroke-linecap="round"/></g></svg>`,
+    art: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible"><ellipse cx="100" cy="228" rx="64" ry="9" fill="#000" opacity=".12"/><g class="tom" style="transform-origin:100px 220px"><circle cx="100" cy="152" r="72" fill="#FF4D3D"/><ellipse cx="70" cy="122" rx="16" ry="10" fill="#fff" opacity=".35" transform="rotate(-30 70 122)"/><path d="M100 84 l10 -16 4 18 18 -6 -12 14 16 8 -20 2 z M100 84 l-10 -16 -4 18 -18 -6 12 14 -16 8 20 2 z" fill="#35A853"/></g></svg>`,
   },
   // Slice 5G: sound-first pictures for every letter (art in data/find-art.js).
   { id: 'apple', word: 'apple', letter: 'A', places: ['kitchen', 'garden'], reward: 'wobble', art: ART.apple },
@@ -160,6 +162,93 @@ export const OBJECTS = [
   { id: 'zip', word: 'zip', letter: 'Z', places: ['bedroom'], reward: 'swing', art: ART.zip },
 ];
 
+// Slice 5M part 3: the find pictures that are Twemoji (CC BY 4.0; the pictures
+// themselves are in data/twemoji.js, copied by `npm run twemoji`). Each one's
+// code, and how it moves when she finds it (its `reward`: hop, wobble, swing or
+// beat; CSS in index.html). A picture is Twemoji only when it makes her say the
+// word: alligator, queen, nut, lamp, milk and the pictures with no emoji keep
+// our drawings, without their little faces so they sit well beside the emoji.
+// Every object keeps its drawing as `drawn`: the games still use those until
+// Slice 5M part 4.
+export const TWEMOJI_FINDS = {
+  egg: { emoji: '1f95a', move: 'wobble' },
+  elephant: { emoji: '1f418', move: 'hop' },
+  flag: { emoji: '1f6a9', move: 'swing' },
+  frock: { emoji: '1f457', move: 'swing' },
+  hat: { emoji: '1f452', move: 'swing' },
+  heart: { emoji: '2764', move: 'beat' },
+  honey: { emoji: '1f36f', move: 'wobble' },
+  'ice-cream': { emoji: '1f368', move: 'wobble' },
+  insect: { emoji: '1f41e', move: 'hop' },
+  lemon: { emoji: '1f34b', move: 'wobble' },
+  teddy: { emoji: '1f9f8', move: 'hop' },
+  tiger: { emoji: '1f405', move: 'hop' },
+  apple: { emoji: '1f34e', move: 'wobble' },
+  ant: { emoji: '1f41c', move: 'hop' },
+  ball: { emoji: '26bd', move: 'hop' },
+  banana: { emoji: '1f34c', move: 'wobble' },
+  bus: { emoji: '1f68c', move: 'hop' },
+  cat: { emoji: '1f408', move: 'hop' },
+  cup: { emoji: '2615', move: 'wobble' },
+  cake: { emoji: '1f382', move: 'wobble' },
+  dog: { emoji: '1f415', move: 'hop' },
+  duck: { emoji: '1f986', move: 'hop' },
+  drum: { emoji: '1f941', move: 'hop' },
+  envelope: { emoji: '2709', move: 'wobble' },
+  fish: { emoji: '1f41f', move: 'hop' },
+  goat: { emoji: '1f410', move: 'hop' },
+  gift: { emoji: '1f381', move: 'hop' },
+  grapes: { emoji: '1f347', move: 'wobble' },
+  horse: { emoji: '1f40e', move: 'hop' },
+  jellyfish: { emoji: '1fabc', move: 'hop' },
+  juice: { emoji: '1f9c3', move: 'wobble' },
+  kite: { emoji: '1fa81', move: 'swing' },
+  key: { emoji: '1f511', move: 'swing' },
+  lion: { emoji: '1f981', move: 'hop' },
+  moon: { emoji: '1f319', move: 'wobble' },
+  mango: { emoji: '1f96d', move: 'wobble' },
+  nest: { emoji: '1faba', move: 'wobble' },
+  net: { emoji: '1f945', move: 'swing' },
+  octopus: { emoji: '1f419', move: 'hop' },
+  orange: { emoji: '1f34a', move: 'wobble' },
+  olive: { emoji: '1fad2', move: 'wobble' },
+  pencil: { emoji: '270f', move: 'swing' },
+  pear: { emoji: '1f350', move: 'wobble' },
+  parrot: { emoji: '1f99c', move: 'hop' },
+  rabbit: { emoji: '1f407', move: 'hop' },
+  ring: { emoji: '1f48d', move: 'swing' },
+  rainbow: { emoji: '1f308', move: 'wobble' },
+  sun: { emoji: '2600', move: 'wobble' },
+  star: { emoji: '2b50', move: 'hop' },
+  umbrella: { emoji: '2602', move: 'swing' },
+  van: { emoji: '1f690', move: 'hop' },
+  violin: { emoji: '1f3bb', move: 'swing' },
+  watch: { emoji: '231a', move: 'swing' },
+  whale: { emoji: '1f40b', move: 'hop' },
+  worm: { emoji: '1fab1', move: 'hop' },
+  yoyo: { emoji: '1fa80', move: 'swing' },
+  zebra: { emoji: '1f993', move: 'hop' },
+};
+
+// A Twemoji picture in a find object's 200 x 240 box, standing on y = 224 like
+// the drawings, with a ground shadow and the moving group.
+export const emojiObjectArt = (code) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" class="art" style="overflow:visible">`
+  + '<ellipse cx="100" cy="226" rx="64" ry="9" fill="#000" opacity=".12"/>'
+  + `<g class="anim" style="transform-origin:100px 220px"><svg x="28" y="80" width="144" height="144" viewBox="0 0 36 36">${TWEMOJI[code]}</svg></g></svg>`;
+
+for (const o of OBJECTS) {
+  o.drawn = o.art;
+  const t = TWEMOJI_FINDS[o.id];
+  if (t) Object.assign(o, { emoji: t.emoji, art: emojiObjectArt(t.emoji), reward: t.move });
+}
+
+// Old saved ids of pictures that were renamed (Slice 5M: toys became teddy).
+export const RENAMED_FINDS = { toys: 'teddy' };
+
+// Pictures too alike to share a find scene, a count scene or a game set
+// (Slice 5M: Twemoji's apple and our tomato are both round and red).
+export const LOOKALIKES = [['apple', 'tomato']];
+
 // The four rooms. spots: where the 7 objects of a letter scene stand.
 // groups: where the 3 placemats of a number scene stand ({ x, bottom, maxW }).
 // pool: the small things a number scene counts there (mockup4's random pools).
@@ -221,21 +310,30 @@ export const PLACES = { ...ROOMS, ...OUTDOORS };
 // Small countable things, each drawn in a 60 x 60 box (mockup4's MINI), with
 // the word for one and for more than one.
 export const THINGS = {
-  egg: { one: 'egg', many: 'eggs', art: '<ellipse cx="30" cy="32" rx="17" ry="22" fill="#FBE3C0" stroke="#C9965A" stroke-width="3"/><ellipse cx="24" cy="24" rx="4" ry="6" fill="#fff" opacity=".6"/>' },
-  spoon: { one: 'spoon', many: 'spoons', art: '<ellipse cx="30" cy="16" rx="11" ry="14" fill="#B8C2CF"/><rect x="27" y="26" width="6" height="30" rx="3" fill="#9AA6B5"/>' },
-  cookie: { one: 'cookie', many: 'cookies', art: '<circle cx="30" cy="30" r="22" fill="#D9A066" stroke="#C0853F" stroke-width="3"/><circle cx="22" cy="24" r="3.5" fill="#5B3A12"/><circle cx="37" cy="28" r="3.5" fill="#5B3A12"/><circle cx="28" cy="40" r="3.5" fill="#5B3A12"/>' },
-  cup: { one: 'cup', many: 'cups', art: '<path d="M40 22 q12 0 12 11 q0 11 -12 11" stroke="#4D96FF" stroke-width="5" fill="none"/><rect x="12" y="16" width="30" height="36" rx="7" fill="#4D96FF"/>' },
-  lemon: { one: 'lemon', many: 'lemons', art: '<ellipse cx="30" cy="32" rx="22" ry="17" fill="#FFE14D" stroke="#F2C300" stroke-width="3"/><ellipse cx="38" cy="14" rx="7" ry="3.5" fill="#35D07F"/>' },
+  egg: { one: 'egg', many: 'eggs', emoji: '1f95a', art: '<ellipse cx="30" cy="32" rx="17" ry="22" fill="#FBE3C0" stroke="#C9965A" stroke-width="3"/><ellipse cx="24" cy="24" rx="4" ry="6" fill="#fff" opacity=".6"/>' },
+  spoon: { one: 'spoon', many: 'spoons', emoji: '1f944', art: '<ellipse cx="30" cy="16" rx="11" ry="14" fill="#B8C2CF"/><rect x="27" y="26" width="6" height="30" rx="3" fill="#9AA6B5"/>' },
+  cookie: { one: 'cookie', many: 'cookies', emoji: '1f36a', art: '<circle cx="30" cy="30" r="22" fill="#D9A066" stroke="#C0853F" stroke-width="3"/><circle cx="22" cy="24" r="3.5" fill="#5B3A12"/><circle cx="37" cy="28" r="3.5" fill="#5B3A12"/><circle cx="28" cy="40" r="3.5" fill="#5B3A12"/>' },
+  cup: { one: 'cup', many: 'cups', emoji: '2615', art: '<path d="M40 22 q12 0 12 11 q0 11 -12 11" stroke="#4D96FF" stroke-width="5" fill="none"/><rect x="12" y="16" width="30" height="36" rx="7" fill="#4D96FF"/>' },
+  lemon: { one: 'lemon', many: 'lemons', emoji: '1f34b', art: '<ellipse cx="30" cy="32" rx="22" ry="17" fill="#FFE14D" stroke="#F2C300" stroke-width="3"/><ellipse cx="38" cy="14" rx="7" ry="3.5" fill="#35D07F"/>' },
   tomato: { one: 'tomato', many: 'tomatoes', art: '<circle cx="30" cy="34" r="21" fill="#FF4D3D"/><path d="M30 14 l4 -6 2 7 7 -2 -5 6 6 3 -8 1 z M30 14 l-4 -6 -2 7 -7 -2 5 6 -6 3 8 1 z" fill="#35A853"/>' },
-  apple: { one: 'apple', many: 'apples', art: '<circle cx="30" cy="34" r="20" fill="#FF4D4D"/><path d="M30 15 q2 -8 7 -9" stroke="#5B3A12" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="38" cy="11" rx="6" ry="3" fill="#35D07F"/>' },
-  ball: { one: 'ball', many: 'balls', art: '<circle cx="30" cy="30" r="21" fill="#FF6B6B"/><path d="M11 24 C20 32 40 32 49 24" stroke="#fff" stroke-width="5" fill="none"/><path d="M11 38 C20 46 40 46 49 38" stroke="#FFD43B" stroke-width="5" fill="none"/>' },
-  star: { one: 'star', many: 'stars', art: '<path d="M30 6 l7 15 16 2 -12 11 3 16 -14 -8 -14 8 3 -16 -12 -11 16 -2z" fill="#FFD43B" stroke="#E7B500" stroke-width="2"/>' },
-  crayon: { one: 'crayon', many: 'crayons', art: '<rect x="22" y="14" width="16" height="36" rx="3" fill="#FF6B6B"/><polygon points="22,14 38,14 30,2" fill="#FFD9A8"/><rect x="22" y="24" width="16" height="5" fill="#fff" opacity=".6"/>' },
-  book: { one: 'book', many: 'books', art: '<rect x="12" y="10" width="36" height="42" rx="4" fill="#4D96FF"/><rect x="16" y="14" width="6" height="34" fill="#fff" opacity=".5"/>' },
-  flower: { one: 'flower', many: 'flowers', art: '<g fill="#FF8FD6"><circle cx="30" cy="16" r="9"/><circle cx="43" cy="26" r="9"/><circle cx="38" cy="41" r="9"/><circle cx="22" cy="41" r="9"/><circle cx="17" cy="26" r="9"/></g><circle cx="30" cy="30" r="8" fill="#FFD43B"/>' },
+  apple: { one: 'apple', many: 'apples', emoji: '1f34e', art: '<circle cx="30" cy="34" r="20" fill="#FF4D4D"/><path d="M30 15 q2 -8 7 -9" stroke="#5B3A12" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="38" cy="11" rx="6" ry="3" fill="#35D07F"/>' },
+  ball: { one: 'ball', many: 'balls', emoji: '26bd', art: '<circle cx="30" cy="30" r="21" fill="#FF6B6B"/><path d="M11 24 C20 32 40 32 49 24" stroke="#fff" stroke-width="5" fill="none"/><path d="M11 38 C20 46 40 46 49 38" stroke="#FFD43B" stroke-width="5" fill="none"/>' },
+  star: { one: 'star', many: 'stars', emoji: '2b50', art: '<path d="M30 6 l7 15 16 2 -12 11 3 16 -14 -8 -14 8 3 -16 -12 -11 16 -2z" fill="#FFD43B" stroke="#E7B500" stroke-width="2"/>' },
+  crayon: { one: 'crayon', many: 'crayons', emoji: '1f58d', art: '<rect x="22" y="14" width="16" height="36" rx="3" fill="#FF6B6B"/><polygon points="22,14 38,14 30,2" fill="#FFD9A8"/><rect x="22" y="24" width="16" height="5" fill="#fff" opacity=".6"/>' },
+  book: { one: 'book', many: 'books', emoji: '1f4d5', art: '<rect x="12" y="10" width="36" height="42" rx="4" fill="#4D96FF"/><rect x="16" y="14" width="6" height="34" fill="#fff" opacity=".5"/>' },
+  flower: { one: 'flower', many: 'flowers', emoji: '1f338', art: '<g fill="#FF8FD6"><circle cx="30" cy="16" r="9"/><circle cx="43" cy="26" r="9"/><circle cx="38" cy="41" r="9"/><circle cx="22" cy="41" r="9"/><circle cx="17" cy="26" r="9"/></g><circle cx="30" cy="30" r="8" fill="#FFD43B"/>' },
   sock: { one: 'sock', many: 'socks', art: '<path d="M22 6 H40 V34 L48 42 Q50 54 38 54 L22 46 Z" fill="#FF8FD6"/><rect x="22" y="6" width="18" height="8" fill="#fff" opacity=".7"/><rect x="22" y="22" width="18" height="5" fill="#fff" opacity=".5"/>' },
   block: { one: 'block', many: 'blocks', art: '<rect x="12" y="12" width="36" height="36" rx="6" fill="#FFD43B"/><rect x="18" y="18" width="24" height="24" rx="4" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/>' },
 };
+
+// Slice 5M part 3: the countable things with an `emoji` show that Twemoji
+// picture in their 60 x 60 box; sock (a pair would count as 2), block (only a
+// brick exists) and tomato (too like the apple) keep our drawings. `drawn`
+// keeps every drawing, for the games until Slice 5M part 4.
+for (const t of Object.values(THINGS)) {
+  t.drawn = t.art;
+  if (t.emoji) t.art = `<svg x="3" y="3" width="54" height="54" viewBox="0 0 36 36">${TWEMOJI[t.emoji]}</svg>`;
+}
 
 // The basket a found object flies into, and the toy box on the bookshelf (150 x 150).
 export const BASKET = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" class="art" style="overflow:visible"><ellipse cx="75" cy="146" rx="66" ry="7" fill="#000" opacity=".12"/><path d="M30 70 C30 10 120 10 120 70" stroke="#B7814A" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M10 66 H140 L126 142 H24 Z" fill="#D9954B"/><g stroke="#B7814A" stroke-width="4" opacity=".9"><line x1="14" y1="90" x2="136" y2="90"/><line x1="18" y1="114" x2="132" y2="114"/><line x1="48" y1="66" x2="52" y2="142"/><line x1="75" y1="66" x2="75" y2="142"/><line x1="102" y1="66" x2="98" y2="142"/></g><rect x="6" y="60" width="138" height="14" rx="7" fill="#C98544"/></svg>`;
