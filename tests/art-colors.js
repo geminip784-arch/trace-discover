@@ -90,7 +90,11 @@ export function colorsOf(art) {
 export function family(hex, minS = 0.4) {
   const c0 = hsl(hex);
   if (c0.s < minS || c0.l < 0.2 || c0.l > 0.85) return null;
-  const { h, s } = hsl(hex);
+  const { h, s, l } = hsl(hex);
+  // Slice 5M part 4: Twemoji's soft pink (#F4ABBA, hue 348, light) is pink, and
+  // its dull brick brown (#C1694F, hue 14, low saturation: the teddy, the dog) is brown.
+  if (h >= 340 && l >= 0.72) return 'pink';
+  if ((h <= 15 || h >= 345) && s < 0.55) return 'brown';
   if (h <= 15 || h >= 345) return 'red';
   // Slice 5M part 3: yellow starts at hue 40, so Twemoji's yellow (#FFCC4D, hue 43) reads as yellow.
   if (h < 40) return s < 0.75 ? 'brown' : 'orange';

@@ -9,7 +9,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { TWEMOJI, TWEMOJI_SOURCE } from '../data/twemoji.js';
 import { OBJECTS, THINGS, TWEMOJI_FINDS, LOOKALIKES, RENAMED_FINDS } from '../data/finds.js';
 import { CREDITS, TWEMOJI_CREDIT } from '../data/credits.js';
-import { MISSING_PICTURES, missingPictureArt, objectPicture, shadowArt, colorThingArt, SHADOW_THINGS, LETTER_WORDS } from '../data/games.js';
+import { MISSING_PICTURES, missingPictureArt, objectPicture, shadowArt, SHADOW_THINGS, LETTER_WORDS } from '../data/games.js';
 import { cleanTwemoji, codesUsed } from '../tools/twemoji.js';
 import { letterScene, numberScene, cleanFinds, findArt, looksAlike, withoutLookalikes } from '../src/finds.js';
 import { lettersSet, shadowsSet, shadowsClash } from '../src/games.js';
@@ -64,7 +64,6 @@ test('the find pictures: Twemoji only where it makes her say the word; the rest 
   for (const id of KEPT) {
     assert.ok(object(id), id);
     assert.equal(object(id).emoji, undefined, `${id} keeps our drawing`);
-    assert.equal(object(id).art, object(id).drawn);
   }
   assert.deepEqual(OBJECTS.filter((o) => !o.emoji).map((o) => o.id).sort(), [...KEPT].sort());
   for (const o of OBJECTS.filter((x) => x.emoji)) {
@@ -174,11 +173,8 @@ test('apple and tomato never share a find scene, a count scene or a game set', (
 
 // ---- the games ----
 
-test('the games that show the find library show the new pictures; the games\' own things keep the drawings until part 4', () => {
+test('the games that show the find library show its pictures: Letter to picture, Shadow, Missing piece', () => {
   assert.equal(objectPicture('apple'), object('apple').art, 'Letter to picture and Shadow');
   assert.ok(shadowArt('apple').includes(TWEMOJI['1f34e']), 'the Shadow game\'s silhouette is of the Twemoji');
   for (const id of Object.keys(MISSING_PICTURES)) assert.equal(missingPictureArt(id), object(id).art, `Missing piece: ${id}`);
-  // Match colors still paints the library's drawn frock pink, and the drawn juice and fish.
-  assert.ok(colorThingArt('frock').includes(object('frock').drawn.slice(60, 160)));
-  assert.ok(colorThingArt('fish').includes(object('fish').drawn.slice(60, 160)));
 });

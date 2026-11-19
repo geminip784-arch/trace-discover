@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { THINGS, ROOMS } from '../data/finds.js';
-import { COLORS, ANIMALS, HOMES, ROAD_LAYOUTS, LANES, MENU, blob, colorThing, colorThingArt } from '../data/games.js';
+import { COLORS, ANIMALS, HOMES, ROAD_LAYOUTS, LANES, MENU, blob, colorThing, colorThingArt , gameEmoji } from '../data/games.js';
 import {
   GAMES, PAIRS, BOARD, boardFit, CARDS, numbersSet, colorsSet, makeSet, cardsOf, hitCard, distToCard,
   marginUnits, RELEASE_MARGIN_PX, startMatch, dropCard, partnerCard, MATCH_HINT_AFTER,
@@ -38,9 +38,9 @@ test('the Slice 5D games are still on the menu; every picture is inline SVG with
   for (const a of Object.values(ANIMALS)) assert.ok(HOMES[a.home], a.home);
 });
 
-test('the colors still start from the red apple, yellow lemon and blue cup; each has 3 or 4 things', () => {
-  assert.deepEqual(['red', 'yellow', 'blue'].map((c) => COLORS[c].things[0]), ['apple', 'lemon', 'cup']);
-  assert.ok(colorThing('red').includes(THINGS.apple.drawn), 'the games keep the drawn apple until Slice 5M part 4');
+test('the colors start from the red apple, yellow moon and blue T-shirt (Slice 5M part 4); each has 3 or 4 things', () => {
+  assert.deepEqual(['red', 'yellow', 'blue'].map((c) => COLORS[c].things[0]), ['apple', 'moon', 'tshirt']);
+  assert.equal(colorThing('red'), gameEmoji('apple'), 'the Twemoji apple');
   for (const c of Object.values(COLORS)) assert.ok(c.things.length >= 3 && c.things.length <= 4);
 });
 

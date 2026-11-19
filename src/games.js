@@ -470,6 +470,8 @@ export function dropThing(state, thing, to) {
 //   by color  three things of one color, each of a different kind; the odd one
 //             is the twin of one of them in another color, so it differs only
 //             in color and kind singles nothing out
+// Slice 5M part 4: kind rows draw from the Twemoji things (rows: 'kind'), color
+// rows from our painted things (rows: 'color'); a row never mixes the two.
 // singledOut() is the referee: rows are drawn at random until it agrees.
 
 export const ODD = {
@@ -484,7 +486,7 @@ export const ODD = {
   rule: { x: 640, y: 160, size: 104 },
   band: { y: 238, gap: 6, hop: 70, rise: 48 }, // gap: drops stop this short of a card; hop/rise: the arch over the odd card
   kindRowKinds: ['fruit', 'toy', 'animal', 'clothes'],
-  colorRowKinds: ['fruit', 'toy', 'clothes', 'kitchen', 'school'],
+  colorRowKinds: ['toy', 'clothes', 'kitchen', 'school'], // the painted things' kinds
   // The first row of a play, a warm-up: the easiest of its kind.
   easy: { kinds: { alike: 'fruit', odd: 'toy' }, colors: { alike: 'red', odd: 'blue' } },
 };
@@ -510,7 +512,8 @@ export const fairRow = (row) => {
   return s.length === 1 && s[0].index === row.odd && s[0].by === row.by;
 };
 
-const ALL_ODD = Object.values(ODD_THINGS);
+const KIND_POOL = Object.values(ODD_THINGS).filter((t) => t.rows === 'kind');
+const COLOR_POOL = Object.values(ODD_THINGS).filter((t) => t.rows === 'color');
 
 // One painted variant per object at most, so no two pictures in a kind row are the same object.
 function distinctObjects(list, n, rand) {
@@ -537,11 +540,11 @@ function placed(by, alike, odd, rand) {
 export function kindRow(rand = Math.random, easy = false) {
   const kind = easy ? ODD.easy.kinds.alike : pick(ODD.kindRowKinds, rand);
   for (let tries = 0; tries < 200; tries++) {
-    const alike = distinctObjects(ALL_ODD.filter((t) => t.kind === kind), 3, rand);
+    const alike = distinctObjects(KIND_POOL.filter((t) => t.kind === kind), 3, rand);
     if (!alike) continue;
     const oddKinds = easy ? [ODD.easy.kinds.odd] : ODD.kindRowKinds.filter((k) => k !== kind);
     const colors = alike.map((t) => t.color);
-    const odds = ALL_ODD.filter((t) => oddKinds.includes(t.kind) && colors.includes(t.color));
+    const odds = KIND_POOL.filter((t) => oddKinds.includes(t.kind) && colors.includes(t.color));
     if (!odds.length) continue;
     const row = placed('kind', alike, pick(odds, rand), rand);
     if (fairRow(row)) return row;
@@ -557,7 +560,7 @@ export function colorRow(rand = Math.random, easy = false) {
   for (let tries = 0; tries < 200; tries++) {
     const kinds = shuffle(ODD.colorRowKinds, rand).slice(0, 3);
     const alike = kinds.map((k) => {
-      const of = ALL_ODD.filter((t) => t.kind === k && t.color === color);
+      const of = COLOR_POOL.filter((t) => t.kind === k && t.color === color);
       return of.length ? pick(of, rand) : null;
     });
     if (alike.includes(null)) continue;

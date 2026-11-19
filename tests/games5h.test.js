@@ -4,10 +4,11 @@
 // and over many plays the pools are drawn evenly.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { OBJECTS } from '../data/finds.js';
+import { OBJECTS, THINGS } from '../data/finds.js';
 import {
   COLORS, blob, colorThingArt, LETTER_WORDS, SHADOW_THINGS, SHADOW_LEFT_OUT, SHADOW_LOOKALIKES, SHAPES,
   ANIMALS, HOMES, SORT_SETS,
+  gameEmoji,
 } from '../data/games.js';
 import {
   MATCH_GAMES, PAIRS, SETS_PER_PLAY, makeSet, matchPlay, setKey, freshPlay, numbersSet, colorsSet, lettersSet,
@@ -82,8 +83,8 @@ test('seven colors, each with 3 or 4 things; purple has grapes, plum and aubergi
   assert.deepEqual(Object.keys(COLORS), ['red', 'yellow', 'blue', 'green', 'orange', 'purple', 'pink']);
   for (const c of Object.values(COLORS)) assert.ok(c.things.length >= 3 && c.things.length <= 4);
   assert.deepEqual(COLORS.purple.things, ['grapes', 'plum', 'aubergine']);
-  assert.deepEqual(COLORS.pink.things, ['flower', 'sock', 'frock']);
-  assert.deepEqual(COLORS.orange.things, ['orange', 'fish', 'juice'], 'no tiger: its picture is a framed poster');
+  assert.deepEqual(COLORS.pink.things, ['pink-heart', 'sock', 'pig']);
+  assert.deepEqual(COLORS.orange.things, ['orange', 'carrot', 'tiger'], 'Slice 5M part 4: the Twemoji tiger is all orange');
   const all = Object.values(COLORS).flatMap((c) => c.things);
   assert.equal(new Set(all).size, all.length, 'no thing in two colors');
 });
@@ -103,14 +104,14 @@ test('every color thing\'s main fill is its color, and most of its colored area 
 });
 
 test('the main-fill check turns away many-colored pictures', () => {
-  // The tiger poster (a brown frame), the cream frock with pink dots, the
-  // kite and the umbrella (several colors each): none could stand for one color.
-  // Slice 5M part 3: these are the drawings the Match colors game keeps (`drawn`).
-  assert.notEqual(mainFill(object('tiger').drawn).family, 'orange');
-  assert.notEqual(mainFill(object('frock').drawn).family, 'pink');
-  for (const id of ['kite', 'umbrella', 'yoyo']) assert.ok(mainFill(object(id).drawn).share < MAIN_SHARE, id);
-  // The pink frock is the library's frock, painted pink.
-  assert.equal(mainFill(colorThingArt('frock')).family, 'pink');
+  // Slice 5M part 4: the Twemoji it turned away from the colors game: the lemon
+  // (big green leaves), the parrot (red and blue feathers), the strawberry (pale
+  // pink seeds) and the cherry blossom (a deep pink middle).
+  for (const id of ['lemon', 'parrot']) assert.ok(mainFill(object(id).art).share < MAIN_SHARE, id);
+  assert.ok(mainFill(gameEmoji('strawberry')).share < MAIN_SHARE, 'strawberry');
+  assert.ok(mainFill(THINGS.flower.art).share < MAIN_SHARE, 'the blossom');
+  // The many-colored Twemoji rainbow could never stand for one color.
+  assert.ok(mainFill(object('rainbow').art).share < MAIN_SHARE, 'rainbow');
 });
 
 test('colors: every set has exactly one right answer for each paint', () => {
