@@ -1,20 +1,54 @@
 // data/games.js — what the games book shows (Slices 5D and 5F, and Sort it), in docs/mockups/mockup4.html's
 // style: flat shapes, soft outlines, a white shine. Every picture is inline SVG,
-// so the games work offline. The red apple, yellow lemon and blue cup come from
-// data/finds.js (the countable things); the letter pictures and the shadows use
-// the find library's objects (OBJECTS); the rest are drawn here.
+// so the games work offline. Slice 5M part 4: most game pictures are Twemoji
+// (CC BY 4.0, data/twemoji.js; GAME_TWEMOJI below), each in its own colors,
+// never recolored; the letter pictures and the shadows use the find library's
+// objects (OBJECTS); the rest are drawn here.
 
 import { THINGS, OBJECTS, ROOMS, BASKET, TOYBOX } from './finds.js';
 import { PICTURES } from './drawings.js';
+import { TWEMOJI } from './twemoji.js';
 
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 const svg = (vb, body) => `<svg ${NS} viewBox="${vb}" class="art" style="overflow:visible">${body}</svg>`;
 const objectArt = (id) => OBJECTS.find((o) => o.id === id).art; // a find-library picture (200 x 240)
-// Slice 5M part 3: the find pictures became Twemoji; the games' own things keep
-// the drawings (`drawn`) until part 4. Letter to picture, Shadow, Missing piece
-// and the number groups show the find pictures themselves.
-const drawnArt = (id) => OBJECTS.find((o) => o.id === id).drawn;
+// A countable thing's drawing (60 x 60 body), even when the count scenes show
+// its Twemoji: Odd one out's color rows paint our cup, sock and crayon, and the
+// colors game keeps our star (Twemoji's is golden orange).
 const drawnThing = (id) => THINGS[id].drawn;
+
+// Slice 5M part 4: the games' Twemoji pictures. A picture is Twemoji only when
+// it is named with its word at a glance and (in the color games) is clearly its
+// color; each keeps its own colors. One id is always the same picture, in every
+// game. The pictures themselves are in data/twemoji.js (npm run twemoji).
+export const GAME_TWEMOJI = {
+  // fruit and food
+  apple: { emoji: '1f34e' }, strawberry: { emoji: '1f353' }, lemon: { emoji: '1f34b' }, banana: { emoji: '1f34c' }, pear: { emoji: '1f350' },
+  orange: { emoji: '1f34a' }, grapes: { emoji: '1f347' }, aubergine: { emoji: '1f346' }, carrot: { emoji: '1f955' },
+  // things and toys
+  crayon: { emoji: '1f58d' }, book: { emoji: '1f4d8' }, ball: { emoji: '26bd' }, car: { emoji: '1f697' }, 'car-blue': { emoji: '1f699' },
+  balloon: { emoji: '1f388' }, kite: { emoji: '1fa81' }, yoyo: { emoji: '1fa80' }, teddy: { emoji: '1f9f8' },
+  // clothes
+  tshirt: { emoji: '1f455' }, cap: { emoji: '1f9e2' }, socks: { emoji: '1f9e6' }, hat: { emoji: '1f452' }, scarf: { emoji: '1f9e3' }, jeans: { emoji: '1f456' },
+  // animals
+  chick: { emoji: '1f425' }, whale: { emoji: '1f40b' }, frog: { emoji: '1f438' }, tiger: { emoji: '1f405' },
+  pig: { emoji: '1f416' }, bee: { emoji: '1f41d' }, duck: { emoji: '1f986' }, dog: { emoji: '1f415' }, bird: { emoji: '1f426' },
+  fish: { emoji: '1f41f' }, rabbit: { emoji: '1f407' }, cow: { emoji: '1f404' }, elephant: { emoji: '1f418' },
+  // nature, homes and furniture
+  tree: { emoji: '1f332' }, moon: { emoji: '1f319' }, 'pink-heart': { emoji: '1fa77' }, nest: { emoji: '1fab9' }, web: { emoji: '1f578' },
+  bed: { emoji: '1f6cf' }, bathtub: { emoji: '1f6c1' }, sofa: { emoji: '1f6cb' },
+};
+// A game Twemoji in a box of the given size (default: the countable things'
+// 60 x 60), with a little room round it; `shadow` adds a ground shadow (the
+// path's travellers and homes). null when the id is not Twemoji.
+export function gameEmoji(id, box = 60, { shadow = false } = {}) {
+  const t = GAME_TWEMOJI[id];
+  if (!t) return null;
+  const pad = box * 0.06;
+  const size = box - 2 * pad - (shadow ? box * 0.06 : 0);
+  return svg(`0 0 ${box} ${box}`, (shadow ? `<ellipse cx="${box / 2}" cy="${box * 0.92}" rx="${box * 0.3}" ry="${box * 0.05}" fill="#000" opacity=".1"/>` : '')
+    + `<svg x="${(box - size) / 2}" y="${pad}" width="${size}" height="${size}" viewBox="0 0 36 36">${TWEMOJI[t.emoji]}</svg>`);
+}
 
 // ---- colors to things ----
 
@@ -23,14 +57,22 @@ const drawnThing = (id) => THINGS[id].drawn;
 // color (tests/games5h.test.js reads the art), so a many-colored picture never
 // stands for one color.
 export const COLORS = {
-  red: { paint: '#FF4D4D', edge: '#D93636', things: ['apple', 'tomato', 'strawberry', 'crayon'] },
-  yellow: { paint: '#FFD43B', edge: '#E7B500', things: ['lemon', 'banana', 'star', 'duck'] },
-  blue: { paint: '#4D96FF', edge: '#2F74D9', things: ['cup', 'book', 'blue-ball', 'whale'] },
-  green: { paint: '#35C46A', edge: '#23994F', things: ['leaf', 'alligator', 'parrot', 'olive'] },
-  orange: { paint: '#FF9A1F', edge: '#E07B00', things: ['orange', 'fish', 'juice'] },
+  red: { paint: '#FF4D4D', edge: '#D93636', things: ['apple', 'tomato', 'car', 'crayon'] },
+  yellow: { paint: '#FFD43B', edge: '#E7B500', things: ['moon', 'banana', 'star', 'chick'] },
+  blue: { paint: '#4D96FF', edge: '#2F74D9', things: ['tshirt', 'book', 'cap', 'whale'] },
+  green: { paint: '#35C46A', edge: '#23994F', things: ['frog', 'alligator', 'pear', 'tree'] },
+  orange: { paint: '#FF9A1F', edge: '#E07B00', things: ['orange', 'carrot', 'tiger'] },
   purple: { paint: '#9B5DE5', edge: '#7B3FC4', things: ['grapes', 'plum', 'aubergine'] },
-  pink: { paint: '#FF8FD6', edge: '#E066B3', things: ['flower', 'sock', 'frock'] },
+  pink: { paint: '#FF8FD6', edge: '#E066B3', things: ['pink-heart', 'sock', 'pig'] },
 };
+// Slice 5M part 4: Twemoji for most (each clearly its color); our drawings for
+// the tomato (too like Twemoji's apple), the star (Twemoji's is golden orange),
+// the alligator (Twemoji's is said "crocodile"), the plum (no emoji) and the sock.
+// The re-run color check (most of a picture's colored area must be its color)
+// swapped in the moon for the lemon (big green leaves), the pear for the parrot
+// (red and blue feathers), the red car for the strawberry (pale pink seeds) and
+// a pink heart for the blossom (a deep pink middle), and chose the whole pig and
+// the front-facing chick.
 
 // A paint blob (60 x 60), with two little drops and a shine.
 export const blob = (color) => {
@@ -42,107 +84,32 @@ export const blob = (color) => {
 };
 
 // The objects drawn for the colors game (60 x 60, like the countable things).
+// Slice 5H's plum (round, with a crease and a leaf): there is no plum emoji.
 const NEW_THINGS = {
-  leaf: '<path d="M30 5 C51 12 55 37 30 55 C5 37 9 12 30 5 Z" fill="#35C46A" stroke="#23994F" stroke-width="3"/>'
-    + '<path d="M30 12 V52" stroke="#23994F" stroke-width="3" stroke-linecap="round"/>'
-    + '<path d="M30 25 L40 18 M30 35 L20 28 M30 43 L39 37" stroke="#23994F" stroke-width="2.5" stroke-linecap="round"/>'
-    + '<ellipse cx="22" cy="22" rx="4" ry="7" fill="#fff" opacity=".3" transform="rotate(25 22 22)"/>',
-  orange: '<circle cx="30" cy="34" r="21" fill="#FF9A1F" stroke="#E07B00" stroke-width="3"/>'
-    + '<g fill="#E07B00" opacity=".5"><circle cx="38" cy="38" r="1.6"/><circle cx="30" cy="44" r="1.6"/><circle cx="40" cy="28" r="1.6"/></g>'
-    + '<ellipse cx="23" cy="27" rx="5" ry="3.5" fill="#fff" opacity=".45" transform="rotate(-30 23 27)"/>'
-    + '<path d="M30 14 q1 -6 5 -8" stroke="#5B3A12" stroke-width="3" fill="none" stroke-linecap="round"/>'
-    + '<ellipse cx="40" cy="10" rx="7" ry="3.5" fill="#35D07F"/>',
-  grapes: '<path d="M30 11 q2 -6 6 -8" stroke="#5B3A12" stroke-width="3" fill="none" stroke-linecap="round"/>'
-    + '<ellipse cx="41" cy="8" rx="7" ry="3.5" fill="#35D07F"/>'
-    + '<g fill="#9B5DE5" stroke="#7B3FC4" stroke-width="2"><circle cx="20" cy="21" r="8"/><circle cx="30" cy="19" r="8"/><circle cx="40" cy="21" r="8"/>'
-    + '<circle cx="25" cy="32" r="8"/><circle cx="35" cy="32" r="8"/><circle cx="30" cy="44" r="8"/></g>'
-    + '<g fill="#fff" opacity=".45"><circle cx="17" cy="18" r="2.2"/><circle cx="27" cy="16" r="2.2"/><circle cx="22" cy="29" r="2.2"/><circle cx="27" cy="41" r="2.2"/></g>',
-  // Slice 5H: a plum (round, with a crease and a leaf) and an aubergine (long, with a green cap).
   plum: '<path d="M30 16 C46 14 54 26 52 38 C50 50 40 56 30 55 C18 55 8 47 8 35 C8 23 18 16 30 16 Z" fill="#8E44C9" stroke="#6C2CA3" stroke-width="3"/>'
     + '<path d="M30 18 C25 28 25 44 30 54" stroke="#6C2CA3" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".7"/>'
     + '<path d="M30 17 q1 -7 5 -10" stroke="#5B3A12" stroke-width="3" fill="none" stroke-linecap="round"/>'
     + '<path d="M34 10 C40 2 50 4 52 8 C46 13 39 13 34 10 Z" fill="#35D07F" stroke="#23994F" stroke-width="1.5"/>'
     + '<ellipse cx="19" cy="30" rx="4" ry="7" fill="#fff" opacity=".4" transform="rotate(20 19 30)"/>',
-  aubergine: '<path d="M38 14 C50 18 54 30 50 40 C46 52 32 58 20 54 C8 50 6 40 14 34 C22 28 24 18 38 14 Z" fill="#7B3FC4" stroke="#5A2A99" stroke-width="3"/>'
-    + '<path d="M32 16 C34 8 44 6 50 12 C52 18 46 20 40 18 Z" fill="#35C46A" stroke="#23994F" stroke-width="2" stroke-linejoin="round"/>'
-    + '<path d="M44 10 q4 -6 9 -6" stroke="#23994F" stroke-width="3.5" fill="none" stroke-linecap="round"/>'
-    + '<ellipse cx="20" cy="42" rx="4" ry="8" fill="#fff" opacity=".35" transform="rotate(55 20 42)"/>',
 };
 
-// Every object of the colors game, as an SVG. Most come from the countable
-// things, Sort it and the find library; the pink frock is the library's frock
-// painted pink (its own dress is cream with pink dots, so cream is its main fill).
-const PINK_FROCK = () => drawnArt('frock')
-  .replace('fill="#FFF3E3" stroke="#F2D9A8"', 'fill="#FF8FD6" stroke="#E066B3"')
-  .replace('fill="#F2D9A8"/>', 'fill="#E066B3"/>')
-  .replace('<g fill="#FF8FB8">', '<g fill="#FFFFFF">')
-  .replace('<g fill="#FFD43B">', '<g fill="#FFC2EA">');
-const COLOR_ART = {
-  strawberry: () => sortThingArt('strawberry'),
-  banana: () => sortThingArt('banana'),
-  'blue-ball': () => sortThingArt('blue-ball'),
-  duck: () => ANIMALS.duck.art,
-  whale: () => drawnArt('whale'),
-  alligator: () => drawnArt('alligator'),
-  parrot: () => drawnArt('parrot'),
-  olive: () => drawnArt('olive'),
-  fish: () => drawnArt('fish'),
-  juice: () => drawnArt('juice'),
-  frock: PINK_FROCK,
-};
-export const colorThingArt = (id) => (COLOR_ART[id] ? COLOR_ART[id]() : svg('0 0 60 60', NEW_THINGS[id] ?? drawnThing(id)));
+// Every object of the colors game, as an SVG: its Twemoji, or our drawing.
+export const colorThingArt = (id) => gameEmoji(id)
+  ?? (id === 'alligator' ? objectArt('alligator') : svg('0 0 60 60', NEW_THINGS[id] ?? drawnThing(id)));
 
-// The first object of a color (the menu tile and Odd one out use these).
+// The first object of a color.
 export const colorThing = (color) => colorThingArt(COLORS[color].things[0]);
 
 // ---- follow the path ----
 
-// The animals (120 x 120) and their homes (140 x 140).
+// The animals (120 x 120) and their homes (140 x 140). Slice 5M part 4: the
+// travellers are Twemoji, with a ground shadow, except our friendly purple
+// spider (Twemoji's black spider could scare her).
+const traveller = (id) => gameEmoji(id, 120, { shadow: true });
 export const ANIMALS = {
-  bee: {
-    home: 'hive',
-    art: svg('0 0 120 120',
-      '<ellipse cx="60" cy="108" rx="34" ry="6" fill="#000" opacity=".1"/>'
-      + '<ellipse cx="44" cy="40" rx="20" ry="13" fill="#D7ECFF" opacity=".95" transform="rotate(-25 44 40)"/>'
-      + '<ellipse cx="74" cy="38" rx="20" ry="13" fill="#D7ECFF" opacity=".95" transform="rotate(25 74 38)"/>'
-      + '<ellipse cx="60" cy="70" rx="38" ry="28" fill="#FFD43B" stroke="#E7B500" stroke-width="3"/>'
-      + '<path d="M44 45 Q40 70 44 96 M60 42 Q56 70 60 98 M76 45 Q72 70 76 96" stroke="#2A2370" stroke-width="9" fill="none" stroke-linecap="round"/>'
-      + '<path d="M97 72 L110 76 L97 80 Z" fill="#2A2370"/>'
-      + '<circle cx="28" cy="62" r="17" fill="#FFD43B" stroke="#E7B500" stroke-width="3"/>'
-      + '<circle cx="23" cy="58" r="4" fill="#1E1E3F"/><circle cx="24" cy="57" r="1.4" fill="#fff"/>'
-      + '<circle cx="18" cy="66" r="3.5" fill="#FF9EC4" opacity=".8"/>'
-      + '<path d="M22 70 Q28 75 34 70" stroke="#1E1E3F" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
-      + '<path d="M26 46 Q22 34 14 32 M34 47 Q36 34 44 30" stroke="#2A2370" stroke-width="3" fill="none" stroke-linecap="round"/>'
-      + '<circle cx="14" cy="32" r="3.5" fill="#2A2370"/><circle cx="44" cy="30" r="3.5" fill="#2A2370"/>'),
-  },
-  duck: {
-    home: 'pond',
-    art: svg('0 0 120 120',
-      '<ellipse cx="62" cy="108" rx="40" ry="6" fill="#000" opacity=".1"/>'
-      + '<path d="M22 72 Q20 104 60 104 Q104 104 104 74 Q96 82 84 80 Q80 56 58 58 Q40 60 36 74 Z" fill="#FFE14D" stroke="#E7B500" stroke-width="3"/>'
-      + '<path d="M54 76 Q70 70 82 84 Q66 92 54 76 Z" fill="#FFD43B" stroke="#E7B500" stroke-width="2.5"/>'
-      + '<circle cx="40" cy="44" r="22" fill="#FFE14D" stroke="#E7B500" stroke-width="3"/>'
-      + '<path d="M18 46 Q4 48 6 54 Q12 60 24 54 Z" fill="#FF9A1F" stroke="#E07B00" stroke-width="2.5"/>'
-      + '<circle cx="36" cy="38" r="4.5" fill="#1E1E3F"/><circle cx="37" cy="37" r="1.6" fill="#fff"/>'
-      + '<circle cx="46" cy="50" r="4" fill="#FF9EC4" opacity=".8"/>'
-      + '<path d="M40 22 q4 -8 10 -6" stroke="#E7B500" stroke-width="3" fill="none" stroke-linecap="round"/>'),
-  },
-  dog: {
-    home: 'kennel',
-    art: svg('0 0 120 120',
-      '<ellipse cx="60" cy="110" rx="36" ry="6" fill="#000" opacity=".1"/>'
-      + '<ellipse cx="60" cy="88" rx="30" ry="20" fill="#C98E55" stroke="#9B6B43" stroke-width="3"/>'
-      + '<ellipse cx="30" cy="48" rx="13" ry="26" fill="#8A5A2E" transform="rotate(18 30 48)"/>'
-      + '<ellipse cx="90" cy="48" rx="13" ry="26" fill="#8A5A2E" transform="rotate(-18 90 48)"/>'
-      + '<circle cx="60" cy="50" r="30" fill="#D9A066" stroke="#9B6B43" stroke-width="3"/>'
-      + '<ellipse cx="60" cy="64" rx="16" ry="12" fill="#F3D2A8"/>'
-      + '<ellipse cx="60" cy="58" rx="7" ry="5" fill="#2A2370"/>'
-      + '<path d="M60 63 V69 M60 69 Q54 74 50 70 M60 69 Q66 74 70 70" stroke="#2A2370" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
-      + '<path d="M56 74 Q60 84 64 74 Z" fill="#FF8FB8"/>'
-      + '<circle cx="48" cy="44" r="4.5" fill="#1E1E3F"/><circle cx="72" cy="44" r="4.5" fill="#1E1E3F"/>'
-      + '<circle cx="49" cy="43" r="1.6" fill="#fff"/><circle cx="73" cy="43" r="1.6" fill="#fff"/>'
-      + '<circle cx="40" cy="56" r="4" fill="#FF9EC4" opacity=".7"/><circle cx="80" cy="56" r="4" fill="#FF9EC4" opacity=".7"/>'),
-  },
+  bee: { home: 'hive', art: traveller('bee') },
+  duck: { home: 'pond', art: traveller('duck') },
+  dog: { home: 'kennel', art: traveller('dog') },
 };
 
 export const HOMES = {
@@ -172,45 +139,11 @@ export const HOMES = {
 };
 
 // Slice 5H: five more animals and their homes, so each board picks 3 of 8.
-// The fish, the rabbit and the nest are the find library's own pictures
-// (200 x 240); the rest are drawn here in the same style.
 Object.assign(ANIMALS, {
-  bird: {
-    home: 'nest',
-    art: svg('0 0 120 120',
-      '<ellipse cx="60" cy="110" rx="32" ry="6" fill="#000" opacity=".1"/>'
-      + '<path d="M86 66 L112 52 L108 74 Z" fill="#2F74D9" stroke="#2F74D9" stroke-width="3" stroke-linejoin="round"/>'
-      + '<path d="M50 100 V108 M66 100 V108" stroke="#FF9A1F" stroke-width="4" stroke-linecap="round"/>'
-      + '<ellipse cx="60" cy="70" rx="34" ry="30" fill="#4D96FF" stroke="#2F74D9" stroke-width="3"/>'
-      + '<ellipse cx="58" cy="80" rx="20" ry="16" fill="#BDE6FF"/>'
-      + '<path d="M62 62 Q84 58 92 74 Q76 84 62 62 Z" fill="#2F74D9"/>'
-      + '<circle cx="38" cy="46" r="22" fill="#4D96FF" stroke="#2F74D9" stroke-width="3"/>'
-      + '<path d="M18 46 L4 52 L18 56 Z" fill="#FF9A1F" stroke="#E07B00" stroke-width="2.5" stroke-linejoin="round"/>'
-      + '<circle cx="32" cy="40" r="4.5" fill="#1E1E3F"/><circle cx="33" cy="39" r="1.6" fill="#fff"/>'
-      + '<circle cx="42" cy="54" r="4" fill="#FF9EC4" opacity=".8"/>'
-      + '<path d="M38 24 q2 -10 10 -10" stroke="#2F74D9" stroke-width="3" fill="none" stroke-linecap="round"/>'
-      + '<ellipse cx="46" cy="64" rx="7" ry="4" fill="#fff" opacity=".35" transform="rotate(-30 46 64)"/>'),
-  },
-  fish: { home: 'bowl', art: drawnArt('fish') },
-  rabbit: { home: 'hutch', art: drawnArt('rabbit') },
-  cow: {
-    home: 'barn',
-    art: svg('0 0 120 120',
-      '<ellipse cx="62" cy="112" rx="42" ry="6" fill="#000" opacity=".1"/>'
-      + '<path d="M44 92 V110 M58 94 V110 M80 94 V110 M94 92 V110" stroke="#4A4F5C" stroke-width="8" stroke-linecap="round"/>'
-      + '<path d="M104 62 Q116 70 110 86" stroke="#4A4F5C" stroke-width="3" fill="none" stroke-linecap="round"/>'
-      + '<rect x="34" y="52" width="72" height="46" rx="22" fill="#FFFFFF" stroke="#9AA6B5" stroke-width="3"/>'
-      + '<path d="M62 54 Q74 60 70 74 Q60 78 56 66 Q56 58 62 54 Z M88 72 Q100 72 100 84 Q92 92 84 84 Q82 76 88 72 Z" fill="#3B3B4F"/>'
-      + '<path d="M14 26 Q8 18 12 12 M44 26 Q50 18 46 12" stroke="#E7C9A0" stroke-width="5" fill="none" stroke-linecap="round"/>'
-      + '<ellipse cx="10" cy="36" rx="9" ry="5" fill="#3B3B4F" transform="rotate(-20 10 36)"/>'
-      + '<ellipse cx="48" cy="36" rx="9" ry="5" fill="#3B3B4F" transform="rotate(20 48 36)"/>'
-      + '<rect x="12" y="24" width="34" height="44" rx="16" fill="#FFFFFF" stroke="#9AA6B5" stroke-width="3"/>'
-      + '<path d="M18 30 Q26 26 30 34 Q24 40 18 36 Z" fill="#3B3B4F"/>'
-      + '<ellipse cx="29" cy="62" rx="17" ry="11" fill="#FFB3C7" stroke="#E68AA6" stroke-width="2.5"/>'
-      + '<circle cx="23" cy="62" r="2.5" fill="#B5576F"/><circle cx="35" cy="62" r="2.5" fill="#B5576F"/>'
-      + '<circle cx="22" cy="44" r="4" fill="#1E1E3F"/><circle cx="37" cy="44" r="4" fill="#1E1E3F"/>'
-      + '<circle cx="23" cy="43" r="1.4" fill="#fff"/><circle cx="38" cy="43" r="1.4" fill="#fff"/>'),
-  },
+  bird: { home: 'nest', art: traveller('bird') },
+  fish: { home: 'bowl', art: traveller('fish') },
+  rabbit: { home: 'hutch', art: traveller('rabbit') },
+  cow: { home: 'barn', art: traveller('cow') },
   spider: {
     home: 'web',
     art: svg('0 0 120 120',
@@ -229,7 +162,8 @@ Object.assign(ANIMALS, {
 });
 
 Object.assign(HOMES, {
-  nest: drawnArt('nest'),
+  // Slice 5M part 4: the nest and the web are Twemoji; the other homes have no emoji.
+  nest: gameEmoji('nest', 140, { shadow: true }),
   bowl: svg('0 0 140 140',
     '<ellipse cx="70" cy="132" rx="44" ry="6" fill="#000" opacity=".1"/>'
     + '<path d="M40 128 H100 L94 118 H46 Z" fill="#B7814A" stroke="#8A5A2E" stroke-width="3" stroke-linejoin="round"/>'
@@ -260,15 +194,7 @@ Object.assign(HOMES, {
     + '<path d="M44 82 L96 130 M96 82 L44 130 M70 82 V130" stroke="#E8594F" stroke-width="5"/>'
     + '<circle cx="70" cy="52" r="11" fill="#FFF6E5" stroke="#FFFFFF" stroke-width="4"/>'
     + '<path d="M70 44 V60 M62 52 H78" stroke="#B83E36" stroke-width="2.5"/>'),
-  web: svg('0 0 140 140',
-    '<path d="M70 4 V18" stroke="#9AA6B5" stroke-width="2"/>'
-    + '<circle cx="70" cy="74" r="60" fill="#F1F7FF" stroke="#D6E6F5" stroke-width="3"/>'
-    + '<g stroke="#7C88A6" stroke-width="2.5" fill="none" stroke-linecap="round">'
-    + '<path d="M70 14 V134 M10 74 H130 M28 32 L112 116 M112 32 L28 116"/>'
-    + '<path d="M70 62 L78 66 L82 74 L78 82 L70 86 L62 82 L58 74 L62 66 Z"/>'
-    + '<path d="M70 46 L90 54 L98 74 L90 94 L70 102 L50 94 L42 74 L50 54 Z"/>'
-    + '<path d="M70 30 L101 43 L114 74 L101 105 L70 118 L39 105 L26 74 L39 43 Z"/></g>'
-    + '<g fill="#BDE6FF"><circle cx="90" cy="54" r="3"/><circle cx="39" cy="105" r="3"/><circle cx="114" cy="74" r="2.5"/></g>'),
+  web: gameEmoji('web', 140, { shadow: true }),
 });
 
 // Three hand-designed road layouts. The board has five lanes, top to bottom;
@@ -326,7 +252,7 @@ export const MENU = {
     + `<g transform="translate(104 34)"><g transform="translate(0 0)">${THINGS.cup.art}</g><g transform="translate(36 46)">${THINGS.cup.art}</g><g transform="translate(0 86) scale(1)">${THINGS.cup.art}</g></g>`),
   colors: svg('0 0 200 160',
     `<g transform="translate(6 30) scale(1.6)">${blob('red').replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`
-    + `<g transform="translate(104 30) scale(1.6)">${drawnThing('apple')}</g>`),
+    + `${gameEmoji('apple').replace('<svg ', '<svg x="104" y="30" width="96" height="96" ')}`),
   path: svg('0 0 200 160',
     '<path d="M20 120 C70 150 80 20 130 60 S170 110 186 40" stroke="#B7814A" stroke-width="30" fill="none" stroke-linecap="round"/>'
     + '<path d="M20 120 C70 150 80 20 130 60 S170 110 186 40" stroke="#F2D9A8" stroke-width="22" fill="none" stroke-linecap="round"/>'
@@ -497,20 +423,13 @@ export const SHAPE_THINGS = {
 export const shapeThingArt = (thing) => svg('0 0 100 100', SHAPE_THINGS[thing]);
 
 // ---- follow the path, set 2: furniture to rooms ----
-// The furniture (120 x 120) and the rooms they go to. A room home is a framed
+// The furniture (120 x 120) and the rooms they go to. Slice 5M part 4: the bed,
+// bathtub and sofa are Twemoji; the stove stays ours (no stove emoji). A room home is a framed
 // picture of the room (ROOM_HOME is its size in units, wider than tall).
 export const ROOM_HOME = { w: 220, h: 150 };
 export const FURNITURE = {
-  bed: {
-    home: 'bedroom',
-    art: svg('0 0 120 120',
-      '<ellipse cx="60" cy="110" rx="52" ry="6" fill="#000" opacity=".1"/>'
-      + '<rect x="8" y="30" width="14" height="76" rx="6" fill="#C2567F"/><rect x="98" y="58" width="14" height="48" rx="6" fill="#C2567F"/>'
-      + '<rect x="14" y="66" width="92" height="22" rx="6" fill="#fff" stroke="#E3D3F5" stroke-width="2"/>'
-      + '<rect x="22" y="50" width="28" height="18" rx="8" fill="#fff" stroke="#E3D3F5" stroke-width="2"/>'
-      + '<path d="M44 56 H100 Q106 56 106 64 V84 H44 Z" fill="#FF8FC4"/>'
-      + '<g fill="#fff" opacity=".8"><circle cx="58" cy="66" r="3"/><circle cx="76" cy="72" r="3"/><circle cx="92" cy="64" r="3"/><circle cx="66" cy="78" r="3"/></g>'),
-  },
+  bed: { home: 'bedroom', art: gameEmoji('bed', 120, { shadow: true }) },
+
   stove: {
     home: 'kitchen',
     art: svg('0 0 120 120',
@@ -522,28 +441,10 @@ export const FURNITURE = {
       + '<rect x="40" y="44" width="40" height="5" rx="2.5" fill="#9AA6B5"/>'
       + '<g fill="none" stroke="#FF9A1F" stroke-width="3" stroke-linecap="round"><path d="M28 14 q4 -6 0 -10"/><path d="M60 14 q4 -6 0 -10"/><path d="M92 14 q4 -6 0 -10"/></g>'),
   },
-  bathtub: {
-    home: 'bathroom',
-    art: svg('0 0 120 120',
-      '<ellipse cx="60" cy="112" rx="50" ry="6" fill="#000" opacity=".1"/>'
-      + '<path d="M18 30 V20 Q18 10 28 10 Q36 10 36 18" stroke="#9AA6B5" stroke-width="5" fill="none" stroke-linecap="round"/>'
-      + '<g fill="#fff" stroke="#BDE6FF" stroke-width="2"><circle cx="38" cy="50" r="10"/><circle cx="56" cy="46" r="12"/><circle cx="76" cy="50" r="10"/><circle cx="92" cy="54" r="8"/></g>'
-      + '<path d="M8 58 H112 V68 Q112 98 84 98 H36 Q8 98 8 68 Z" fill="#fff" stroke="#7FB8FF" stroke-width="3"/>'
-      + '<rect x="6" y="54" width="108" height="10" rx="5" fill="#4D96FF"/>'
-      + '<rect x="26" y="98" width="8" height="12" rx="3" fill="#9AA6B5"/><rect x="86" y="98" width="8" height="12" rx="3" fill="#9AA6B5"/>'
-      + '<path d="M70 44 q4 -8 12 -6 q-2 6 -12 6 z" fill="#FFD43B"/>'),
-  },
-  sofa: {
-    home: 'living',
-    art: svg('0 0 120 120',
-      '<ellipse cx="60" cy="108" rx="54" ry="6" fill="#000" opacity=".1"/>'
-      + '<rect x="18" y="34" width="84" height="40" rx="12" fill="#35B5A8"/>'
-      + '<rect x="6" y="54" width="22" height="44" rx="10" fill="#2A968B"/><rect x="92" y="54" width="22" height="44" rx="10" fill="#2A968B"/>'
-      + '<rect x="24" y="66" width="72" height="28" rx="8" fill="#43C7B9"/>'
-      + '<line x1="60" y1="68" x2="60" y2="92" stroke="#2A968B" stroke-width="3"/>'
-      + '<rect x="30" y="42" width="22" height="20" rx="6" fill="#FFD43B" transform="rotate(-8 41 52)"/>'
-      + '<rect x="14" y="96" width="8" height="10" rx="3" fill="#7A4E2D"/><rect x="98" y="96" width="8" height="10" rx="3" fill="#7A4E2D"/>'),
-  },
+  bathtub: { home: 'bathroom', art: gameEmoji('bathtub', 120, { shadow: true }) },
+
+  sofa: { home: 'living', art: gameEmoji('sofa', 120, { shadow: true }) },
+
 };
 
 // The bathroom, drawn for this set in the find rooms' style (1280 x 640, the
@@ -607,54 +508,28 @@ Object.assign(MENU, {
 // ---------------------------------------------------------------------------
 // Sort it: two baskets, each marked with a sample thing on its front
 
-// The new things for Sort it (60 x 60, like the countable things).
+// Our blue balloon (60 x 60): Odd one out's color rows paint it in four colors.
+// Slice 5M part 4: Sort it's things are Twemoji now (GAME_TWEMOJI).
 const SORT_NEW = {
-  strawberry: '<path d="M30 56 C14 46 8 33 12 23 C15 15 25 14 30 19 C35 14 45 15 48 23 C52 33 46 46 30 56 Z" fill="#FF4D4D" stroke="#D93636" stroke-width="2.5"/>'
-    + '<g fill="#FFE066"><ellipse cx="22" cy="28" rx="1.6" ry="2.4"/><ellipse cx="38" cy="28" rx="1.6" ry="2.4"/><ellipse cx="30" cy="35" rx="1.6" ry="2.4"/>'
-    + '<ellipse cx="22" cy="40" rx="1.6" ry="2.4"/><ellipse cx="38" cy="40" rx="1.6" ry="2.4"/><ellipse cx="30" cy="47" rx="1.6" ry="2.4"/></g>'
-    + '<path d="M18 18 L26 16 L30 9 L34 16 L42 18 L35 22 L30 20 L25 22 Z" fill="#35C46A"/>',
-  banana: '<path d="M10 14 Q12 44 40 50 Q52 52 55 45 Q50 47 42 44 Q22 38 18 12 Z" fill="#FFE14D" stroke="#E7B500" stroke-width="2.5" stroke-linejoin="round"/>'
-    + '<path d="M16 22 Q22 38 38 44" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".5"/>'
-    + '<path d="M10 14 L14 8 L18 12" fill="#8A5A2B" stroke="#8A5A2B" stroke-width="2.5" stroke-linejoin="round"/>',
-  teddy: '<circle cx="17" cy="13" r="7" fill="#B07A45"/><circle cx="43" cy="13" r="7" fill="#B07A45"/>'
-    + '<circle cx="17" cy="13" r="3.5" fill="#E8B987"/><circle cx="43" cy="13" r="3.5" fill="#E8B987"/>'
-    + '<ellipse cx="30" cy="45" rx="16" ry="13" fill="#B07A45"/><ellipse cx="30" cy="47" rx="8" ry="7" fill="#E8B987"/>'
-    + '<circle cx="30" cy="24" r="15" fill="#C98E55"/><ellipse cx="30" cy="29" rx="7" ry="5" fill="#E8B987"/>'
-    + '<circle cx="24" cy="21" r="2.2" fill="#2A2370"/><circle cx="36" cy="21" r="2.2" fill="#2A2370"/><ellipse cx="30" cy="27" rx="2.6" ry="2" fill="#2A2370"/>'
-    + '<circle cx="15" cy="45" r="5" fill="#B07A45"/><circle cx="45" cy="45" r="5" fill="#B07A45"/>',
-  top: '<rect x="27" y="4" width="6" height="12" rx="3" fill="#7A5232"/>'
-    + '<path d="M8 26 Q30 8 52 26 L30 56 Z" fill="#9B5DE5" stroke="#7B3FC4" stroke-width="2.5" stroke-linejoin="round"/>'
-    + '<path d="M11 30 Q30 18 49 30 L45 36 Q30 26 15 36 Z" fill="#FFD43B"/>'
-    + '<path d="M19 42 Q30 36 41 42 L37 47 Q30 44 23 47 Z" fill="#35C46A"/>'
-    + '<ellipse cx="22" cy="22" rx="5" ry="2.5" fill="#fff" opacity=".45" transform="rotate(-20 22 22)"/>',
-  'blue-ball': '<circle cx="30" cy="30" r="21" fill="#4D96FF"/><path d="M11 24 C20 32 40 32 49 24" stroke="#fff" stroke-width="5" fill="none"/>'
-    + '<path d="M11 38 C20 46 40 46 49 38" stroke="#BDE6FF" stroke-width="5" fill="none"/>',
   balloon: '<path d="M30 46 Q26 52 32 56 Q36 58 32 60" stroke="#9AA6B5" stroke-width="2" fill="none" stroke-linecap="round"/>'
     + '<ellipse cx="30" cy="24" rx="17" ry="21" fill="#4D96FF" stroke="#2F74D9" stroke-width="2.5"/>'
     + '<path d="M27 44 L33 44 L30 49 Z" fill="#2F74D9"/>'
     + '<ellipse cx="23" cy="15" rx="4" ry="7" fill="#fff" opacity=".45" transform="rotate(25 23 15)"/>',
 };
 
-// The blue car: the Drawing book's car with its tail light made blue too, so
-// nothing on it is red (tests/sort.test.js reads every color in the art).
-const BLUE_CAR = inner(PICTURES.car.art).replace(/#FF8FB8/g, '#7FB8FF');
-
-// Every thing Sort it shows, as an SVG.
-export function sortThingArt(id) {
-  if (id === 'car') return svg('0 4 100 100', BLUE_CAR);
-  return svg('0 0 60 60', SORT_NEW[id] ?? NEW_THINGS[id] ?? drawnThing(id));
-}
+// Every thing Sort it shows, as an SVG: its Twemoji, or our tomato.
+export const sortThingArt = (id) => gameEmoji(id) ?? svg('0 0 60 60', drawnThing(id));
 
 // The two sets. Each basket: its id (for the log), the sample on its front
 // (never on the board), and the things it takes; a board shows 3 of each.
 export const SORT_SETS = {
   'sort-colors': [
-    { id: 'red', sample: 'apple', things: ['tomato', 'ball', 'crayon', 'strawberry'] },
-    { id: 'blue', sample: 'cup', things: ['book', 'car', 'blue-ball', 'balloon'] },
+    { id: 'red', sample: 'apple', things: ['tomato', 'balloon', 'crayon', 'strawberry'] },
+    { id: 'blue', sample: 'tshirt', things: ['book', 'car-blue', 'cap', 'whale'] },
   ],
   'sort-kinds': [
     { id: 'fruit', sample: 'apple', things: ['lemon', 'orange', 'grapes', 'banana', 'strawberry'] },
-    { id: 'toys', sample: 'teddy', things: ['ball', 'block', 'car', 'top'] },
+    { id: 'toys', sample: 'teddy', things: ['ball', 'kite', 'car', 'yoyo'] },
   ],
 };
 
@@ -670,7 +545,7 @@ const tileBasket = (sample, x) => basketArt(sample).replace(/^<svg [^>]*>/, `<sv
 Object.assign(MENU, {
   'sort-colors': svg('0 0 200 160',
     `${tileBasket('apple', -4)}`
-    + `${tileBasket('cup', 100)}`),
+    + `${tileBasket('tshirt', 100)}`),
   'sort-kinds': svg('0 0 200 160',
     `${tileBasket('apple', -4)}`
     + `${tileBasket('teddy', 100)}`),
@@ -678,6 +553,10 @@ Object.assign(MENU, {
 
 // ---------------------------------------------------------------------------
 // Odd one out: a row of four, three alike and one different
+
+// Slice 5M part 4: kind rows show Twemoji, each in its own colors; color rows
+// show our drawings (option B): the same object painted in four colors, so only
+// color tells the odd one apart. A row never mixes the two.
 
 // The colors a thing can be painted in (color rows), and the recolorable things.
 export const PAINTS = {
@@ -695,7 +574,6 @@ const PAINTED = {
   balloon: (p) => svg('0 0 60 60', recolor(SORT_NEW.balloon, { '#4D96FF': p.paint, '#2F74D9': p.edge })),
   cup: (p) => svg('0 0 60 60', recolor(drawnThing('cup'), { '#4D96FF': p.paint })),
   sock: (p) => svg('0 0 60 60', recolor(drawnThing('sock'), { '#FF8FD6': p.paint })),
-  book: (p) => svg('0 0 60 60', recolor(drawnThing('book'), { '#4D96FF': p.paint })),
   crayon: (p) => svg('0 0 60 60', recolor(drawnThing('crayon'), { '#FF6B6B': p.paint })),
   tshirt: (p) => svg('0 0 60 60', `<path d="M20 8 L8 16 L4 28 L14 31 L16 24 L16 54 L44 54 L44 24 L46 31 L56 28 L52 16 L40 8 Q30 16 20 8 Z" fill="${p.paint}" stroke="${p.edge}" stroke-width="2.5" stroke-linejoin="round"/>`
     + '<path d="M22 9 Q30 15 38 9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>'
@@ -706,36 +584,34 @@ const PAINTED = {
     + `<path d="M18 36 Q20 22 30 18" stroke="${p.light}" stroke-width="3" fill="none" stroke-linecap="round"/>`),
 };
 
-// Every thing Odd one out shows: its kind and its color. A painted thing's id
-// is '<object>-<color>' (ball-red, cup-blue); the same object in two colors are twins.
-const FIXED = {
-  apple: { kind: 'fruit', color: 'red', art: () => svg('0 0 60 60', drawnThing('apple')) },
-  strawberry: { kind: 'fruit', color: 'red', art: () => sortThingArt('strawberry') },
-  banana: { kind: 'fruit', color: 'yellow', art: () => sortThingArt('banana') },
-  lemon: { kind: 'fruit', color: 'yellow', art: () => svg('0 0 60 60', drawnThing('lemon')) },
-  grapes: { kind: 'fruit', color: 'purple', art: () => colorThing('purple') },
-  orange: { kind: 'fruit', color: 'orange', art: () => colorThing('orange') },
-  block: { kind: 'toy', color: 'yellow', art: () => svg('0 0 60 60', drawnThing('block')) },
-  teddy: { kind: 'toy', color: 'brown', art: () => sortThingArt('teddy') },
-  top: { kind: 'toy', color: 'purple', art: () => sortThingArt('top') },
-  bee: { kind: 'animal', color: 'yellow', art: () => ANIMALS.bee.art },
-  duck: { kind: 'animal', color: 'yellow', art: () => ANIMALS.duck.art },
-  dog: { kind: 'animal', color: 'brown', art: () => ANIMALS.dog.art },
-  elephant: { kind: 'animal', color: 'grey', art: () => drawnArt('elephant') },
+// Every thing Odd one out shows: its kind, its color and the rows it is for.
+// Kind rows (rows: 'kind'): Twemoji (GAME_TWEMOJI), each said by its own color;
+// every kind has things of several colors, so a fair row can always be made.
+// Color rows (rows: 'color'): our painted things, id '<object>-<color>'
+// (ball-red, cup-blue); the same object in two colors are twins. Slice 5M part
+// 4 dropped the book (a plain colored box, hard to name at a glance).
+const KIND_THINGS = {
+  apple: ['fruit', 'red'], strawberry: ['fruit', 'red'], banana: ['fruit', 'yellow'], lemon: ['fruit', 'yellow'],
+  grapes: ['fruit', 'purple'], orange: ['fruit', 'orange'],
+  teddy: ['toy', 'brown'], ball: ['toy', 'white'], car: ['toy', 'red'], balloon: ['toy', 'red'], yoyo: ['toy', 'red'], kite: ['toy', 'blue'],
+  bee: ['animal', 'yellow'], duck: ['animal', 'brown'], dog: ['animal', 'brown'], elephant: ['animal', 'grey'],
+  chick: ['animal', 'yellow'], frog: ['animal', 'green'],
+  tshirt: ['clothes', 'blue'], cap: ['clothes', 'blue'], socks: ['clothes', 'blue'], hat: ['clothes', 'yellow'],
+  scarf: ['clothes', 'red'], jeans: ['clothes', 'blue'],
 };
-const PAINTED_KIND = { ball: 'toy', car: 'toy', balloon: 'toy', sock: 'clothes', tshirt: 'clothes', cap: 'clothes', cup: 'kitchen', book: 'school', crayon: 'school' };
+const PAINTED_KIND = { ball: 'toy', car: 'toy', balloon: 'toy', sock: 'clothes', tshirt: 'clothes', cap: 'clothes', cup: 'kitchen', crayon: 'school' };
 
-// id -> { id, object, kind, color, painted }
+// id -> { id, object, kind, color, painted, rows }
 export const ODD_THINGS = Object.fromEntries([
-  ...Object.entries(FIXED).map(([id, t]) => [id, { id, object: id, kind: t.kind, color: t.color, painted: false }]),
+  ...Object.entries(KIND_THINGS).map(([id, [kind, color]]) => [id, { id, object: id, kind, color, painted: false, rows: 'kind' }]),
   ...Object.entries(PAINTED_KIND).flatMap(([object, kind]) => Object.keys(PAINTS).map((color) => {
     const id = `${object}-${color}`;
-    return [id, { id, object, kind, color, painted: true }];
+    return [id, { id, object, kind, color, painted: true, rows: 'color' }];
   })),
 ]);
 export const oddThingArt = (id) => {
   const t = ODD_THINGS[id];
-  return t.painted ? PAINTED[t.object](PAINTS[t.color]) : FIXED[id].art();
+  return t.painted ? PAINTED[t.object](PAINTS[t.color]) : gameEmoji(id);
 };
 
 // Slice 5M: the picture of a row's rule, above the row (src/games.js oddRule).
@@ -761,8 +637,8 @@ export const oddRuleArt = (rule, color = null) => (rule === 'color' ? RULE_ART.c
 
 const tileGrid = (ids) => svg('0 0 200 160', ids.map((id, i) => oddThingArt(id).replace('<svg ', `<svg x="${[22, 108][i % 2]}" y="${[6, 84][Math.floor(i / 2)]}" width="70" height="70" `)).join(''));
 Object.assign(MENU, {
-  'odd-kinds': tileGrid(['apple', 'banana', 'grapes', 'ball-blue']),
-  'odd-colors': tileGrid(['apple', 'car-red', 'cup-red', 'cup-blue']),
+  'odd-kinds': tileGrid(['apple', 'banana', 'grapes', 'ball']),
+  'odd-colors': tileGrid(['ball-red', 'car-red', 'cup-red', 'cup-blue']),
 });
 
 // ---------------------------------------------------------------------------

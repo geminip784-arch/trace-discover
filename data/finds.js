@@ -168,8 +168,6 @@ export const OBJECTS = [
 // beat; CSS in index.html). A picture is Twemoji only when it makes her say the
 // word: alligator, queen, nut, lamp, milk and the pictures with no emoji keep
 // our drawings, without their little faces so they sit well beside the emoji.
-// Every object keeps its drawing as `drawn`: the games still use those until
-// Slice 5M part 4.
 export const TWEMOJI_FINDS = {
   egg: { emoji: '1f95a', move: 'wobble' },
   elephant: { emoji: '1f418', move: 'hop' },
@@ -237,7 +235,6 @@ export const emojiObjectArt = (code) => `<svg xmlns="http://www.w3.org/2000/svg"
   + `<g class="anim" style="transform-origin:100px 220px"><svg x="28" y="80" width="144" height="144" viewBox="0 0 36 36">${TWEMOJI[code]}</svg></g></svg>`;
 
 for (const o of OBJECTS) {
-  o.drawn = o.art;
   const t = TWEMOJI_FINDS[o.id];
   if (t) Object.assign(o, { emoji: t.emoji, art: emojiObjectArt(t.emoji), reward: t.move });
 }
@@ -329,7 +326,8 @@ export const THINGS = {
 // Slice 5M part 3: the countable things with an `emoji` show that Twemoji
 // picture in their 60 x 60 box; sock (a pair would count as 2), block (only a
 // brick exists) and tomato (too like the apple) keep our drawings. `drawn`
-// keeps every drawing, for the games until Slice 5M part 4.
+// keeps every drawing: Odd one out's color rows paint our cup, sock and crayon,
+// and the colors game keeps our star (data/games.js).
 for (const t of Object.values(THINGS)) {
   t.drawn = t.art;
   if (t.emoji) t.art = `<svg x="3" y="3" width="54" height="54" viewBox="0 0 36 36">${TWEMOJI[t.emoji]}</svg>`;

@@ -48,9 +48,12 @@ test('every thing has a kind, a color and its own inline picture; painted things
 test('every thing is the color it is said to be, read from its own picture', () => {
   for (const t of Object.values(ODD_THINGS)) {
     const art = oddThingArt(t.id);
-    if (t.color === 'grey') {
+    if (t.color === 'grey' || t.color === 'white') {
+      // Slice 5M part 4: the Twemoji elephant is grey, the football white and
+      // black: neither has any real color in it, so neither can stand for one.
+      assert.equal(biggestColor(art), undefined, `${t.id}: no colored shape at all`);
       const c = biggestColor(art, { neutral: true });
-      assert.ok(hsl(c).s < 0.4, `${t.id}: its biggest shape ${c} is grey`);
+      assert.ok(hsl(c).s < 0.4, `${t.id}: its biggest shape ${c} is ${t.color}`);
       continue;
     }
     const c = biggestColor(art);
@@ -59,7 +62,7 @@ test('every thing is the color it is said to be, read from its own picture', () 
 });
 
 test('twins are the same picture in another color: nothing else changes', () => {
-  for (const o of ['ball', 'car', 'balloon', 'cup', 'sock', 'book', 'crayon', 'tshirt', 'cap']) {
+  for (const o of ['ball', 'car', 'balloon', 'cup', 'sock', 'crayon', 'tshirt', 'cap']) {
     const shapes = Object.keys(PAINTS).map((c) => oddThingArt(`${o}-${c}`).replace(/#[0-9A-Fa-f]{6}/g, '#'));
     assert.ok(shapes.every((s) => s === shapes[0]), `${o}: only the colors differ`);
   }

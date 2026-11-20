@@ -83,11 +83,13 @@ test('the color check would catch a red car in the blue basket, or a blue one in
   const drawingCar = colorCheck(`<svg>${PICTURES.car.art}</svg>`, 'blue', 'red');
   assert.equal(drawingCar.biggestIsOwn, true, 'the Drawing book car is blue');
   assert.deepEqual(drawingCar.otherColors, [], 'its pink tail light is not counted as red...');
-  const sortCar = colorCheck(sortThingArt('car'), 'blue', 'red');
-  assert.ok(sortCar.biggestIsOwn && sortCar.otherColors.length === 0, '...and the sort car has no pink at all');
-  assert.ok(!sortThingArt('car').includes('#FF8FB8'));
-  // And the red ball the other way round.
-  assert.equal(colorCheck(sortThingArt('ball'), 'blue', 'red').biggestIsOwn, false);
+  // Slice 5M part 4: Sort it's cars are Twemoji: the blue one for the blue
+  // basket, the red one (the toys basket) never in it.
+  const blueCar = colorCheck(sortThingArt('car-blue'), 'blue', 'red');
+  assert.ok(blueCar.biggestIsOwn && blueCar.otherColors.length === 0, '...and the blue Twemoji car has no red at all');
+  assert.equal(colorCheck(sortThingArt('car'), 'blue', 'red').biggestIsOwn, false, 'the red car is not blue');
+  // And the red balloon the other way round.
+  assert.equal(colorCheck(sortThingArt('balloon'), 'blue', 'red').biggestIsOwn, false);
 });
 
 // ---- the boards ----
