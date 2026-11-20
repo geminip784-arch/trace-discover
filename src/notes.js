@@ -68,6 +68,14 @@ export const GAME_NOTES = {
 
 export const gameNote = (kind) => GAME_NOTES[kind] ?? null;
 
+// Slice 5N: a set with its own line, in place of its kind's (Count, then pick
+// the number is in Match, but she counts and taps instead of drawing a line).
+export const SET_NOTES = {
+  count: 'Count them, then tap the number',
+};
+// The line for one set: its own (by the part of its id before the level), or its kind's.
+export const setNote = (game, kind) => SET_NOTES[String(game).split('-')[0]] ?? gameNote(kind);
+
 // Odd one out (Slice 5M): one line per row, by its rule (src/games.js oddRule).
 // The kind line names what the three share; the odd one is what is not.
 export const ODD_NOTES = {

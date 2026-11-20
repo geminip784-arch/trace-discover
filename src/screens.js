@@ -35,8 +35,8 @@ import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard, isPageSticker } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
-import { GAME_KINDS, gamesOf, kindStars, gameTile, kindOf } from './games.js';
-import { gameNote, nameNote } from './notes.js';
+import { GAME_KINDS, kindStars, gameTile, kindOf, menuRows, COUNT_GAMES } from './games.js';
+import { setNote, nameNote } from './notes.js';
 import { MENU, KIND_MENU } from '../data/games.js';
 import { playMatch } from './match.js';
 import { playPath } from './path.js';
@@ -44,6 +44,7 @@ import { playSort } from './sort.js';
 import { playOdd } from './odd.js';
 import { playMissing } from './missing.js';
 import { playMemory } from './memory.js';
+import { playCount } from './count.js';
 import { playDots } from './dots.js';
 import { playPaper } from './paper.js';
 import { LEVELS, levelPictures, levelOpen, pictureId } from './drawing.js';
@@ -52,6 +53,7 @@ import { pictureSVG, previewSVG, LEVEL_MARK, PAPER_TILE } from '../data/drawings
 // The games menu's tiles: each game's frame color.
 const GAME_COLORS = {
   numbers: '#1E88E5', colors: '#FB8C00', letters: '#3949AB', shadows: '#546E7A', shapes: '#8E24AA',
+  'count-1': '#2E7D32', 'count-2': '#00695C',
   path: '#43A047', 'path-rooms': '#00897B', 'sort-colors': '#E8590C', 'sort-kinds': '#6D4C41',
   'odd-kinds': '#C2185B', 'odd-colors': '#5E35B1',
   'missing-1': '#D81B60', 'missing-2': '#1E88E5', 'missing-3': '#F9A825', 'missing-4': '#00897B',
@@ -199,7 +201,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper', NAME_BOOK, 'practice'].includes(screen);
     els.music.hidden = screen === 'door' || screen === 'children';
     if (els.showme) els.showme.hidden = screen !== 'play';
-    showGameNote(screen === 'play' ? gameNote(kindOf(state.game)) : null);
+    showGameNote(screen === 'play' ? setNote(state.game, kindOf(state.game)) : null); // Slice 5N: a set may have its own line
     setTune(tuneFor(screen));
 
     const writing = screen === 'write' || screen === 'practice';
@@ -569,9 +571,14 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     if (kind) {
       const rounds = readMissingRounds();
       const boards = readMemoryBoards(); // Slice 5N: Memory's levels open like Missing piece's
-      const ids = gamesOf(kind);
-      menu.style.setProperty('--n', ids.length);
-      for (const id of ids) addSet(gameTile(id, stars, rounds, boards));
+      // Slice 5N: Match shows two rows (the draw-a-line sets, then Count's two levels).
+      const rows = menuRows(kind);
+      menu.style.setProperty('--n', Math.max(...rows.map((r) => r.length)));
+      menu.classList.toggle('rows-2', rows.length > 1);
+      rows.forEach((ids, i) => {
+        if (i > 0) menu.appendChild(Object.assign(document.createElement('div'), { className: 'gm-break' }));
+        for (const id of ids) addSet(gameTile(id, stars, rounds, boards));
+      });
     } else {
       menu.style.setProperty('--n', GAME_KINDS.length);
       for (const k of GAME_KINDS) addKind(k);
@@ -711,7 +718,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       saveGameStar(id);
       go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
     };
-    const play = { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing, memory: playMemory }[kindOf(id)];
+    const play = COUNT_GAMES.includes(id) ? playCount // Slice 5N: in Match, but its own screen
+      : { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing, memory: playMemory }[kindOf(id)];
     game = play(view, { game: id, onDone, onNote: showGameNote }); // onNote: Odd one out's line per row (Slice 5M)
     if (upright) game.pause();
   }

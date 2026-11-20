@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { navigate, GAME_KINDS as NAV_KINDS } from '../src/session.js';
 import {
   GAME_ROWS, GAME_KINDS, GAMES, gamesOf, kindOf, kindStars, gameTile, menuTileSize, MENU_TILE, MISSING,
+  menuRows, menuRowsTileSize,
 } from '../src/games.js';
 import { MENU, KIND_MENU } from '../data/games.js';
 import { readGameStars, saveGameStar, GAME_STARS_KEY } from '../src/storage.js';
@@ -24,12 +25,13 @@ function memoryStore(data = {}) {
   return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) };
 }
 
-// Slice 5N: Memory's three levels, after them.
+// Slice 5N: Count's two levels, last in Match, and Memory's three levels, last of all.
+const COUNT_IDS = ['count-1', 'count-2'];
 const NEW_IDS = ['memory-1', 'memory-2', 'memory-3'];
 
 test('six kinds, in order, and every game id kept in its kind', () => {
   assert.deepEqual(GAME_KINDS, ['match', 'path', 'sort', 'odd', 'missing', 'memory']);
-  assert.deepEqual(GAMES, [...OLD_IDS, ...NEW_IDS]);
+  assert.deepEqual(GAMES, [...OLD_IDS.slice(0, 5), ...COUNT_IDS, ...OLD_IDS.slice(5), ...NEW_IDS]);
   assert.deepEqual(Object.keys(NAV_KINDS), GAME_KINDS, 'src/session.js agrees with src/games.js');
   for (const kind of GAME_KINDS) assert.deepEqual(NAV_KINDS[kind], gamesOf(kind), kind);
   for (const id of OLD_IDS) assert.ok(gamesOf(kindOf(id)).includes(id), id);
@@ -72,9 +74,11 @@ test('a tile only opens what its step holds', () => {
 });
 
 test('every tile is at least 140 px on both steps, and each row fits across', () => {
-  const most = Math.max(GAME_KINDS.length, ...GAME_KINDS.map((k) => gamesOf(k).length));
+  // Slice 5N: a kind's sets may stand in rows (Match: two); each row is checked.
+  const rowLengths = GAME_KINDS.flatMap((k) => menuRows(k).map((r) => r.length));
+  const most = Math.max(GAME_KINDS.length, ...rowLengths);
   for (const [w, h] of [[1280, 626], [1280, 800]]) {
-    for (const n of [GAME_KINDS.length, ...GAME_KINDS.map((k) => gamesOf(k).length)]) {
+    for (const n of [GAME_KINDS.length, ...rowLengths]) {
       const t = menuTileSize(w, h, n);
       assert.ok(t >= MENU_TILE.min && t >= 140, `${n} tiles at ${w}x${h}: ${t}`);
       const row = n * t + (n - 1) * MENU_TILE.gap;
@@ -85,6 +89,15 @@ test('every tile is at least 140 px on both steps, and each row fits across', ()
   assert.equal(most, 6, 'six kinds on step 1 (Slice 5N)');
   assert.equal(menuTileSize(1280, 626, 5), 200);
   assert.equal(Math.floor(menuTileSize(1280, 626, 6)), 163);
+  // Match's two rows keep 200 px tiles, and both rows fit down with room to spare.
+  for (const [w, h] of [[1280, 626], [1280, 800]]) {
+    const rows = menuRows('match');
+    const t = menuRowsTileSize(w, h, rows);
+    assert.equal(t, 200, `match at ${w}x${h}`);
+    assert.ok(rows.length * t + (rows.length - 1) * MENU_TILE.gap <= h - 100, 'both rows fit down');
+  }
+  assert.deepEqual(menuRows('match'), [['numbers', 'colors', 'letters', 'shadows', 'shapes'], ['count-1', 'count-2']]);
+  for (const k of GAME_KINDS.filter((x) => x !== 'match')) assert.deepEqual(menuRows(k), [gamesOf(k)], k);
 });
 
 test('stars saved by the old menu still show: on their set, and counted on their kind', () => {
@@ -120,6 +133,8 @@ test('the tile rule in index.html matches menuTileSize', async () => {
   const { readFile } = await import('node:fs/promises');
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(html.includes('--t: min(200px, calc((100vw - 160px - (var(--n) - 1) * 28px) / var(--n)), calc(100vh - 120px));'));
+  // Slice 5N: two rows (menuRowsTileSize: height - 100 - 28, shared by two).
+  assert.ok(html.includes('.gm-menu.rows-2 .gm-tile { --t: min(200px, calc((100vw - 160px - (var(--n) - 1) * 28px) / var(--n)), calc((100vh - 128px) / 2)); }'));
   assert.equal(MENU_TILE.left + MENU_TILE.right, 160);
   assert.match(html, /\.view-games, \.view-play \{ touch-action: none; \}/);
   assert.match(html, /\.gm-tile \{[^}]*touch-action: none;/);

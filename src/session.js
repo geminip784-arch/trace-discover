@@ -273,7 +273,7 @@ const boardState = (book, page, practice = false) => {
 // The games menu: each kind of game and its sets (src/games.js GAME_ROWS;
 // tests/games-menu.test.js checks they agree). The ids are her saved stars.
 export const GAME_KINDS = {
-  match: ['numbers', 'colors', 'letters', 'shadows', 'shapes'],
+  match: ['numbers', 'colors', 'letters', 'shadows', 'shapes', 'count-1', 'count-2'], // Slice 5N: count, then pick
   path: ['path', 'path-rooms'],
   sort: ['sort-colors', 'sort-kinds'],
   odd: ['odd-kinds', 'odd-colors'],

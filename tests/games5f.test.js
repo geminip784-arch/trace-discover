@@ -12,7 +12,7 @@ import {
   shapeArt, shapeThingArt, FURNITURE, ROOM_IDS, ROOM_HOME, roomArt,
 } from '../data/games.js';
 import {
-  GAME_ROWS, GAMES, MATCH_GAMES, kindOf, PAIRS, makeSet, lettersSet, shadowsSet, shapesSet, cardsOf,
+  GAME_ROWS, GAMES, MATCH_GAMES, kindOf, menuRows, PAIRS, makeSet, lettersSet, shadowsSet, shapesSet, cardsOf,
   dropCard, startMatch, partnerCard, PATH, pathThings, pathBoard,
   boardDone, startsAtAnimal, stepTrace, startTrace, gameLogEntry, boardFit,
 } from '../src/games.js';
@@ -40,7 +40,9 @@ test('the menu: a row per kind of game, one tile per set, every id once', () => 
   assert.deepEqual(MATCH_GAMES, ['numbers', 'colors', 'letters', 'shadows', 'shapes']);
   assert.deepEqual(GAME_ROWS[1].games, ['path', 'path-rooms']);
   assert.equal(new Set(GAMES).size, GAMES.length);
-  assert.ok(GAME_ROWS.every((r) => r.games.length <= 5), 'a row fits across the screen');
+  // Slice 5N: Match shows its sets in two rows (menuRows), each of 5 or fewer.
+  assert.ok(GAME_ROWS.every((r) => menuRows(r.kind).every((row) => row.length <= 5)), 'a row fits across the screen');
+  for (const r of GAME_ROWS) assert.deepEqual(menuRows(r.kind).flat(), r.games, `${r.kind}: the rows hold every set once`);
   for (const id of GAMES) assert.ok(isInlineSvg(MENU[id]), `${id} has its tile picture`);
   assert.equal(kindOf('shapes'), 'match');
   assert.equal(kindOf('path-rooms'), 'path');
