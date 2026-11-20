@@ -554,6 +554,33 @@ export function addMissingRound(level, store = activeStore()) {
 }
 
 // ---------------------------------------------------------------------------
+// Memory (Slice 5N): finished boards per level, { [level]: count }, per child.
+// A level opens after 3 finished boards of the one before (src/games.js memoryLevelOpen).
+
+export const MEMORY_KEY = 'td.memory';
+
+export function readMemoryBoards(store = activeStore()) {
+  try {
+    const all = JSON.parse(store.getItem(MEMORY_KEY) ?? '{}');
+    if (!all || typeof all !== 'object' || Array.isArray(all)) return {};
+    return Object.fromEntries(Object.entries(all).filter(([, n]) => Number.isInteger(n) && n >= 0));
+  } catch {
+    return {};
+  }
+}
+
+export function addMemoryBoard(level, store = activeStore()) {
+  try {
+    const all = readMemoryBoards(store);
+    all[level] = (all[level] ?? 0) + 1;
+    store.setItem(MEMORY_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Reviews (Slice 5I): each letter's place in the 1, 3, 7, 21-day schedule and
 // today's due letters (src/review.js), and the practice-more list that Slice 8's
 // parent zone will show. A damaged or blocked storage reads as empty.

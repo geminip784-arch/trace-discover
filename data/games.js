@@ -689,10 +689,56 @@ Object.assign(MENU, {
 });
 
 // ---------------------------------------------------------------------------
+// Slice 5N: Memory. A card's back is the same for every card: deep blue with
+// a firefly's warm light in the middle and a few tiny sparkles (no picture, so
+// no card gives a clue). Its face is a find-library picture on white.
+
+const backBody = (x, y, w) => {
+  const k = w / 100;
+  const at = (v) => (v * k).toFixed(2);
+  return `<g transform="translate(${x} ${y})">`
+    + `<rect x="${at(2)}" y="${at(2)}" width="${at(96)}" height="${at(96)}" rx="${at(16)}" fill="#3F51B5" stroke="#2C3A8C" stroke-width="${at(4)}"/>`
+    + `<rect x="${at(10)}" y="${at(10)}" width="${at(80)}" height="${at(80)}" rx="${at(10)}" fill="none" stroke="#6F7FD6" stroke-width="${at(3)}" stroke-dasharray="${at(6)} ${at(5)}"/>`
+    + `<circle cx="${at(50)}" cy="${at(50)}" r="${at(26)}" fill="#5D6AD3"/>`
+    + `<circle cx="${at(50)}" cy="${at(50)}" r="${at(17)}" fill="#FFF3C4"/>`
+    + `<circle cx="${at(50)}" cy="${at(50)}" r="${at(9)}" fill="#FFE58A"/>`
+    + `<g fill="#FFE58A"><circle cx="${at(24)}" cy="${at(26)}" r="${at(2.5)}"/><circle cx="${at(76)}" cy="${at(24)}" r="${at(2)}"/>`
+    + `<circle cx="${at(74)}" cy="${at(76)}" r="${at(2.5)}"/><circle cx="${at(26)}" cy="${at(74)}" r="${at(2)}"/></g></g>`;
+};
+export const MEMORY_BACK = svg('0 0 100 100', backBody(0, 0, 100));
+// A card's face: the find picture (200 x 240), cropped a little so it fills the card.
+export const memoryFaceArt = (id) => objectArt(id).replace('viewBox="0 0 200 240"', 'viewBox="10 30 180 200"');
+
+// The menu tiles (200 x 160): the level's grid in small, two cards face up and
+// matching, and the level's dots in the corner.
+const memoryTile = (level, rows, cols, up) => {
+  const area = { x0: 20, y0: 30, w: 172, h: 126 };
+  const gap = 6;
+  const c = Math.min((area.h - (rows - 1) * gap) / rows, (area.w - (cols - 1) * gap) / cols);
+  const x0 = area.x0 + (area.w - (cols * c + (cols - 1) * gap)) / 2;
+  const y0 = area.y0 + (area.h - (rows * c + (rows - 1) * gap)) / 2;
+  let body = levelDots(level);
+  for (let slot = 0; slot < rows * cols; slot++) {
+    const x = x0 + (slot % cols) * (c + gap);
+    const y = y0 + Math.floor(slot / cols) * (c + gap);
+    if (up.includes(slot)) {
+      body += `<rect x="${x}" y="${y}" width="${c}" height="${c}" rx="${c * 0.16}" fill="#fff" stroke="#FFC21A" stroke-width="3"/>`
+        + `<svg x="${x + c * 0.1}" y="${y + c * 0.1}" width="${c * 0.8}" height="${c * 0.8}" viewBox="0 0 36 36">${TWEMOJI['1f34e']}</svg>`;
+    } else body += backBody(x, y, c);
+  }
+  return svg('0 0 200 160', body);
+};
+Object.assign(MENU, {
+  'memory-1': memoryTile(1, 2, 3, [0, 4]),
+  'memory-2': memoryTile(2, 3, 4, [1, 10]),
+  'memory-3': memoryTile(3, 4, 4, [5, 14]),
+});
+
+// ---------------------------------------------------------------------------
 // The menu's first step: a tile per kind of game (200 x 160). Each is a small
 // fan of cards with the kind's first set on the front, so it reads as "a pile
 // of games inside".
-const KIND_FRONT = { match: 'numbers', path: 'path', sort: 'sort-colors', odd: 'odd-kinds', missing: 'missing-1' };
+const KIND_FRONT = { match: 'numbers', path: 'path', sort: 'sort-colors', odd: 'odd-kinds', missing: 'missing-1', memory: 'memory-1' };
 const fanCard = (turn) => `<rect x="30" y="16" width="140" height="124" rx="16" fill="#fff" stroke="#E3D3BE" stroke-width="4" transform="rotate(${turn} 100 78)"/>`;
 export const KIND_MENU = Object.fromEntries(Object.entries(KIND_FRONT).map(([kind, id]) => [kind, svg('0 0 200 160',
   fanCard(-11) + fanCard(8) + fanCard(0)

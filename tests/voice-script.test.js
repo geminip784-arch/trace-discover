@@ -67,8 +67,8 @@ test('every counting word (plural) has a clip', () => {
   }
 });
 
-test('the five game instructions each have a clip', () => {
-  assert.equal(Object.keys(GAME_NOTES).length, 5);
+test('the six game instructions each have a clip', () => {
+  assert.equal(Object.keys(GAME_NOTES).length, 6); // Slice 5N: memory
   for (const [kind, words] of Object.entries(GAME_NOTES)) assert.equal(clipById(`game-${kind}`)?.words, words);
 });
 

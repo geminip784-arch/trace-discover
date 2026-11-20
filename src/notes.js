@@ -63,6 +63,7 @@ export const GAME_NOTES = {
   sort: 'Drag each thing into its basket',
   odd: 'Tap the one that is different',
   missing: 'Drag each piece into its gap',
+  memory: 'Find two cards that are the same', // Slice 5N
 };
 
 export const gameNote = (kind) => GAME_NOTES[kind] ?? null;
