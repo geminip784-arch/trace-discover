@@ -52,6 +52,7 @@ test('every kind of game has its one short instruction line', () => {
     sort: 'Drag each thing into its basket',
     odd: 'Tap the one that is different',
     missing: 'Drag each piece into its gap',
+    memory: 'Find two cards that are the same', // Slice 5N
   });
   for (const k of GAME_KINDS) assert.equal(typeof gameNote(k), 'string', k);
   for (const id of GAMES) assert.ok(gameNote(kindOf(id)), id); // every set's tile has its kind's line

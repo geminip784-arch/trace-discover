@@ -14,7 +14,7 @@ import {
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
-  readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds,
+  readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds, readMemoryBoards,
   readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, openProfiles, readProfile, saveNameCard, readPages,
   finishOldPractices, readChildren, chooseChild, currentChild, readWelcomed,
 } from './storage.js';
@@ -43,6 +43,7 @@ import { playPath } from './path.js';
 import { playSort } from './sort.js';
 import { playOdd } from './odd.js';
 import { playMissing } from './missing.js';
+import { playMemory } from './memory.js';
 import { playDots } from './dots.js';
 import { playPaper } from './paper.js';
 import { LEVELS, levelPictures, levelOpen, pictureId } from './drawing.js';
@@ -54,9 +55,10 @@ const GAME_COLORS = {
   path: '#43A047', 'path-rooms': '#00897B', 'sort-colors': '#E8590C', 'sort-kinds': '#6D4C41',
   'odd-kinds': '#C2185B', 'odd-colors': '#5E35B1',
   'missing-1': '#D81B60', 'missing-2': '#1E88E5', 'missing-3': '#F9A825', 'missing-4': '#00897B',
+  'memory-1': '#3949AB', 'memory-2': '#7B1FA2', 'memory-3': '#00838F',
 };
 // The first step's tiles: each kind of game's frame color.
-const KIND_COLORS = { match: '#1E88E5', path: '#43A047', sort: '#E8590C', odd: '#C2185B', missing: '#5E35B1' };
+const KIND_COLORS = { match: '#1E88E5', path: '#43A047', sort: '#E8590C', odd: '#C2185B', missing: '#5E35B1', memory: '#3949AB' };
 
 const DOOR_OPEN_MS = 1100; // the door swings open, then the bookshelf
 const TILES_AWAY_MS = 450; // Slice 8A: the other children's tiles fade, then the door opens
@@ -557,7 +559,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   // a tiny gold star for each of its sets she has finished. Step 2: that kind's
   // sets, one tile each, with a gold star on each she has finished. Missing
   // piece has a tile per level: a level opens after 3 finished rounds of the
-  // one before; a locked tile is faint and wiggles. Back goes up one step.
+  // one before; Memory (Slice 5N) too, after 3 finished boards; a locked tile
+  // is faint and wiggles. Back goes up one step.
   function drawGames(view, newGameStar) {
     view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}<div class="gm-menu"></div>`;
     const menu = view.querySelector('.gm-menu');
@@ -565,9 +568,10 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const { kind } = state;
     if (kind) {
       const rounds = readMissingRounds();
+      const boards = readMemoryBoards(); // Slice 5N: Memory's levels open like Missing piece's
       const ids = gamesOf(kind);
       menu.style.setProperty('--n', ids.length);
-      for (const id of ids) addSet(gameTile(id, stars, rounds));
+      for (const id of ids) addSet(gameTile(id, stars, rounds, boards));
     } else {
       menu.style.setProperty('--n', GAME_KINDS.length);
       for (const k of GAME_KINDS) addKind(k);
@@ -707,7 +711,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       saveGameStar(id);
       go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
     };
-    const play = { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing }[kindOf(id)];
+    const play = { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing, memory: playMemory }[kindOf(id)];
     game = play(view, { game: id, onDone, onNote: showGameNote }); // onNote: Odd one out's line per row (Slice 5M)
     if (upright) game.pause();
   }

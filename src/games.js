@@ -11,12 +11,12 @@
 // scaled to fit the screen right of the button column (boardFit), so cards,
 // lines and traces are all kept in units and stay put when the screen changes.
 
-import { ROOMS, THINGS } from '../data/finds.js';
+import { ROOMS, THINGS, OBJECTS } from '../data/finds.js';
 import {
   COLORS, ROAD_LAYOUTS, LANES, LETTER_WORDS, SHADOW_THINGS, SHADOW_LOOKALIKES, SHAPES, ANIMALS, FURNITURE, SORT_SETS,
   ODD_THINGS, PAINTS,
 } from '../data/games.js';
-import { shuffle, groupWord, looksAlike } from './finds.js';
+import { shuffle, groupWord, looksAlike, inScenes } from './finds.js';
 
 // The menu: one row of picture tiles per kind of game, one tile per set. Each
 // tile is its own game: it earns its own star and its id goes in the log.
@@ -26,6 +26,7 @@ export const GAME_ROWS = [
   { kind: 'sort', games: ['sort-colors', 'sort-kinds'] },
   { kind: 'odd', games: ['odd-kinds', 'odd-colors'] },
   { kind: 'missing', games: ['missing-1', 'missing-2', 'missing-3', 'missing-4'] }, // Slice 5H: one tile per level
+  { kind: 'memory', games: ['memory-1', 'memory-2', 'memory-3'] }, // Slice 5N: one tile per level
 ];
 // The menu has two steps: a tile per kind of game (GAME_KINDS), then that
 // kind's sets. Both steps are one row of tiles, so they stay big.
@@ -39,9 +40,13 @@ export const kindOf = (game) => GAME_ROWS.find((r) => r.games.includes(game))?.k
 export const kindStars = (kind, stars) => gamesOf(kind).filter((id) => stars.includes(id)).length;
 
 // Step 2: one set's tile. A Missing piece level is locked until she earns it
-// (missingLevelOpen, below); a locked tile wiggles when tapped.
-export function gameTile(id, stars, rounds) {
-  const locked = kindOf(id) === 'missing' && !missingLevelOpen(missingLevel(id), rounds);
+// (missingLevelOpen, below), and so is a Memory level (Slice 5N,
+// memoryLevelOpen); a locked tile wiggles when tapped.
+// rounds: Missing piece's finished rounds per level; boards: Memory's finished boards per level.
+export function gameTile(id, stars, rounds, boards = {}) {
+  const kind = kindOf(id);
+  const locked = (kind === 'missing' && !missingLevelOpen(missingLevel(id), rounds))
+    || (kind === 'memory' && !memoryLevelOpen(memoryLevel(id), boards));
   return { id, locked, star: stars.includes(id) };
 }
 
@@ -997,6 +1002,127 @@ export function dropPiece(state, round, piece, to) {
 export const pieceLabel = (p) => `${p.paint}-${p.shape}-${p.part}`;
 
 // ---------------------------------------------------------------------------
+// Memory (Slice 5N): cards face down; she turns two. A pair that matches glows
+// with a chime and stays face up; two that do not turn back after about 1.2
+// seconds, with no sound, and taps wait until they have. One board makes a
+// play and earns the level's star; a level opens after 3 finished boards of
+// the one before (td.memory), like Missing piece.
+//
+// The pictures come from the find library (the pictures find scenes use, so
+// not ice cream or eraser), never two from one look-alike group (data/finds.js
+// LOOKALIKES and data/games.js SHADOW_LOOKALIKES: shadowsClash), and a board
+// never holds the same set of pictures as her last board of that level.
+
+export const MEMORY = {
+  levels: [1, 2, 3],
+  layouts: {                 // pairs, and the grid they are dealt in
+    1: { pairs: 3, rows: 2, cols: 3 },
+    2: { pairs: 6, rows: 3, cols: 4 },
+    3: { pairs: 8, rows: 4, cols: 4 },
+  },
+  unlockAfter: 3,            // finished boards of a level that open the next one
+  mismatchMs: 1200,          // two that do not match stay face up this long
+  peekMs: 1500,              // show me: every face-down card peeks this long
+  area: { y0: 28, y1: 624 }, // where the cards go, top to bottom, in units (below the instruction line)
+  gap: 12,                   // between cards, in units
+  maxCard: 210,              // the biggest card side, in units (level 1)
+  minCardPx: 120,            // every card at least this on her tablet (tests check)
+};
+export const MEMORY_GAMES = MEMORY.levels.map((l) => `memory-${l}`);
+export const memoryLevel = (game) => Number(game.split('-')[1]);
+
+// Every picture a Memory card can show: the find library's scene pictures.
+export const MEMORY_PICTURES = OBJECTS.filter(inScenes).map((o) => o.id);
+
+// A board of a level: its pictures (all different, no two look-alikes) and the
+// cards, two of each picture, dealt in a shuffled order. card: { slot, pic }.
+export function memoryBoard(level, rand = Math.random, pool = MEMORY_PICTURES) {
+  const { pairs } = MEMORY.layouts[level];
+  const pics = [];
+  for (const id of shuffle(pool, rand)) {
+    if (pics.some((p) => shadowsClash(p, id))) continue;
+    pics.push(id);
+    if (pics.length === pairs) break;
+  }
+  if (pics.length < pairs) throw new Error('not enough pictures');
+  const cards = shuffle([...pics, ...pics], rand).map((pic, slot) => ({ slot, pic }));
+  return { level, pics, cards };
+}
+
+// A board's key: its pictures, whatever their places.
+export const memoryKey = (board) => [...board.pics].sort().join('|');
+// A play: one board, not the same set of pictures as her last board of this level.
+export const memoryPlay = (level, last = [], rand = Math.random) => freshPlay(() => memoryBoard(level, rand), memoryKey, 1, last)[0];
+
+// A level opens after MEMORY.unlockAfter finished boards of the level before.
+// boards: { [level]: finished boards }.
+export function memoryLevelOpen(level, boards) {
+  if (level <= 1) return true;
+  return (boards[level - 1] ?? 0) >= MEMORY.unlockAfter && memoryLevelOpen(level - 1, boards);
+}
+
+// ---- on the board (units) ----
+
+// A card's side for a level: as big as fits its grid in the card area, never above maxCard.
+export function memoryCardSize(level, m = MEMORY) {
+  const { rows, cols } = m.layouts[level];
+  const h = m.area.y1 - m.area.y0;
+  return Math.min(m.maxCard, (h - (rows - 1) * m.gap) / rows, (BOARD.w - 80 - (cols - 1) * m.gap) / cols);
+}
+
+// Every card's box, in slot order (row by row, left to right), centred on the board.
+export function memoryCards(level) {
+  const { rows, cols } = MEMORY.layouts[level];
+  const c = memoryCardSize(level);
+  const w = cols * c + (cols - 1) * MEMORY.gap;
+  const h = rows * c + (rows - 1) * MEMORY.gap;
+  const x0 = (BOARD.w - w) / 2;
+  const y0 = MEMORY.area.y0 + (MEMORY.area.y1 - MEMORY.area.y0 - h) / 2;
+  return [...Array(rows * cols).keys()].map((slot) => {
+    const x = x0 + (slot % cols) * (c + MEMORY.gap);
+    const y = y0 + Math.floor(slot / cols) * (c + MEMORY.gap);
+    return { slot, x0: x, y0: y, x1: x + c, y1: y + c };
+  });
+}
+
+// The card a tap lands on: inside a card (a tap in a gap between cards is nothing).
+export const hitMemory = (point, level) => hitCard(point, memoryCards(level), 0)?.slot ?? null;
+
+// One board being played: up (the one or two face-up cards not matched yet)
+// and matched (every card of a found pair).
+export const startMemory = () => ({ up: [], matched: [] });
+
+// She tapped the card in `slot`. Returns { state, turned, pair, done }:
+//   turned  the card turns face up (false: it was face up already, or two
+//           cards that do not match are still showing: taps wait)
+//   pair    when this is the second card: { a, b, ok } (the two slots; ok when
+//           they match), otherwise null
+//   done    every pair is found
+// Two that do not match stay in `up` until hideMismatch().
+export function flipCard(state, board, slot) {
+  const none = { state, turned: false, pair: null, done: false };
+  if (!board.cards[slot] || state.up.length >= 2 || state.up.includes(slot) || state.matched.includes(slot)) return none;
+  const up = [...state.up, slot];
+  if (up.length === 1) return { state: { ...state, up }, turned: true, pair: null, done: false };
+  const [a, b] = up;
+  const ok = board.cards[a].pic === board.cards[b].pic;
+  if (!ok) return { state: { ...state, up }, turned: true, pair: { a, b, ok }, done: false };
+  const matched = [...state.matched, a, b];
+  return { state: { up: [], matched }, turned: true, pair: { a, b, ok }, done: matched.length === board.cards.length };
+}
+
+// The two that did not match turn face down again.
+export const hideMismatch = (state) => (state.up.length === 2 ? { ...state, up: [] } : state);
+
+// Show me: the cards that peek (every card face down now), or null when there
+// is nothing to show, or while two that do not match are still showing.
+export function showMeMemory(board, state) {
+  if (state.up.length >= 2) return null;
+  const down = board.cards.map((c) => c.slot).filter((s) => !state.up.includes(s) && !state.matched.includes(s));
+  return down.length ? down : null;
+}
+
+// ---------------------------------------------------------------------------
 // The attempt log: one "game" entry per release. Stroke and find entries keep their format.
 //   match games: game, set (1..3), from, to (the cards' labels; to is null when
 //                she let go away from every card), ok, ms
@@ -1006,6 +1132,9 @@ export const pieceLabel = (p) => `${p.paint}-${p.shape}-${p.part}`;
 //                thing), to (the basket's id, or null away from both), ok, ms
 //   follow the path: game 'path' or 'path-rooms', road (the animal or the
 //                furniture), ok (home reached) or not (left the road), ms.
+//   memory:      game 'memory-1' to 'memory-3', set 1 (one board), from and to
+//                (the two pictures she turned, in order), ok (a pair), ms.
+//                One entry per two cards turned; the first card alone is not logged.
 //   ms: since the game opened. Jugnu's "show me" is logged as help (below), never as hers.
 export function gameLogEntry({ game, set, from, to, road, ok, ms, now = new Date() }) {
   const entry = { type: 'game', time: now.toISOString(), game };

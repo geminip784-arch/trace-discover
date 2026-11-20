@@ -24,9 +24,12 @@ function memoryStore(data = {}) {
   return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) };
 }
 
-test('five kinds, in order, and every game id kept in its kind', () => {
-  assert.deepEqual(GAME_KINDS, ['match', 'path', 'sort', 'odd', 'missing']);
-  assert.deepEqual(GAMES, OLD_IDS);
+// Slice 5N: Memory's three levels, after them.
+const NEW_IDS = ['memory-1', 'memory-2', 'memory-3'];
+
+test('six kinds, in order, and every game id kept in its kind', () => {
+  assert.deepEqual(GAME_KINDS, ['match', 'path', 'sort', 'odd', 'missing', 'memory']);
+  assert.deepEqual(GAMES, [...OLD_IDS, ...NEW_IDS]);
   assert.deepEqual(Object.keys(NAV_KINDS), GAME_KINDS, 'src/session.js agrees with src/games.js');
   for (const kind of GAME_KINDS) assert.deepEqual(NAV_KINDS[kind], gamesOf(kind), kind);
   for (const id of OLD_IDS) assert.ok(gamesOf(kindOf(id)).includes(id), id);
@@ -79,8 +82,9 @@ test('every tile is at least 140 px on both steps, and each row fits across', ()
       assert.ok(t <= h - 100, `${n} tiles fit down at ${w}x${h}`);
     }
   }
-  assert.equal(most, 5);
+  assert.equal(most, 6, 'six kinds on step 1 (Slice 5N)');
   assert.equal(menuTileSize(1280, 626, 5), 200);
+  assert.equal(Math.floor(menuTileSize(1280, 626, 6)), 163);
 });
 
 test('stars saved by the old menu still show: on their set, and counted on their kind', () => {
@@ -89,18 +93,18 @@ test('stars saved by the old menu still show: on their set, and counted on their
   const stars = readGameStars(store);
   assert.deepEqual(stars, saved);
   for (const id of GAMES) assert.equal(gameTile(id, stars, {}).star, saved.includes(id), id);
-  assert.deepEqual(GAME_KINDS.map((k) => kindStars(k, stars)), [2, 1, 1, 1, 1]);
+  assert.deepEqual(GAME_KINDS.map((k) => kindStars(k, stars)), [2, 1, 1, 1, 1, 0]);
   assert.equal(GAME_KINDS.reduce((n, k) => n + kindStars(k, stars), 0), saved.length);
   // Every old star at once: each kind counts all its sets.
   const all = memoryStore({ [GAME_STARS_KEY]: JSON.stringify(OLD_IDS) });
-  assert.deepEqual(GAME_KINDS.map((k) => kindStars(k, readGameStars(all))), [5, 2, 2, 2, 4]);
+  assert.deepEqual(GAME_KINDS.map((k) => kindStars(k, readGameStars(all))), [5, 2, 2, 2, 4, 0]);
   // A new star still lands in the same place.
   saveGameStar('letters', store);
   assert.equal(kindStars('match', readGameStars(store)), 3);
-  assert.deepEqual(GAME_KINDS.map((k) => kindStars(k, [])), [0, 0, 0, 0, 0]);
+  assert.deepEqual(GAME_KINDS.map((k) => kindStars(k, [])), [0, 0, 0, 0, 0, 0]);
 });
 
-test('Missing piece levels 2 to 4 stay locked until earned; every other set is open', () => {
+test('Missing piece levels 2 to 4 stay locked until earned; every other set but Memory\'s is open', () => {
   const lockedWith = (rounds) => gamesOf('missing').filter((id) => gameTile(id, [], rounds).locked);
   assert.deepEqual(lockedWith({}), ['missing-2', 'missing-3', 'missing-4']);
   const n = MISSING.unlockAfter;
@@ -109,7 +113,7 @@ test('Missing piece levels 2 to 4 stay locked until earned; every other set is o
   assert.deepEqual(lockedWith({ 1: n, 2: n }), ['missing-4']);
   assert.deepEqual(lockedWith({ 1: n, 2: n, 3: n }), []);
   assert.deepEqual(lockedWith({ 2: n, 3: n }), ['missing-2', 'missing-3', 'missing-4'], 'in order');
-  for (const id of GAMES.filter((g) => kindOf(g) !== 'missing')) assert.equal(gameTile(id, [], {}).locked, false, id);
+  for (const id of GAMES.filter((g) => !['missing', 'memory'].includes(kindOf(g)))) assert.equal(gameTile(id, [], {}).locked, false, id);
 });
 
 test('the tile rule in index.html matches menuTileSize', async () => {

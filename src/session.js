@@ -233,7 +233,7 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 //   board  a letter board: book is 'abc', 'num' or 'urdu'; page is 'lower' on the
 //          ABC book's lowercase page (Slice 9A), otherwise left out (the first page)
 //   games  the games book. Step 1 (no kind): a tile per kind of game. Step 2
-//          (kind is 'match', 'path', 'sort', 'odd' or 'missing'): that kind's sets
+//          (kind is 'match', 'path', 'sort', 'odd', 'missing' or 'memory'): that kind's sets
 //   play   one game from the games book: game is a tile's id ('numbers', 'path-rooms', ...)
 //   drawing the Drawing book: its menu of free drawing and dot-to-dot pictures
 //   dots   one dot-to-dot picture: level 1, 2 or 3 and picture ('house', 'car-building', ...)
@@ -278,6 +278,7 @@ export const GAME_KINDS = {
   sort: ['sort-colors', 'sort-kinds'],
   odd: ['odd-kinds', 'odd-colors'],
   missing: ['missing-1', 'missing-2', 'missing-3', 'missing-4'],
+  memory: ['memory-1', 'memory-2', 'memory-3'], // Slice 5N
 };
 const kindOfGame = (game) => Object.keys(GAME_KINDS).find((k) => GAME_KINDS[k].includes(game));
 const setsOf = (game) => ({ screen: 'games', kind: kindOfGame(game) });
