@@ -300,6 +300,11 @@
       font-size: clamp(56px, calc(720px / var(--len, 4)), 130px); }
     .name-tile > svg { width: 200px; height: 175px; }
     .name-tile .star { width: 72px; height: 72px; top: -22px; right: -22px; }
+    /* Slice 5L part 3: the name book's pencil tile, beside her name tile (120 px,
+       as on the ABC board). In practice mode a starred name wears the pencil badge. */
+    .name-board { gap: 48px; }
+    .name-board .pencil-tile { flex: none; width: 120px; height: 120px; }
+    .name-tile .pencil-badge { width: 76px; height: 76px; bottom: -22px; right: -22px; }
     .tile.picked { animation: pick 0.22s ease-out; }
     @keyframes pick { 50% { transform: scale(1.12); } }
     .tile.shake { animation: shake 0.4s; }

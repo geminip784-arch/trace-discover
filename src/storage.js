@@ -1,7 +1,7 @@
 // storage.js — settings and progress in localStorage. Every read and write is
 // wrapped in try/catch: a full or blocked storage must never stop the game.
 
-import { addFind, cleanFinds, addNameCard, isNameCard, addPageSticker, cleanPages, addPage } from './finds.js';
+import { addFind, cleanFinds, addNameCard, isNameCard, isPageSticker, addPageSticker, cleanPages, addPage } from './finds.js';
 import { cleanReviews, cleanPracticeMore, recordPractice } from './review.js';
 import { finishedEarlier } from './progress.js';
 import {
@@ -685,9 +685,16 @@ export function resetName(id, store = activeStore()) {
       today: reviews.today ? { ...reviews.today, ids: reviews.today.ids.filter((x) => x !== id) } : null,
     }, store);
     savePracticeMore(readPracticeMore(store).filter((e) => e.id !== id), store);
-    // The name card on her shelf of finds was for the old name.
+    // The name card on her shelf of finds was for the old name, and so were
+    // the name's practice pages (Slice 5L part 3): its page count and sticker.
     const finds = readFinds(store);
-    if (finds.some(isNameCard)) store.setItem(FINDS_KEY, JSON.stringify(finds.filter((e) => !isNameCard(e))));
+    const oldName = (e) => isNameCard(e) || (isPageSticker(e) && e.pg === id);
+    if (finds.some(oldName)) store.setItem(FINDS_KEY, JSON.stringify(finds.filter((e) => !oldName(e))));
+    const pages = readPages(store);
+    if (Object.hasOwn(pages, id)) {
+      delete pages[id];
+      store.setItem(PAGES_KEY, JSON.stringify(pages));
+    }
     return true;
   } catch {
     return false;

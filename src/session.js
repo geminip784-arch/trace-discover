@@ -115,6 +115,17 @@ export function boardTiles(book, manifest, stars = [], due = [], page = pagesOf(
 export const PRACTICE_BOOKS = ['abc', 'num'];
 export const hasPencil = (book) => PRACTICE_BOOKS.includes(book);
 
+// Slice 5L part 3: her name's book has the same pencil tile, beside her name
+// tile. In practice mode her name tile shows the pencil badge and opens her
+// name's practice page once it has its gold star (and can be written: `ready`);
+// without the star it is faint and wiggles. Outside practice mode the tile
+// opens her name as before, when ready.
+//   { pencil, open } for her name tile.
+export function nameTile({ ready = false, star = false, practice = false } = {}) {
+  const pencil = practice && ready && star;
+  return { pencil, open: practice ? pencil : ready };
+}
+
 // How many tiles a board page's grid holds: its characters, the page switch
 // (ABC) and the pencil tile (ABC and 123). Every one must be at least 88 px.
 export const boardTileCount = (book, page = pagesOf(book)[0]) =>
@@ -255,7 +266,7 @@ export const isFirstVisitToday = (lastVisit, today) => lastVisit !== today;
 // children: how many there are. With 2 or more the door (their tiles) shows at
 // every fresh open; with 1 the daily door rule stays.
 export function startScreen({ lastVisit = null, today, forceDoor = false, char = null, practice = null, setup = false, welcomed = true, children = 1 } = {}) {
-  if (practice && hasPencil(bookOf(practice))) return { screen: 'practice', char: practice, book: bookOf(practice) };
+  if (practice && (hasPencil(bookOf(practice)) || practice === NAME_BOOK)) return { screen: 'practice', char: practice, book: bookOf(practice) };
   if (char) return { screen: 'write', char, book: bookOf(char) };
   if (setup) return { screen: 'children', first: true };
   if (!welcomed) return { screen: 'children' };
@@ -298,8 +309,10 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //                                        review: true when the tile is due for review
 //   { type: 'openName', ready, review }  name -> write her name (ready: false, no name to write: no change);
 //                                        review: true when her name is due for review
-//   { type: 'togglePractice' }           board (ABC or 123) -> the same board with practice mode on, or off
+//   { type: 'togglePractice' }           board (ABC or 123) or the name book -> the same, with practice mode on, or off
 //   { type: 'openPractice', id, manifest, stars } board in practice mode -> practice (starred, bright tiles only)
+//   { type: 'openPractice', id: 'name', stars, ready } the name book in practice mode -> her name's practice page
+//                                        (only with the name's star, and a name that can be written)
 //   { type: 'openScene' }                write -> find (the same char and book)
 //   { type: 'letterDone' }               write or find -> its board, on the letter's page (or the shelf);
 //                                        her name -> the name book
@@ -313,7 +326,8 @@ const DRAW_PICTURES = { 1: SIX, 2: SIX, 3: ['car-building', 'house-tree', 'fish-
 //   { type: 'back' }                     play -> games step 2; games step 2 -> step 1;
 //                                        dots or paper -> drawing;
 //                                        games step 1, drawing, toys or the name book -> shelf;
-//                                        practice -> its board, on the letter's page (practice mode off)
+//                                        practice -> its board, on the letter's page (practice mode off);
+//                                        her name's practice page -> the name book (practice mode off)
 //   { type: 'home' }                     any screen -> shelf
 export function navigate(state, event) {
   const { screen } = state;
@@ -343,9 +357,15 @@ export function navigate(state, event) {
       return boardState(state.book, pages[(pages.indexOf(pageNow(state)) + 1) % pages.length], state.practice === true);
     }
     case 'togglePractice':
+      if (screen === NAME_BOOK) return state.practice === true ? { screen: NAME_BOOK } : { screen: NAME_BOOK, practice: true };
       if (screen !== 'board' || !hasPencil(state.book)) return state;
       return boardState(state.book, pageNow(state), state.practice !== true);
     case 'openPractice': {
+      if (screen === NAME_BOOK) {
+        if (state.practice !== true || event.id !== NAME_BOOK) return state;
+        const tile = nameTile({ ready: event.ready === true, star: (event.stars ?? []).includes(NAME_BOOK), practice: true });
+        return tile.pencil ? { screen: 'practice', char: NAME_BOOK, book: NAME_BOOK } : state;
+      }
       if (screen !== 'board' || state.practice !== true) return state;
       const tile = boardTiles(state.book, event.manifest ?? [], event.stars ?? [], [], pageNow(state), true)
         .find((t) => t.id === event.id);
@@ -359,7 +379,7 @@ export function navigate(state, event) {
       return event.review === true ? { ...write, review: true } : write;
     }
     case 'openName':
-      if (screen !== NAME_BOOK || event.ready !== true) return state;
+      if (screen !== NAME_BOOK || state.practice === true || event.ready !== true) return state;
       // review: true when her name is due for review today (Slice 9C part 2): the copy-it round alone.
       return event.review === true ? { screen: 'write', char: NAME_BOOK, book: NAME_BOOK, review: true } : { screen: 'write', char: NAME_BOOK, book: NAME_BOOK };
     case 'openScene':
@@ -387,6 +407,7 @@ export function navigate(state, event) {
       if (screen === 'play') return setsOf(state.game);
       if (screen === 'games' && state.kind) return { screen: 'games' };
       if (screen === 'dots' || screen === 'paper') return { screen: 'drawing' };
+      if (screen === 'practice' && state.book === NAME_BOOK) return { screen: NAME_BOOK };
       if (screen === 'practice') return state.book ? boardState(state.book, pageOf(state.char)) : SHELF;
       return ['games', 'drawing', 'toys', NAME_BOOK].includes(screen) ? SHELF : state;
     default:
