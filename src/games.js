@@ -16,12 +16,12 @@ import {
   COLORS, ROAD_LAYOUTS, LANES, LETTER_WORDS, SHADOW_THINGS, SHADOW_LOOKALIKES, SHAPES, ANIMALS, FURNITURE, SORT_SETS,
   ODD_THINGS, PAINTS,
 } from '../data/games.js';
-import { shuffle, groupWord, looksAlike, inScenes } from './finds.js';
+import { shuffle, groupWord, looksAlike, inScenes, makeGroup, makeTenFrames, frameCell, FRAME, CELL } from './finds.js';
 
 // The menu: one row of picture tiles per kind of game, one tile per set. Each
 // tile is its own game: it earns its own star and its id goes in the log.
 export const GAME_ROWS = [
-  { kind: 'match', games: ['numbers', 'colors', 'letters', 'shadows', 'shapes'] },
+  { kind: 'match', games: ['numbers', 'colors', 'letters', 'shadows', 'shapes', 'count-1', 'count-2'] }, // Slice 5N: count, then pick the number
   { kind: 'path', games: ['path', 'path-rooms'] },
   { kind: 'sort', games: ['sort-colors', 'sort-kinds'] },
   { kind: 'odd', games: ['odd-kinds', 'odd-colors'] },
@@ -33,7 +33,11 @@ export const GAME_ROWS = [
 export const GAME_KINDS = GAME_ROWS.map((r) => r.kind);
 export const gamesOf = (kind) => GAME_ROWS.find((r) => r.kind === kind)?.games ?? [];
 export const GAMES = GAME_ROWS.flatMap((r) => r.games);
-export const MATCH_GAMES = GAME_ROWS.find((r) => r.kind === 'match').games;
+// Slice 5N: Match also holds Count, then pick the number (one tile per level),
+// which is played on its own screen (count.js); MATCH_GAMES are the
+// draw-a-line sets only.
+export const COUNT_GAMES = ['count-1', 'count-2'];
+export const MATCH_GAMES = GAME_ROWS.find((r) => r.kind === 'match').games.filter((g) => !COUNT_GAMES.includes(g));
 export const kindOf = (game) => GAME_ROWS.find((r) => r.games.includes(game))?.kind ?? null;
 
 // Step 1: how many of a kind's sets she has finished (stars: her saved game ids).
@@ -56,6 +60,18 @@ export function gameTile(id, stars, rounds, boards = {}) {
 export const MENU_TILE = { max: 200, min: 140, gap: 28, left: 136, right: 24, spare: 120 };
 export const menuTileSize = (w, h, n, m = MENU_TILE) =>
   Math.min(m.max, (w - m.left - m.right - (n - 1) * m.gap) / n, h - m.spare);
+
+// Slice 5N: a kind's sets in rows. Match shows two: the five draw-a-line sets,
+// then the two Count levels below, so every tile stays as big as with five.
+// Every other kind is one row.
+export const menuRows = (kind) => (kind === 'match' ? [MATCH_GAMES, COUNT_GAMES] : [gamesOf(kind)]);
+// The tile side for rows of tiles: the longest row sets it, and all the rows
+// must fit down, with 100 px to spare (index.html's .gm-menu.rows-2 rule).
+export function menuRowsTileSize(w, h, rows, m = MENU_TILE) {
+  const k = rows.length;
+  const t = menuTileSize(w, h, Math.max(...rows.map((r) => r.length)), m);
+  return k === 1 ? t : Math.min(t, (h - 100 - (k - 1) * m.gap) / k);
+}
 
 // Slice 5M: Jugnu never makes a move for her. Every set of every game is hers
 // from the start; the instruction line and "show me" (below) help instead.
@@ -1123,6 +1139,142 @@ export function showMeMemory(board, state) {
 }
 
 // ---------------------------------------------------------------------------
+// Count, then pick the number (Slice 5N): a group of things, which she counts
+// by tapping each one (its number shows as she goes); then three big number
+// tiles, at least 2 apart, and she taps the one that says how many. Level 1:
+// 1 to 10, counted one by one (10 is two rows of five). Level 2: 11 to 20 in
+// ten-frames, counting on as in the count scenes (src/finds.js tapTens): one
+// tap counts the full frame as ten. 3 groups make a play; a star per level.
+// The counting numbers stay on the things while she picks.
+
+export const COUNT = {
+  levels: [1, 2],
+  ranges: { 1: [1, 10], 2: [11, 20] },
+  groupsPerPlay: 3,
+  apart: 2,                                   // the three numbers, at least this far apart
+  hintAfter: 3,                               // wrong number tiles in a row, then the right one wiggles
+  kinds: Object.keys(THINGS),                 // what she counts (the count scenes' things)
+  area: { x0: 40, y0: 50, x1: 1240, y1: 400 }, // where the group stands, in units (room above for the "10")
+  maxScale: 2,                                // the group is never drawn above twice its size
+  tiles: { y: 520, xs: [400, 640, 880], size: 180 }, // the number tiles (centres and side)
+  minThingPx: 88,                             // every thing she taps, at least this on her tablet
+};
+export const countLevel = (game) => Number(game.split('-')[1]);
+
+// The group's picture for a level: rows of five (level 1, 10 included), or
+// ten-frames (level 2). { svg, W, H } in its own units.
+export const countArt = (level, kind, n) => (level === 1 ? makeGroup(kind, n) : makeTenFrames(kind, n));
+
+// Where the group stands: its scale and top-left corner on the board, centred in COUNT.area.
+export function countFit(W, H, a = COUNT.area) {
+  const scale = Math.min(COUNT.maxScale, (a.x1 - a.x0) / W, (a.y1 - a.y0) / H);
+  return { scale, x: a.x0 + (a.x1 - a.x0 - W * scale) / 2, y: a.y0 + (a.y1 - a.y0 - H * scale) / 2 };
+}
+
+// Every thing's box (by item) and each ten-frame's box (level 2), in the group's
+// own units, as makeGroup and makeTenFrames draw them (gapY 32).
+const GAP_Y = 32;
+export function countBoxes(level, n) {
+  const fw = FRAME.cols * CELL + 20;
+  const things = [...Array(n).keys()].map((i) => {
+    if (level === 1) {
+      const x = 10 + (i % 5) * CELL;
+      const y = GAP_Y + Math.floor(i / 5) * (CELL + GAP_Y);
+      return { item: i, x0: x, y0: y, x1: x + CELL, y1: y + CELL };
+    }
+    const { frame, row, col } = frameCell(i);
+    const x = frame * (fw + FRAME.gap) + 10 + col * CELL;
+    const y = GAP_Y + row * (CELL + GAP_Y);
+    return { item: i, x0: x, y0: y, x1: x + CELL, y1: y + CELL };
+  });
+  const H = FRAME.rows * (CELL + GAP_Y) + 22;
+  const frames = level === 1 ? [] : [0, 1].map((f) => ({ frame: f, x0: f * (fw + FRAME.gap), y0: GAP_Y - 14, x1: f * (fw + FRAME.gap) + fw, y1: H - 6 }));
+  return { things, frames };
+}
+
+// On the board: the same boxes, scaled and placed by countFit.
+export function countBoardBoxes(level, n) {
+  const { W, H } = countArt(level, COUNT.kinds[0], n);
+  const fit = countFit(W, H);
+  const place = (b) => ({ ...b, x0: fit.x + b.x0 * fit.scale, y0: fit.y + b.y0 * fit.scale, x1: fit.x + b.x1 * fit.scale, y1: fit.y + b.y1 * fit.scale });
+  const { things, frames } = countBoxes(level, n);
+  return { fit, W, H, things: things.map(place), frames: frames.map(place) };
+}
+
+// What a tap while counting lands on: { item } (a thing) or { frame } (a full
+// ten-frame, level 2, away from its things), or null. tapTens decides what counts.
+export function hitCount(point, level, n) {
+  const { things, frames } = countBoardBoxes(level, n);
+  const thing = hitCard(point, things, 0);
+  if (thing) return { item: thing.item };
+  const tens = Math.floor(n / 10);
+  const frame = hitCard(point, frames.filter((f) => f.frame < tens), 0);
+  return frame ? { frame: frame.frame } : null;
+}
+
+// The two other numbers for n: from the level's range, all three at least
+// COUNT.apart from each other. Every allowed pair is equally likely. Returns
+// the three numbers in a shuffled order.
+export function countChoices(n, level, rand = Math.random) {
+  const [lo, hi] = COUNT.ranges[level];
+  const pairs = [];
+  for (let a = lo; a <= hi; a++) {
+    for (let b = a + COUNT.apart; b <= hi; b++) {
+      if (Math.abs(a - n) >= COUNT.apart && Math.abs(b - n) >= COUNT.apart) pairs.push([a, b]);
+    }
+  }
+  return shuffle([n, ...pick(pairs, rand)], rand);
+}
+
+// One group: { level, n, kind, choices, right (the index of n in choices) }.
+export function countRound(level, rand = Math.random, { n = null, kind = null } = {}) {
+  const [lo, hi] = COUNT.ranges[level];
+  const count = n ?? lo + Math.floor(rand() * (hi - lo + 1));
+  const choices = countChoices(count, level, rand);
+  return { level, n: count, kind: kind ?? pick(COUNT.kinds, rand), choices, right: choices.indexOf(count) };
+}
+export const countKey = (round) => `${round.kind}-${round.n}`;
+
+// A play: COUNT.groupsPerPlay groups, each a different number and a different
+// kind of thing, none the same as a group of her last play (last: their keys).
+export function countPlay(level, last = [], rand = Math.random, tries = 500) {
+  const out = [];
+  for (let i = 0; i < COUNT.groupsPerPlay; i++) {
+    let r = countRound(level, rand);
+    for (let t = 1; t < tries && (last.includes(countKey(r)) || out.some((o) => o.n === r.n || o.kind === r.kind)); t++) r = countRound(level, rand);
+    if (last.includes(countKey(r)) || out.some((o) => o.n === r.n || o.kind === r.kind)) throw new Error('no new group');
+    out.push(r);
+  }
+  return out;
+}
+
+// The number tiles' boxes, left to right.
+export const countTiles = (t = COUNT.tiles) => t.xs.map((x, index) => ({ index, x0: x - t.size / 2, y0: t.y - t.size / 2, x1: x + t.size / 2, y1: t.y + t.size / 2 }));
+export const hitCountTile = (point, margin = 0) => hitCard(point, countTiles(), margin)?.index ?? null;
+
+// Picking the number. pickNumber: she tapped tile `index` (0..2). Returns
+// { state, ok, hint, done }: hint is the right tile's index after
+// COUNT.hintAfter wrong taps in a row (it wiggles once), otherwise null.
+export const startPick = () => ({ wrongInRow: 0, found: false });
+export function pickNumber(state, round, index) {
+  if (state.found) return { state, ok: false, hint: null, done: true };
+  if (index === round.right) return { state: { wrongInRow: 0, found: true }, ok: true, hint: null, done: true };
+  const wrongInRow = state.wrongInRow + 1;
+  const hint = wrongInRow >= COUNT.hintAfter ? round.right : null;
+  return { state: { wrongInRow: hint === null ? wrongInRow : 0, found: false }, ok: false, hint, done: false };
+}
+
+// Show me: while she counts, the things she has not counted breathe a moment
+// ('count'; level 2, before the ten: the full frame pulses), and she still
+// taps them; once the tiles are out, Jugnu points at the right one ('point')
+// and she taps it herself. null when the group is done.
+export function showMeCount(phase, round, pickState) {
+  if (phase === 'count') return { kind: 'count' };
+  if (phase === 'pick' && !pickState.found) return { kind: 'point', index: round.right };
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // The attempt log: one "game" entry per release. Stroke and find entries keep their format.
 //   match games: game, set (1..3), from, to (the cards' labels; to is null when
 //                she let go away from every card), ok, ms
@@ -1135,6 +1287,9 @@ export function showMeMemory(board, state) {
 //   memory:      game 'memory-1' to 'memory-3', set 1 (one board), from and to
 //                (the two pictures she turned, in order), ok (a pair), ms.
 //                One entry per two cards turned; the first card alone is not logged.
+//   count, then pick: game 'count-1' or 'count-2', set (group 1..3), from (the
+//                number on the tile she tapped), to (how many there are), ok, ms.
+//                Counting taps are not logged.
 //   ms: since the game opened. Jugnu's "show me" is logged as help (below), never as hers.
 export function gameLogEntry({ game, set, from, to, road, ok, ms, now = new Date() }) {
   const entry = { type: 'game', time: now.toISOString(), game };

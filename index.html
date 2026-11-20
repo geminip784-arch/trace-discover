@@ -472,6 +472,11 @@
       display: flex; align-items: center; justify-content: center; gap: 28px;
     }
     .gm-tile.locked { opacity: 0.35; box-shadow: none; }
+    /* Slice 5N: Match's sets in two rows (src/games.js menuRowsTileSize): the
+       draw-a-line sets, then Count's two levels; the tiles stay as big as with five. */
+    .gm-menu.rows-2 { flex-wrap: wrap; align-content: center; row-gap: 28px; }
+    .gm-menu.rows-2 .gm-tile { --t: min(200px, calc((100vw - 160px - (var(--n) - 1) * 28px) / var(--n)), calc((100vh - 128px) / 2)); }
+    .gm-break { flex-basis: 100%; height: 0; }
     .gm-tile {
       /* src/games.js menuTileSize: min(200, (width - 160 - (n - 1) x 28) / n, height - 120) */
       --t: min(200px, calc((100vw - 160px - (var(--n) - 1) * 28px) / var(--n)), calc(100vh - 120px));
@@ -584,6 +589,24 @@
     .od-dot { fill: #fff; stroke: #F8C9DA; stroke-width: 5; transition: fill 0.4s; }
     .od-dot.on { fill: #FFD43B; stroke: #FFC21A; }
     .gm-glow .od-card.od-right { animation: gm-glow 1.2s ease; }
+
+    /* Slice 5N: Count, then pick the number. The group stands at the top (the
+       count scenes' pictures and counting styles); three number tiles rise below. */
+    .gm-board.ct-board { background: #F1FAEE; box-shadow: inset 0 0 0 12px #BFE3B0; }
+    .ct-group { position: absolute; z-index: 3; }
+    .ct-group > svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .art .cnt.ct-nudge { animation: pulse 0.65s ease 2 !important; }
+    .ct-tile {
+      position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+      background: #fff; border: 8px solid #D6E6F5; border-radius: 36px; box-shadow: 0 8px 0 rgba(0, 0, 0, 0.08);
+      z-index: 3; touch-action: none; animation: ct-in 0.4s ease both;
+      transition: transform 0.25s, border-color 0.2s, box-shadow 0.3s, background 0.3s;
+    }
+    .ct-num { font: 600 112px/1 Fredoka, system-ui, sans-serif; pointer-events: none; }
+    .ct-tile.ct-look { transform: translateY(-16px) scale(1.04); }
+    .ct-tile.ct-right { border-color: #FFC21A; background: #FFF6D0; box-shadow: 0 0 0 6px #FFE58A, 0 0 30px rgba(255, 212, 59, 0.9); animation: od-pop 0.5s ease; }
+    .gm-glow .ct-tile.ct-right { animation: gm-glow 1.2s ease; }
+    @keyframes ct-in { from { opacity: 0; transform: translateY(30px) scale(0.85); } }
 
     /* Slice 5N: Memory. Cards face down in a grid; a card turns over in 3D.
        A pair she finds turns pale gold with a gold outline and stays face up. */

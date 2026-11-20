@@ -33,6 +33,7 @@ const GAMES = [
   { file: 'missing', move: 'dropPiece(', hers: 'release', fresh: 'newRound' },
   { file: 'odd', move: 'tapOdd(', hers: 'tap', fresh: 'nextRow' },
   { file: 'memory', move: 'flipCard(', hers: 'tap', fresh: 'newBoard' }, // Slice 5N
+  { file: 'count', move: 'pickNumber(', hers: 'tap', fresh: 'nextRound' }, // Slice 5N
 ];
 
 test('the first-move helpers are gone from games.js', () => {
@@ -42,7 +43,7 @@ test('the first-move helpers are gone from games.js', () => {
 });
 
 test('no game file mentions a first move', () => {
-  for (const file of ['games', 'match', 'path', 'sort', 'odd', 'missing', 'memory']) {
+  for (const file of ['games', 'match', 'path', 'sort', 'odd', 'missing', 'memory', 'count']) {
     assert.doesNotMatch(src(file), /firstMove|showsFirstMove|FIRST_MOVE/, file);
   }
 });

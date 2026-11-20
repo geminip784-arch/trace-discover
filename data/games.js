@@ -689,6 +689,29 @@ Object.assign(MENU, {
 });
 
 // ---------------------------------------------------------------------------
+// Slice 5N: Count, then pick the number. The menu tiles (200 x 160): a few
+// things with their counting numbers above, and the number tile that says how
+// many; level 2 a small ten-frame and more. The level's dots in the corner.
+const NUM = (x, y, size, n, fill = '#1D2B8F') => `<text x="${x}" y="${y}" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="${size}" fill="${fill}">${n}</text>`;
+const countTile = (level) => {
+  const thing = (x, y, s, k) => `<g transform="translate(${x} ${y}) scale(${s})">${THINGS.apple.art}</g>`
+    + (k ? NUM(x + 30 * s, y - 4, 20, k, '#FFD43B').replace('<text ', '<text stroke="#2A2370" stroke-width="3" paint-order="stroke" ') : '');
+  let body = levelDots(level);
+  if (level === 1) {
+    body += thing(14, 48, 0.62, 1) + thing(56, 48, 0.62, 2) + thing(35, 98, 0.62, 3);
+  } else {
+    body += '<rect x="8" y="44" width="112" height="56" rx="10" fill="#FFF6CC" stroke="#FFD43B" stroke-width="4"/>';
+    for (let i = 0; i < 10; i++) body += thing(11 + (i % 5) * 21.5, 49 + Math.floor(i / 5) * 25, 0.34, 0);
+    body += NUM(64, 38, 22, 10, '#FFD43B').replace('<text ', '<text stroke="#2A2370" stroke-width="3" paint-order="stroke" ')
+      + thing(28, 110, 0.5, 0) + thing(66, 110, 0.5, 0);
+  }
+  return svg('0 0 200 160', body
+    + '<rect x="126" y="52" width="68" height="68" rx="14" fill="#fff" stroke="#FFC21A" stroke-width="5"/>'
+    + NUM(160, 103, level === 1 ? 52 : 40, level === 1 ? 3 : 12));
+};
+Object.assign(MENU, { 'count-1': countTile(1), 'count-2': countTile(2) });
+
+// ---------------------------------------------------------------------------
 // Slice 5N: Memory. A card's back is the same for every card: deep blue with
 // a firefly's warm light in the middle and a few tiny sparkles (no picture, so
 // no card gives a clue). Its face is a find-library picture on white.
