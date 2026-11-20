@@ -100,17 +100,18 @@ Four pull requests, one at a time.
 - [ ] A letter she left in the old round 3 has its star (if she had no help) and is due for review
 
 ### 5L — The practice page
-Extra practice for a letter, number or her name once it has its gold star. Three pull requests, one at a time; parts 1 and 2 are built, part 3 waits for Slice 8A (below).
+Extra practice for a letter, number or her name once it has its gold star. Three pull requests, one at a time; all three are built.
 
 1. **Letters and numbers (built):** one big pencil tile on the ABC and 123 boards (in ABC just after the "A a" tile). A tap turns practice mode on: starred tiles wear a pencil badge and open their practice page, every other tile is faint and wiggles; a second tap turns it off, and leaving the board ends it. Every tile stays at least 88 px (ABC 120 px, 123 95 px). The page: one set of four lines with 3 spaces side by side, sized to fit (20 is the smallest at 186 px), with the 45 px tolerance floor. Space 1 is traced like round 1 and stays as her model; spaces 2 and 3 are blank and judged like the copy-it round, with its reasons. Each finished space lights a firefly. Never stuck: Jugnu draws a stroke of space 1 after 5 misses on it (round 1's rule), and writes space 2 or 3 after 3 failed copies; the space counts as done, with help. When all 3 are done, a big arrow tile in the left column offers a fresh page. Back and home always leave. It never changes stars, reviews, helper levels or the practice-more list; each space is logged as a `practice` entry. Screenshots: `docs/screenshots/slice-5l/`.
 2. **Page stickers (built):** each full page adds one to that letter's count (`td.pages`) and moves its one sticker to the newest place on her shelf of finds: the letter on a little lined page, a stack of sheets behind it (up to 5) and the number of pages in a gold badge. Stars, reviews and helper levels stay untouched. Screenshot: `docs/screenshots/slice-5l/shelf-page-stickers.png`.
-3. **Her name (on hold until after Slice 8A, children's profiles, so it works per child):** one practice space per screen at her name book's line size, 3 screens make a page (screen 1 traced, screens 2 and 3 on her own), the 3 fireflies across all three screens; the same sticker and 3-try rule.
+3. **Her name (built):** the name book gets the same pencil tile; in practice mode a starred name shows the pencil badge and opens its practice page, without a star it is faint and wiggles. One practice space per screen at the name book's line size, 3 screens make a page: screen 1 traced letter by letter like the name's round 1, screens 2 and 3 written on her own under the model card and judged like the name's copy round, with its letter-by-letter reasons; the 3 fireflies across all three screens; the 45 px floor throughout. Never stuck: screen 1 as in round 1; on screens 2 and 3 Jugnu writes the name after 3 failed copies (done, with help). After screen 3 the arrow tile offers a fresh page; each full page adds to the name's page count and moves its one sticker (two places wide, storing no name) to the newest place. Per child, using the playing child's own name; renaming clears the name's pages and sticker. Each screen is logged as a `practice` entry. Screenshots: `docs/screenshots/slice-5l/name-*.png`.
 
 **Done when:**
 - [ ] The pencil tile turns practice mode on and off; only starred tiles open a practice page
 - [ ] A full page lights 3 fireflies and offers a fresh page
 - [ ] Practising never changes a star, a review date or a helper level
 - [ ] Each full page moves that letter's sticker to the newest place on her shelf, with the new count
+- [ ] Her name: the pencil only on a starred name, 3 screens make a page, and its sticker counts per child
 
 ### 5M — Clearer games and better pictures
 Four pull requests, one at a time.

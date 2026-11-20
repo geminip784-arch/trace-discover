@@ -13,6 +13,8 @@
 import { computeLayout, COPY_ROOM, BUTTONS_RIGHT, TAIL_LINE } from './render.js';
 import { CONFIG } from './progress.js';
 import { scoreCopy, copyStatus } from './copy.js';
+import { nameLayout, nameCopyLayout, NAME_ID } from './name.js';
+import { scoreName, nameCopyLogEntry } from './name-copy.js';
 
 export const PRACTICE = {
   spaces: 3,              // practice spaces on a page
@@ -157,5 +159,65 @@ export function practiceLogEntry({ char, page, space, ok, helped = false, done =
     // Space 1: { misses, wrongStarts, reversed }.
     trace: trace ? { misses: trace.misses ?? 0, wrongStarts: trace.wrongStarts ?? 0, reversed: trace.reversed ?? 0 } : null,
     copy: copy ? (({ type, time, char: c, attempt: a, ...rest }) => rest)(copy) : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Her name's practice page (Slice 5L part 3)
+//
+// Once her name has its gold star. One practice space per screen, at the name
+// book's own line size, and 3 screens make one page. The page's state is the
+// one above (startPage, judgeSpace, nextPage, fireflies): its spaces are the
+// three screens, so the 3 firefly lights span them.
+//   screen 1  her name traced letter by letter, like the name's round 1
+//             (src/progress.js finishNameLetter: Jugnu demonstrates after 3
+//             misses on a stroke and draws it after 5; then only that letter
+//             is traced again, once). Done with help when Jugnu drew any stroke.
+//   screens 2 and 3  the lines are empty and her name stands on the model card
+//             above them, as in the name's copy round (nameCopyLayout); she
+//             writes it on her own, judged by src/name-copy.js scoreName, with
+//             its letter-by-letter reasons. No helper on the lines. After 3
+//             failed copies Jugnu writes the name there: done, with help.
+// Every tolerance keeps the 45 px floor (geometry.js withMinLeeway).
+
+// The layout of screen `screen` (0, 1 or 2) for a name `width` units wide.
+// The line unit is the same on every screen (the name book's own size).
+export const nameScreenLayout = (w, h, width, screen) => (screen === 0 ? nameLayout(w, h, width) : nameCopyLayout(w, h, width));
+
+// Screens 2 and 3 are judged exactly like the name's copy round.
+export const scoreNameScreen = (strokes, letters, chars, opts = {}) => scoreName(strokes, letters, chars, opts);
+
+// Screen 1 is traced. letters: each letter's result ({ helped }), as the name's round gives them.
+// Returns { state, pageDone }, as finishTrace.
+export const finishNameTrace = (page, letters) => finishTrace(page, { assisted: letters.some((l) => l.helped === true) });
+
+// The attempt log: one 'practice' entry for screen 1 when it is traced (each
+// letter's result under `letters`), and one for every judged copy on screens 2
+// and 3 (the name copy round's fields, as nameCopyLogEntry gives them, under `copy`).
+//   page    which page of this sitting (1, 2...)
+//   space   the screen: 1, 2 or 3
+export function namePracticeLogEntry({ page, space, ok, helped = false, done = false, attempt = null, letters = null, result = null, now = new Date() }) {
+  const copy = result ? (({ type, time, round, review, attempt: a, helper, helped: h, ...rest }) => rest)(nameCopyLogEntry({ result, attempt })) : null;
+  return {
+    type: 'practice',
+    time: now.toISOString(),
+    char: NAME_ID,
+    page,
+    space,
+    kind: space === 1 ? 'trace' : 'copy',
+    ok: ok === true,
+    helped: helped === true,
+    done: done === true,
+    attempt,
+    reason: result?.reason ?? null,
+    letters: letters ? letters.map((l) => ({
+      letter: l.letter,
+      ok: l.ok === true,
+      helped: l.helped === true,
+      misses: l.misses ?? 0,
+      wrongStarts: l.wrongStarts ?? 0,
+      reversed: l.reversed ?? 0,
+    })) : null,
+    copy,
   };
 }

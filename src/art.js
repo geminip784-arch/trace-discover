@@ -206,6 +206,32 @@ export function pageStickerArt(glyph, count = 1, color = '#1D2B8F') {
 </svg>`;
 }
 
+// Her name's page sticker (Slice 5L part 3): her name on a little lined page,
+// two places wide like her name card, a stack of sheets behind it (one per page
+// she has done, up to 5 in all) and the number of pages in a gold badge.
+// 220 x 120. `word` comes from the child's profile when the shelf draws it (the
+// sticker itself stores no name); it is a to z only (src/name.js nameOf), and
+// escaped all the same.
+export function namePageStickerArt(word, count = 1) {
+  const n = Math.max(1, Math.round(Number(count)) || 1);
+  const sheets = Math.min(n, STICKER.maxSheets);
+  const behind = [];
+  for (let i = sheets - 1; i >= 1; i--) {
+    behind.push(`<rect x="${10 + i * 4}" y="${22 - i * 4}" width="176" height="88" rx="9" fill="#FFFFFF" stroke="#C9DBF0" stroke-width="2.5" transform="rotate(${i * 1.5} ${98 + i * 4} ${66 - i * 4})"/>`);
+  }
+  const size = Math.min(48, 260 / Math.max(word.length, 1));
+  const label = String(n);
+  const badgeR = label.length > 2 ? 20 : 17;
+  return `<svg ${NS} viewBox="0 0 220 120" aria-hidden="true">
+  ${behind.join('\n  ')}
+  <rect x="10" y="22" width="176" height="88" rx="9" fill="#FFFDF5" stroke="#E0B84A" stroke-width="3"/>
+  <g stroke-linecap="round"><line x1="20" y1="46" x2="176" y2="46" stroke="#5bb8ff" stroke-width="2"/><line x1="20" y1="64" x2="176" y2="64" stroke="#9aa0b8" stroke-width="1.6" stroke-dasharray="4 3"/><line x1="20" y1="82" x2="176" y2="82" stroke="#4cc25a" stroke-width="2"/><line x1="20" y1="96" x2="176" y2="96" stroke="#b9834d" stroke-width="2.4"/></g>
+  <text x="98" y="82" text-anchor="middle" font-family="Fredoka, system-ui, sans-serif" font-weight="600" font-size="${size}" fill="#1D2B8F">${escapeText(word)}</text>
+  <circle cx="${212 - badgeR}" cy="${4 + badgeR}" r="${badgeR}" fill="#FFC21A" stroke="#D99400" stroke-width="3"/>
+  <text x="${212 - badgeR}" y="${4 + badgeR}" text-anchor="middle" dominant-baseline="central" font-family="Fredoka, system-ui, sans-serif" font-weight="600" font-size="${label.length > 2 ? 15 : 19}" fill="#5A3A00">${escapeText(label)}</text>
+</svg>`;
+}
+
 // ---------------------------------------------------------------------------
 // Children's profiles (Slice 8A part 2): the 8 animal pictures a child can
 // choose (src/children.js ANIMALS), each a friendly face on a white disc,

@@ -10,7 +10,7 @@
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, boardGrid, localDay,
   startScreen, navigate, tuneFor, bookOf, tileColorOf, REVIEW_ORDER, booksWithDue, pageNow, pageSwitch, NAME_BOOK,
-  hasPencil,
+  hasPencil, nameTile,
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
@@ -29,11 +29,12 @@ import { setMusicOn, setTune, resumeMusic } from './music.js';
 import { startGame, loadChar } from './game.js';
 import { startNameGame } from './name-game.js';
 import { startPractice } from './practice-game.js';
+import { startNamePractice } from './name-practice-game.js';
 import { NAME_ID, nameOf, nameWidth, nameFits } from './name.js';
-import { HOUSE, DOOR, ICONS, ANIMAL_ART, GEAR, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt } from './art.js';
+import { HOUSE, DOOR, ICONS, ANIMAL_ART, GEAR, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt, namePageStickerArt } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
-import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard, isPageSticker } from './finds.js';
+import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard, isPageSticker, isNamePageSticker } from './finds.js';
 import { TOYBOX } from '../data/finds.js';
 import { GAME_KINDS, kindStars, gameTile, kindOf, menuRows, COUNT_GAMES } from './games.js';
 import { setNote, nameNote } from './notes.js';
@@ -504,9 +505,14 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   function drawNameBook(view, newStar) {
     const mine = state;
     const n = nameOf(readProfile().name);
+    // Slice 5L part 3: practice mode (the pencil tile is on): her name opens its
+    // practice page only once it has its gold star; without it the tile is faint and wiggles.
+    const practice = state.practice === true;
+    const starred = readStars().includes(NAME_ID);
     view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}
-      <div class="board"><div class="name-tile tile faint" role="button" aria-label="name"></div></div>`;
+      <div class="board name-board${practice ? ' practice-mode' : ''}"><div class="name-tile tile faint" role="button" aria-label="name"></div></div>`;
     const tile = view.querySelector('.name-tile');
+    view.querySelector('.name-board').appendChild(pencilTile(practice));
     tile.style.setProperty('--c', '#B87A00');
     if (n.ok) {
       tile.style.setProperty('--len', n.word.length);
@@ -515,14 +521,14 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       glyph.textContent = n.word; // a to z only (nameOf)
       tile.appendChild(glyph);
     } else tile.innerHTML = NAME_LINES;
-    if (readStars().includes(NAME_ID)) {
+    if (starred) {
       const star = document.createElement('span');
       star.className = `star${newStar === NAME_ID ? ' new' : ''}`;
       star.innerHTML = STAR;
       tile.appendChild(star);
     }
     // Due for review today (Slice 9C part 2): the tile glows and carries the firefly light.
-    const due = n.ok && dueNow().includes(NAME_ID);
+    const due = n.ok && !practice && dueNow().includes(NAME_ID);
     if (due) {
       tile.classList.add('due');
       const mark = document.createElement('span');
@@ -540,18 +546,27 @@ export function startShell(els, { manifest, params, now = new Date() }) {
         if (chars.some((c) => !c)) return; // a letter file is missing: stays faint
         if (!nameFits(nameWidth(chars))) return say('too-long');
         ready = true;
-        tile.classList.replace('faint', 'bright');
+        const t = nameTile({ ready, star: starred, practice });
+        if (t.open) tile.classList.replace('faint', 'bright');
+        if (t.pencil) {
+          const badge = document.createElement('span');
+          badge.className = 'pencil-badge';
+          badge.innerHTML = PENCIL_BADGE;
+          tile.appendChild(badge);
+        }
       });
     }
     tile.addEventListener('click', () => {
       if (busy) return;
-      if (!ready) return wiggle(tile, 'shake');
+      const t = nameTile({ ready, star: starred, practice });
+      if (!t.open) return wiggle(tile, 'shake');
       busy = true;
       popSound();
       tile.classList.add('picked');
       setTimeout(() => {
         busy = false;
-        go(navigate(state, { type: 'openName', ready: true, review: due }));
+        if (practice) go(navigate(state, { type: 'openPractice', id: NAME_ID, stars: readStars(), ready: true }));
+        else go(navigate(state, { type: 'openName', ready: true, review: due }));
       }, TILE_PICK_MS);
     });
   }
@@ -756,13 +771,15 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     const pages = readPages();
     const artOf = (f) => {
       if (isNameCard(f)) return word ? nameCardArt(word, nameStar) : null;
+      // Her name's sticker (Slice 5L part 3) stores no name: it shows the playing child's name.
+      if (isNamePageSticker(f)) return word ? namePageStickerArt(word, pages[f.pg] ?? 1) : null;
       if (isPageSticker(f)) return pageStickerArt(f.pg, pages[f.pg] ?? 1, tileColorOf(f.pg) ?? undefined);
       return findArt(f);
     };
     for (const f of readFinds().slice(-SHELF_SHOWS).reverse()) {
       const art = artOf(f);
       if (!art) continue;
-      const places = (f.g && f.n >= 3) || isNameCard(f) ? 2 : 1;
+      const places = (f.g && f.n >= 3) || isNameCard(f) || isNamePageSticker(f) ? 2 : 1;
       if (used + places > 8) { row += 1; used = 0; }
       if (row > 2) break;
       rows[row].push({ art, places });
@@ -835,7 +852,10 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   // reviews, helper levels or the practice-more list. She leaves with back or home.
   async function startPracticePage() {
     const mine = state;
-    const running = await startPractice(els, { charId: state.char, manifest });
+    // Slice 5L part 3: her name's practice page, with the playing child's own name.
+    const running = state.char === NAME_ID
+      ? await startNamePractice(els, { letters: nameOf(readProfile().name).letters, manifest })
+      : await startPractice(els, { charId: state.char, manifest });
     if (state !== mine) running.stop();
     else {
       game = running;

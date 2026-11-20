@@ -345,8 +345,12 @@ export const addNameCard = (list, max = MAX_FINDS) => addFind(list.filter((e) =>
 // Each full practice page moves that character's sticker to the newest place
 // (an old one is taken out first). How many pages she has done is kept apart,
 // in td.pages (src/practice.js addPage); the shelf reads it when it draws the sticker.
-export const PAGE_ID = /^([A-Za-z0-9]|1\d|20)$/; // a capital, a lowercase letter, or 0 to 20
+// Slice 5L part 3: 'name' is her name's sticker. Like her name card it stores
+// no name; the shelf reads the name from the child's profile when it draws it.
+export const PAGE_ID = /^([A-Za-z0-9]|1\d|20|name)$/; // a capital, a lowercase letter, 0 to 20, or her name
+export const NAME_PAGE = 'name';
 export const isPageSticker = (e) => typeof e?.pg === 'string' && PAGE_ID.test(e.pg);
+export const isNamePageSticker = (e) => isPageSticker(e) && e.pg === NAME_PAGE;
 export const pageSticker = (id) => ({ pg: id });
 export const addPageSticker = (list, id, max = MAX_FINDS) =>
   addFind(list.filter((e) => !(isPageSticker(e) && e.pg === id)), pageSticker(id), max);
