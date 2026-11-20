@@ -139,12 +139,14 @@ export function charWidth(strokes) {
 }
 
 // The character file object (same fields as data/chars/L.example.json, minus picture and note).
+// Urdu ids (Slice 10: 'ur-be', ...) are script 'urdu', right to left, with no case.
 export function buildCharacter(id, strokes, direction = 'ltr') {
   const isDigit = /^[0-9]+$/.test(id); // 0 to 9, and 10 to 20 (Slice 9B)
-  const char = { id, script: isDigit ? 'digit' : 'latin' };
-  if (!isDigit) char.case = /^[a-z]$/.test(id) ? 'lower' : 'upper';
+  const isUrdu = id.startsWith('ur-');
+  const char = { id, script: isDigit ? 'digit' : isUrdu ? 'urdu' : 'latin' };
+  if (!isDigit && !isUrdu) char.case = /^[a-z]$/.test(id) ? 'lower' : 'upper';
   char.family = strokeOrderOf(id)?.family ?? 'straight';
-  char.direction = direction;
+  char.direction = isUrdu ? 'rtl' : direction;
   char.width = charWidth(strokes);
   char.strokes = strokes.map((s) => ({ kind: s.kind, points: s.points.map(roundPoint) }));
   return char;

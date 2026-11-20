@@ -552,3 +552,142 @@ export function numberGlyph(id) {
 
 export const NUMBERS = Object.fromEntries(NUMBER_IDS.map((id) => [id, numberGlyph(id)]));
 Object.assign(GLYPHS, NUMBERS);
+
+// ---------------------------------------------------------------------------
+// Urdu letters (Slice 10). The isolated (stand-alone) form only, in a plain
+// Naskh print as in a qaida. Slice 10A: six sample letters, for review on
+// glyphs.html before the rest are made. They are not in the app yet (not in
+// GLYPHS, no character files).
+//
+// Urdu letters are curved, so they add a third kind of piece:
+//   curve(p0, p1, p2, ...)   a smooth curve through every point, in order
+//                            (centripetal Catmull-Rom). Where two pieces of a
+//                            stroke meet there may be a corner (the tip of ج's
+//                            head); inside one curve there never is.
+//
+// Lines: the grass line is the Urdu baseline. Tall letters (ا) reach the sky
+// line; bodies sit on the grass line; tails (ج ع) dip to just above the tail
+// line; dots below sit about halfway to the tail line, dots inside ج on the
+// grass line. The shapes follow Noto Naskh Arabic (assets/fonts/), drawn at the
+// size where its alif runs from the sky line to the grass line (URDU_FONT).
+//
+// Each letter is drawn here in the font's own coordinates (x = 0 at the font
+// letter's origin), then moved right or left so its leftmost ink sits at
+// MARGIN, like every other character. `fontX` keeps where the font letter's
+// origin lands, so glyphs.html can draw the font letter faintly behind it.
+//
+// Strokes: the body first, then the dots, which are taps (`dot`, scored with
+// scoreDot like the dot of i and j). Most strokes run right to left; the head
+// of ج runs left to right, as it is written, before turning back into the tail.
+
+// The font size, in line units, at which the font's alif (671 of its 1000 units
+// per em) runs from the sky line to the grass line. The font's baseline is the grass line.
+export const URDU_FONT = { family: 'Noto Naskh Arabic', size: 1000 / 671, baseline: 1 };
+
+const curve = (...points) => ({ type: 'curve', points });
+
+// Points along a smooth curve through `points` (centripetal Catmull-Rom: no
+// loops or overshoots between close points), `steps` per span, in order.
+// The ends carry on in the direction of their neighbour.
+export function curvePoints(points, steps = 120) {
+  if (points.length < 2) return points.map((p) => [...p]);
+  const ext = (a, b) => [2 * a[0] - b[0], 2 * a[1] - b[1]];
+  const P = [ext(points[0], points[1]), ...points, ext(points[points.length - 1], points[points.length - 2])];
+  const knot = (t, a, b) => t + Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1]));
+  const out = [[...points[0]]];
+  for (let i = 1; i < P.length - 2; i++) {
+    const [p0, p1, p2, p3] = [P[i - 1], P[i], P[i + 1], P[i + 2]];
+    const t0 = 0;
+    const t1 = knot(t0, p0, p1);
+    const t2 = knot(t1, p1, p2);
+    const t3 = knot(t2, p2, p3);
+    const lerp = (a, b, ta, tb, t) => (tb === ta ? [...a] : [
+      ((tb - t) * a[0] + (t - ta) * b[0]) / (tb - ta),
+      ((tb - t) * a[1] + (t - ta) * b[1]) / (tb - ta),
+    ]);
+    for (let s = 1; s <= steps; s++) {
+      const t = t1 + ((t2 - t1) * s) / steps;
+      const a1 = lerp(p0, p1, t0, t1, t);
+      const a2 = lerp(p1, p2, t1, t2, t);
+      const a3 = lerp(p2, p3, t2, t3, t);
+      const b1 = lerp(a1, a2, t0, t2, t);
+      const b2 = lerp(a2, a3, t1, t3, t);
+      out.push(s === steps ? [...p2] : lerp(b1, b2, t1, t2, t));
+    }
+  }
+  return out;
+}
+
+// Fine points along any piece, in drawing order (line, arc or curve).
+export function piecePath(piece) {
+  if (piece.type === 'line') return piece.points.map((p) => [...p]);
+  if (piece.type === 'curve') return curvePoints(piece.points);
+  const steps = Math.max(8, Math.ceil(Math.abs(piece.to - piece.from) / 0.25));
+  return Array.from({ length: steps + 1 }, (_, i) => arcPoint(piece.cx, piece.cy, piece.rx, piece.ry, piece.from + ((piece.to - piece.from) * i) / steps));
+}
+
+// Move a letter drawn in font coordinates so its leftmost ink sits at MARGIN.
+const movePiece = (p, dx) => (p.type === 'arc' ? { ...p, cx: p.cx + dx } : { ...p, points: p.points.map(([x, y]) => [x + dx, y]) });
+const moveStroke = (s, dx) => (s.kind === 'dot' ? { ...s, at: [s.at[0] + dx, s.at[1]] } : { ...s, pieces: s.pieces.map((p) => movePiece(p, dx)) });
+function atMargin(glyph) {
+  const xs = glyph.strokes.flatMap((s) => (s.kind === 'dot' ? [s.at[0]] : s.pieces.flatMap((p) => piecePath(p).map(([x]) => x))));
+  const dx = MARGIN - Math.min(...xs);
+  const r = (v) => Math.round(v * 1000) / 1000;
+  return {
+    ...glyph,
+    fontX: r(dx),
+    strokes: glyph.strokes.map((s) => moveStroke(s, dx)),
+    ...(glyph.plans ? { plans: glyph.plans.map((plan) => plan.map((s) => moveStroke(s, dx))) } : {}),
+  };
+}
+
+// Shared pieces (font coordinates), so every plan is drawn from the same geometry.
+const U = {
+  // ج: the head, from its left end along the top to its right tip (a corner),
+  // then the tail back down to the left, round below the grass, and out to the right.
+  jeemHead: curve([0.127, 0.56], [0.237, 0.495], [0.517, 0.515], [0.857, 0.56]),
+  jeemTail: curve([0.857, 0.56], [0.637, 0.64], [0.337, 0.78], [0.177, 1.03], [0.237, 1.28], [0.507, 1.385], [0.907, 1.3]),
+  // ع: the small head from its top right, round to the left and back to the
+  // right arm's tip (a corner), then the tail as for ج.
+  ainHead: curve([0.527, 0.42], [0.367, 0.335], [0.187, 0.4], [0.167, 0.58], [0.337, 0.7], [0.667, 0.6]),
+  ainTail: curve([0.667, 0.6], [0.437, 0.71], [0.257, 0.86], [0.197, 1.09], [0.287, 1.33], [0.557, 1.405], [0.917, 1.3]),
+};
+
+// The six sample letters (Slice 10A), keyed by their ASCII ids (src/session.js URDU).
+export const URDU_GLYPHS = Object.fromEntries(Object.entries({
+  // ا alif: one stroke, from the sky line straight down to the grass line.
+  'ur-alif': { letter: 'ا', strokes: [
+    stroke('alif', 'sky', 'grass', line([0.197, 0], [0.197, 1])),
+  ] },
+  // ب be: the body from its right tip, down and along the grass line to the
+  // left, up to its left tip; then one dot below.
+  'ur-be': { letter: 'ب', strokes: [
+    stroke('body', null, null, curve([1.007, 0.42], [1.037, 0.7], [0.957, 0.86], [0.587, 0.935], [0.257, 0.89], [0.147, 0.73], [0.152, 0.58])),
+    dot('dot', 0.557, 1.2),
+  ] },
+  // ج jeem: the head and the tail in one go (a corner at the head's tip); then
+  // the dot inside, on the grass line. Or the head, then the tail.
+  'ur-jeem': { letter: 'ج', strokes: [
+    stroke('head and tail', null, null, U.jeemHead, U.jeemTail),
+    dot('dot', 0.557, 1),
+  ], plans: [
+    [stroke('head', null, null, U.jeemHead), stroke('tail', null, null, U.jeemTail), dot('dot', 0.557, 1)],
+  ] },
+  // د dal: from the top, slanting down to the right, round and back along the grass line to the left.
+  'ur-dal': { letter: 'د', strokes: [
+    stroke('body', null, null, curve([0.387, 0.43], [0.477, 0.62], [0.527, 0.8], [0.467, 0.93], [0.297, 0.965], [0.097, 0.88])),
+  ] },
+  // ع ain: the head and the tail in one go (a corner at the arm's tip). Or the head, then the tail.
+  'ur-ain': { letter: 'ع', strokes: [
+    stroke('head and tail', null, null, U.ainHead, U.ainTail),
+  ], plans: [
+    [stroke('head', null, null, U.ainHead), stroke('tail', null, null, U.ainTail)],
+  ] },
+  // ے bari ye: from the top right down to the left (a corner on the grass
+  // line), then the long sweep back to the right, ending in a point.
+  'ur-bari-ye': { letter: 'ے', strokes: [
+    stroke('body', null, null,
+      curve([0.537, 0.55], [0.427, 0.68], [0.227, 0.745], [0.147, 0.81], [0.122, 0.91]),
+      curve([0.122, 0.91], [0.257, 0.96], [0.597, 0.985], [0.897, 0.965], [1.107, 0.84])),
+  ] },
+}).map(([id, g]) => [id, atMargin(g)]));

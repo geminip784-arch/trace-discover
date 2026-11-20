@@ -5,6 +5,8 @@
 
 import { resample, pathLength, dist } from './geometry.js';
 import { buildCharacter, round3, joinGap, STROKE_POINTS } from './recording.js';
+import { curvePoints } from '../data/glyphs.js';
+import { STROKE_ORDER } from '../data/stroke-order.js';
 
 // Today's recordings put STROKE_POINTS (24) points on a full-height stem, so one
 // point every 1/23 line units. Generated strokes keep that spacing: a longer
@@ -28,6 +30,8 @@ export function piecePoints(piece) {
     }
     return out;
   }
+  // A smooth curve through its points (Slice 10, Urdu): finely sampled like an arc.
+  if (piece.type === 'curve') return curvePoints(piece.points);
   throw new Error(`unknown piece type ${piece.type}`);
 }
 
@@ -93,6 +97,12 @@ export function spacedPoints(pts) {
 
 const roundPoint = ([x, y]) => [round3(x), round3(y)];
 
+// 'straight' (only lines), 'curved' (no lines) or 'mixed', from a glyph's pieces.
+export function familyOf(glyph) {
+  const kinds = new Set(glyph.strokes.flatMap((s) => (s.kind === 'dot' ? [] : s.pieces.map((p) => (p.type === 'line' ? 'line' : 'round')))));
+  return kinds.has('round') ? (kinds.has('line') ? 'mixed' : 'curved') : 'straight';
+}
+
 // One generated stroke: { kind, part, points } (part: its short name for the
 // parent-facing lines; recorded files have none).
 // A dot stroke (the dot of i and j) keeps its single point.
@@ -104,11 +114,14 @@ const strokeFile = (s) => (s.kind === 'dot'
 // stroke's part name, plus anyOrder (before strokes) when the glyph has one,
 // its digits (Slice 9B, numbers 10 to 20, before strokes), and its other stroke
 // plans (Slice 5J, after strokes) when it has any.
+// Urdu (Slice 10): the file also has the letter itself (after its script) and,
+// until data/stroke-order.js lists it, a family worked out from its pieces.
 export function glyphCharacter(id, glyph) {
   const strokes = glyph.strokes.map(strokeFile);
   const built = buildCharacter(id, strokes);
   const { strokes: plain, ...head } = built;
-  const out = { ...head };
+  if (glyph.letter && !STROKE_ORDER[id]) head.family = familyOf(glyph);
+  const out = glyph.letter ? { id: head.id, script: head.script, letter: glyph.letter, ...head } : { ...head };
   if (glyph.anyOrder) out.anyOrder = glyph.anyOrder;
   if (glyph.digits) out.digits = glyph.digits;
   out.strokes = plain.map((st, k) => ({ kind: st.kind, part: strokes[k].part, points: st.points }));

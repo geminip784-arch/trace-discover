@@ -2,9 +2,13 @@
 // characters. Reads data/chars/index.json and every file it lists, and draws
 // each character on the guide lines with numbered start dots and direction arrows.
 // Slice 5J: each character's other allowed stroke plans follow it, one card each.
+// Slice 10A: the Urdu sample letters, built straight from data/glyphs.js (they
+// have no character files yet), right to left, each with the Noto Naskh Arabic
+// letter drawn faintly behind it for comparison (a checkbox hides it).
 
 import { pathLength, dist } from './geometry.js';
-import { joinGaps } from './glyph-points.js';
+import { joinGaps, glyphCharacter } from './glyph-points.js';
+import { URDU_GLYPHS, URDU_FONT } from '../data/glyphs.js';
 import { CHAR_GROUPS } from './recording.js';
 import { charFile } from './session.js';
 import { planCount, planChar } from './variants.js';
@@ -42,7 +46,9 @@ function along(pts, t) {
   return { p: b, dir: Math.atan2(b[1] - a[1], b[0] - a[0]) };
 }
 
-function card(char) {
+// font: { letter, x } draws the font's letter faintly behind (Urdu, Slice 10A),
+// its origin at x on the grass line, at URDU_FONT.size.
+function card(char, font = null) {
   const w = char.width + 2 * PAD;
   const svg = el('svg', {
     width: Math.round(w * UNIT),
@@ -58,12 +64,19 @@ function card(char) {
   el('line', { x1: -PAD, x2: w - PAD, y1: 1.5, y2: 1.5, stroke: '#b9834d' }, guides); // the tail line
 
   const lines = char.strokes.filter((s) => s.kind === 'line');
-  // The track, then each stroke's centre line in its colour.
+  // The track, then (Urdu) the font letter over it, then each stroke's centre line in its colour.
   for (const s of lines) {
     el('polyline', {
       points: s.points.map((p) => p.join(',')).join(' '),
       fill: 'none', stroke: '#e3e1da', 'stroke-width': 0.16, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
     }, svg);
+  }
+  if (font) {
+    const t = el('text', {
+      class: 'font-letter', x: font.x, y: URDU_FONT.baseline, fill: 'rgb(120 60 160 / 0.22)',
+      'font-family': `'${URDU_FONT.family}'`, 'font-size': URDU_FONT.size, direction: 'ltr',
+    }, svg);
+    t.textContent = font.letter;
   }
   char.strokes.forEach((s, k) => {
     const color = COLORS[k % COLORS.length];
@@ -117,7 +130,8 @@ function caption(char, plan = 0) {
     .filter(Boolean);
   const cap = document.createElement('figcaption');
   const b = document.createElement('b');
-  b.textContent = plan === 0 ? char.id : `${char.id} plan ${plan + 1}`;
+  const name = char.letter ? `${char.letter} ${char.id}` : char.id;
+  b.textContent = plan === 0 ? name : `${name} plan ${plan + 1}`;
   const parts = char.strokes.map((s) => s.part).filter(Boolean);
   cap.append(b, ` · ${n} stroke${n > 1 ? 's' : ''}${joins.length ? ` · ${joins.join(', ')}` : ''}`);
   if (parts.length) cap.append(document.createElement('br'), parts.join(' + '));
@@ -154,7 +168,39 @@ async function main() {
     }
     sets.append(h, row);
   }
+  sets.append(...urduSection());
   document.body.dataset.ready = '1';
+}
+
+// The Urdu samples (Slice 10A): one card per plan, filling from the right as on the Urdu board.
+function urduSection() {
+  const h = document.createElement('h2');
+  h.textContent = 'Urdu samples (Slice 10A)';
+  const toggle = document.createElement('label');
+  toggle.className = 'toggle';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = true;
+  box.addEventListener('change', () => document.body.classList.toggle('no-font', !box.checked));
+  toggle.append(box, ' Show the Noto Naskh Arabic letter (purple) under each one');
+  const row = document.createElement('section');
+  row.className = 'set urdu';
+  row.dir = 'rtl';
+  for (const [id, glyph] of Object.entries(URDU_GLYPHS)) {
+    const char = glyphCharacter(id, glyph);
+    for (let p = 0; p < planCount(char); p++) {
+      const shown = planChar(char, p);
+      const fig = document.createElement('figure');
+      if (p > 0) fig.className = 'plan';
+      const svg = card(shown, { letter: glyph.letter, x: glyph.fontX });
+      fig.style.width = `${svg.getAttribute('width')}px`;
+      const cap = caption(shown, p);
+      cap.dir = 'ltr';
+      fig.append(svg, cap);
+      row.append(fig);
+    }
+  }
+  return [h, toggle, row];
 }
 
 main().catch((err) => {
