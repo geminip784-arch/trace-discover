@@ -69,7 +69,7 @@ import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js'
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel } from './debug.js';
 import { loadChar, pauseAnimations } from './game.js';
-import { NAME_ID, nameLayout, nameCopyLayout, nameWidth, placeLetters, nameLogEntry } from './name.js';
+import { NAME_ID, nameLayout, nameCopyLayout, nameWidth, placeLetters, nameLogEntry, NAME_DEMO_MS } from './name.js';
 import { scoreName, nameCompareIds, assignStrokes, nameCopyLogEntry } from './name-copy.js';
 import { refBox, POSITION_LINES } from './copy.js';
 
@@ -79,7 +79,6 @@ const LETTER_GLOW_WIDTH = 0.12;      // a letter's glow when it is done, line un
 const LETTER_GLOW_MS = 900;          // one letter lights up this long
 const NAME_GLOW_STEP_MS = 220;       // at the end, each letter of her name starts glowing this long after the one before
 const NAME_WAIT_MS = 3000;           // the copy round (reviews): her name is judged this long after her last lift
-const NAME_DEMO_MS = 700;            // the copy round (reviews): Jugnu writes each stroke of her name on the card this fast
 const CARD_TRAIL_WIDTH = 0.2;        // Jugnu's trail on the card, card units
 const LINE_GLOW_WIDTH = 0.03;        // a guide line's gold glow (line position reasons), line units
 const STARTED_NEAR = 0.3;            // level 2: a stroke starting this near a letter's start dot begins that letter

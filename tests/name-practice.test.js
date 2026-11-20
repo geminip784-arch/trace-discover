@@ -8,10 +8,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  nameScreenLayout, scoreNameScreen, finishNameTrace, namePracticeLogEntry,
+  nameScreenLayout, scoreNameScreen, finishNameTrace, namePracticeLogEntry, nameCardDemo, NAME_CARD_DEMO,
   startPage, judgeSpace, nextPage, fireflies, isPageDone, PRACTICE,
 } from '../src/practice.js';
-import { nameOf, placeLetters, nameWidth, nameLayout, NAME_FIT, NAME_ID, TABLET_WIDTH } from '../src/name.js';
+import { nameOf, placeLetters, nameWidth, nameLayout, NAME_FIT, NAME_ID, TABLET_WIDTH, NAME_DEMO_MS } from '../src/name.js';
+import { CONFIG } from '../src/progress.js';
 import { nameCompareIds } from '../src/name-copy.js';
 import { startNameRound, finishNameLetter } from '../src/progress.js';
 import { nameCopyNote } from '../src/notes.js';
@@ -161,6 +162,37 @@ test('screens 2 and 3: a name stopped part way is a hint, never a failed copy', 
   const result = scoreNameScreen(writeName('Sa'), letters, chars, { othersOf });
   assert.equal(result.reason, 'unfinished');
   assert.equal(result.letter, 2, 'Jugnu writes the r next on the card');
+});
+
+// ---------------------------------------------------------------------------
+// The card's demonstration: fast on screen 2 (a touch finishes it), none on screen 3
+
+test('screen 2: Jugnu writes her name on the card noticeably faster than in the copy round, and a touch finishes it', () => {
+  const demo = nameCardDemo(1);
+  assert.ok(demo, 'screen 2 has a demonstration');
+  assert.equal(demo.skippable, true, 'her touch finishes the card at once, never pausing Jugnu');
+  // Noticeably faster: each stroke, and the hop between strokes, well under the copy round's.
+  assert.ok(demo.ms <= NAME_DEMO_MS * 0.6, `${demo.ms} ms a stroke against ${NAME_DEMO_MS}`);
+  assert.ok(demo.hopMs <= CONFIG.hopMs * 0.6, `${demo.hopMs} ms a hop against ${CONFIG.hopMs}`);
+  // Sara (7 strokes): the whole card at least a third quicker.
+  const strokes = nameSetup('Sara').letters.reduce((n, c) => n + c.strokes.length, 0);
+  const total = (ms, hop) => strokes * (ms + hop);
+  assert.ok(total(demo.ms, demo.hopMs) <= total(NAME_DEMO_MS, CONFIG.hopMs) * 0.67);
+  assert.deepEqual(NAME_CARD_DEMO, { ms: demo.ms, hopMs: demo.hopMs });
+});
+
+test('screen 3: no demonstration: her name is already on the card; screen 1 has no card', () => {
+  assert.equal(nameCardDemo(2), null);
+  assert.equal(nameCardDemo(0), null);
+  // The card itself is on screen 3, with her name on it (the layout has it).
+  const { width } = nameSetup('Sara');
+  assert.ok(nameScreenLayout(1280, 626, width, 2).card);
+});
+
+test('the page plays the card rule: screen 2 skippable on touch, screen 3 straight to her writing', () => {
+  const src = readFileSync(new URL('../src/name-practice-game.js', import.meta.url), 'utf8');
+  assert.match(src, /const demo = nameCardDemo\(page\.space\);\s*if \(demo && /, 'the demonstration only when nameCardDemo gives one');
+  assert.match(src, /if \(phase === 'held' && cardShow\) skipCard\(\);\s*\/\/[^\n]*\n\s*if \(phase === 'held'\) return hold\(\);/, 'a touch during it finishes the card before any pause');
 });
 
 // ---------------------------------------------------------------------------

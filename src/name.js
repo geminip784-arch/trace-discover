@@ -88,6 +88,8 @@ export function nameLayout(w, h, width, fit = NAME_FIT) {
 // Returns nameLayout's fields with `top` moved, plus `card`: { x, y, w, h, k,
 // origin } in px (k: px per card unit; origin: the card name's x = 0, y = 0).
 export const NAME_CARD = { pad: 0.16, gap: 0.06, max: 0.6, bottom: 20 };
+// Jugnu writes each stroke of her name on the card this fast in the copy round (ms).
+export const NAME_DEMO_MS = 700;
 export function nameCopyLayout(w, h, width, fit = NAME_FIT, card = NAME_CARD) {
   const layout = nameLayout(w, h, width, fit);
   const { unit } = layout;

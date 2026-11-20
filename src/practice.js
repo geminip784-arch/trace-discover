@@ -180,6 +180,17 @@ export function practiceLogEntry({ char, page, space, ok, helped = false, done =
 //             failed copies Jugnu writes the name there: done, with help.
 // Every tolerance keeps the 45 px floor (geometry.js withMinLeeway).
 
+// Jugnu writing her name on the card at the start of a screen:
+//   screen 2  he writes it, noticeably faster than in the copy round (ms a
+//             stroke, hopMs between strokes), and a touch during it finishes the
+//             card at once (skippable): her stroke starts there and then, Jugnu
+//             does not pause.
+//   screen 3  no demonstration: her name is already written on the card (she has
+//             just watched it on screen 2), and she can write at once.
+// Screen 1 has no card. Returns { ms, hopMs, skippable } or null.
+export const NAME_CARD_DEMO = { ms: 400, hopMs: 200 };
+export const nameCardDemo = (screen) => (screen === 1 ? { ...NAME_CARD_DEMO, skippable: true } : null);
+
 // The layout of screen `screen` (0, 1 or 2) for a name `width` units wide.
 // The line unit is the same on every screen (the name book's own size).
 export const nameScreenLayout = (w, h, width, screen) => (screen === 0 ? nameLayout(w, h, width) : nameCopyLayout(w, h, width));

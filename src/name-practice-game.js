@@ -8,8 +8,11 @@
 //             as in round 1: Jugnu demonstrates after 3 misses on a stroke and
 //             draws it after 5; then only that letter is traced again, once.
 //   Screens 2 and 3: the lines are empty and her name stands on the model card
-//             above them, as in the name's copy round. Jugnu writes it once on
-//             the card, then she writes it on her own. It is judged like the
+//             above them, as in the name's copy round. On screen 2 Jugnu writes
+//             it once on the card, faster than in the copy round; a touch
+//             during that finishes the card at once and her stroke starts. On
+//             screen 3 the name is already on the card, with no demonstration
+//             (src/practice.js nameCardDemo). She writes it on her own. It is judged like the
 //             copy round (src/name-copy.js scoreName), with its letter-by-letter
 //             reasons shown on the card; then her name fades and she writes it
 //             again. No helper on the lines. After 3 failed copies Jugnu writes
@@ -41,13 +44,13 @@ import {
 import { CONFIG, initialState, applyLift, applyPlanPass, strokeLogEntry, startNameRound, finishNameLetter } from './progress.js';
 import { traceNote, nameCopyNote } from './notes.js';
 import {
-  startPage, judgeSpace, nextPage, fireflies, nameScreenLayout, scoreNameScreen, finishNameTrace, namePracticeLogEntry,
+  startPage, judgeSpace, nextPage, fireflies, nameScreenLayout, scoreNameScreen, finishNameTrace, namePracticeLogEntry, nameCardDemo,
 } from './practice.js';
 import { logAttempt, readProfile, savePracticePage } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, popSound, setProfile } from './audio.js';
 import { createJugnu } from './jugnu.js';
 import { loadChar, pauseAnimations } from './game.js';
-import { NAME_ID, nameWidth, placeLetters } from './name.js';
+import { NAME_ID, nameWidth, placeLetters, NAME_DEMO_MS } from './name.js';
 import { nameCompareIds, assignStrokes } from './name-copy.js';
 import { refBox, POSITION_LINES } from './copy.js';
 import { DUE_MARK, NEXT_PAGE } from './art.js';
@@ -58,7 +61,6 @@ const LETTER_GLOW_WIDTH = 0.12;      // a letter's glow when it is done, line un
 const LETTER_GLOW_MS = 900;          // one letter lights up this long
 const NAME_GLOW_STEP_MS = 220;       // at the end, each letter starts glowing this long after the one before
 const NAME_WAIT_MS = 3000;           // screens 2 and 3: her name is judged this long after her last lift (as the copy round)
-const NAME_DEMO_MS = 700;            // Jugnu writes each stroke of her name on the card this fast (as the copy round)
 const CARD_TRAIL_WIDTH = 0.2;        // Jugnu's trail on the card, card units
 const LINE_GLOW_WIDTH = 0.03;        // a guide line's gold glow (line position reasons), line units
 const PLAIN_INK = { dim: false, glow: true };
@@ -307,30 +309,54 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
 
   // ---- screens 2 and 3: on her own, judged like the name's copy round ----
 
+  // Screen 2: Jugnu writes her name on the card (fast, and a touch finishes it).
+  // Screen 3: it is already there; she writes at once.
   async function beginCopy() {
     copy = { strokes: [], ids: [], hinted: false };
     redraw();
     speak('copy');
-    if (!(await showOnCard(namePaths(), NAME_DEMO_MS))) return;
+    const demo = nameCardDemo(page.space);
+    if (demo && !(await showOnCard(namePaths(), demo.ms, demo))) return;
+    if (!demo) jugnu.hopTo(home(), CONFIG.hopMs); // off the card (not a demonstration: her touch stops it)
     phase = 'trace';
   }
 
+  // A skippable demonstration running now (screen 2's), or null: skip() ends it at once.
+  let cardShow = null;
+
   // Jugnu draws `paths` (the name's own units) on the model card, each leaving a
   // glowing trail; then the trails fade and he flies home. Resolves false if stopped.
-  async function showOnCard(paths, ms = CONFIG.copyDemoMs) {
+  // skippable: her touch ends it at once (skipCard), and it resolves true.
+  async function showOnCard(paths, ms = CONFIG.copyDemoMs, { hopMs = CONFIG.hopMs, skippable = false } = {}) {
     phase = 'held';
     const trails = [];
+    let skipped = false;
+    if (skippable) cardShow = { skip: () => { skipped = true; jugnu.stop(); } };
     for (const path of paths) {
       const pts = path.map(card.toMain);
       const trail = fx.trail(pts.map(toPx), CARD_TRAIL_WIDTH * card.k);
       trails.push(trail);
-      const flown = await jugnu.demo(pts, ms, CONFIG.hopMs, (f) => trail.set(f));
-      if (!alive || !flown) return false;
+      const flown = await jugnu.demo(pts, ms, hopMs, (f) => trail.set(f));
+      if (!alive) return false;
+      if (skipped) return true; // the card is finished: she is already writing
+      if (!flown) { cardShow = null; return false; }
     }
+    cardShow = null;
     for (const t of trails) t.fadeOut(CONFIG.trailFadeMs);
-    jugnu.hopTo(home(), CONFIG.hopMs);
-    await wait(Math.max(CONFIG.trailFadeMs, CONFIG.hopMs));
+    jugnu.hopTo(home(), hopMs);
+    await wait(Math.max(CONFIG.trailFadeMs, hopMs));
     return alive;
+  }
+
+  // Her touch during screen 2's demonstration: the card is finished at once
+  // (the model is already drawn on it; Jugnu's trails go) and her stroke starts.
+  function skipCard() {
+    const show = cardShow;
+    cardShow = null;
+    show.skip();
+    jugnu.placeAt(home()); // at once, off the card
+    fx.clear();
+    phase = 'trace';
   }
 
   function endCopyStroke() {
@@ -504,6 +530,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     reversedStrokes = [];
     copy = null;
     lastCopy = null;
+    cardShow = null;
     ink.clear();
     fx.clear();
     showNote(null);
@@ -616,6 +643,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     onStart: (p) => {
       unlock();
       if (!layout || turned) return;
+      if (phase === 'held' && cardShow) skipCard(); // screen 2: finish the card, never pause Jugnu
       if (phase === 'held') return hold();
       if (phase === 'trace') startStroke(p);
     },
