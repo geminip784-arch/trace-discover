@@ -169,3 +169,33 @@ counting thing), fairy (Jugnu is the only character).
 - **[later]** Judging takes about 0.1 to 0.9 s on a laptop for 3 to 8 letters; on the tablet it may take a little longer. If the pause after the 3-second wait feels long, the cut's shape costs could be cached per stroke group across copies.
 - **[6B]** The name lines name a letter ("Almost! The r is missing.", "Make the r bigger.", "Here is the next letter."...): for the voice pack they need a clip per letter or a "the r" clip spliced in. Not in `data/voice-script.js` yet.
 - **[8]** The parent zone could show the name's `name` log entries: which letters of her name she copies well, and which need help.
+
+## Slice 5N: two books for later, and a third Count level
+
+Notes only: nothing here is built.
+
+### Count, then pick the number: a later level 3
+
+- **[later]** In levels 1 and 2 (Slice 5N part 3) the counting numbers stay on the things while she picks the number tile, so she can match the number she sees. A level 3: once she has counted the last thing, the counting numbers fade before the three number tiles appear, so she has to remember the total. It could open after 3 finished plays of level 2, like Missing piece and Memory. The counts could be 1 to 20, the teens counted on in ten-frames as in level 2.
+
+### My Deen (an Islamic studies book)
+
+- **[parked]** Parked until we have her school's Islamic studies pages. Nothing is written or recorded before then.
+- **Level 1:** kalimas 1 and 2, the five pillars, everyday phrases and little duas.
+- **Level 2:** kalimas 3 and 4, the five daily prayers, wudu in order, short surahs, Ramadan and the Eids.
+- **Level 3:** the six articles of faith, the prophets' names and stories in words only, more surahs and duas, and good manners.
+- **Pictures:** never depict Allah, the prophets or the companions.
+- **Text:** all Arabic text, its wording and its order come only from her school book.
+- **Voice:** recordings by a family member or her teacher, never a computer voice. The voice pack (Slice 6A) can hold them; browser speech is never used here, not even as a fallback.
+- **Parent setting:** one switch turns the book on or off (with the Slice 8 parent zone). Off, it is not on the shelf.
+
+### Stories book: a rebuild of the old story game
+
+- **[12]** The Stories book already stands locked on the shelf (Slice 12). The stories are written in advance and reviewed: no live AI and no API keys.
+- **Heroes:** taken from the children set up on the tablet (`td.children`), never hard-coded names. The hero can be each child, two children together, or a story character. Every sidekick and place is open to every child; nothing is assigned by gender. Each child's last picks are remembered (per child, like every personal key since Slice 8A).
+- **The hero figure:** a simple doll-style child. Hair, skin tone and color are set per child on the children page (Slice 8A part 2's form gets these fields).
+- **Choices:** each step tests one value, with one clearly right and one clearly wrong option (never two good ones). The wrong one is never scary. After a wrong choice, a gentle why, and she tries again.
+- **Little extras:** at each step a heart button offers 3 picture extras that fit the scene (hug, pat, share a snack, sing, wave, give a flower, say Bismillah). Each adds a line to her story without changing right or wrong. 3 choices keeps the child-screen rule.
+- **Saving:** at the end, "Save this story?" stores the exact path (hero, sidekick, place, choices, extras) on that child's story shelf. A "read again" mode pages through it, read aloud.
+- **Islamic phrases** woven in naturally (Bismillah before brave acts, Alhamdulillah for thanks), switched on or off by the same parent setting as My Deen.
+- **[later, maybe; needs your decision first]** Free custom choices written by AI through a server, approved by a parent, never with a key in the app. This would change two project rules (CLAUDE.md "No AI and no API keys anywhere in this project" and "No network calls at runtime once installed"), so it stays a note until you decide to change them.
