@@ -7,8 +7,8 @@ Claude Code adds ideas here instead of building them mid-slice. Each idea is tag
 - **[6]** Browser speech needs one touch on the page before Chrome lets it talk, so the very first "Start here!" after a reload may be silent. Recorded clips have the same rule for audio. The front door tap already covers it on the first visit of the day; check later visits.
 - **[6]** Slice 5A hides the ear button: with speech switched off (`SPEECH_ON = false` in `src/audio.js`) there is no prompt to replay. Bring it back with the recorded prompts.
 - **[6]** The setup page's "Test voice" button is silent while speech is off.
-- **[10]** Urdu tiles use the tablet's own Urdu font. Noto Naskh Arabic (named in CLAUDE.md) is not in `assets/fonts/` yet.
-- **[10]** `recorder.html` cannot record Urdu yet. It needs the ASCII ids from `src/session.js` (`ur-alif-madd`, `ur-be`, ...), the right-to-left direction, and a `"letter"` field in the file it exports. Then add each new id to `data/chars/index.json`.
+- ✅ **[10A]** Urdu tiles used the tablet's own Urdu font. Since Slice 10A, Noto Naskh Arabic (Regular and Bold) is in `assets/fonts/`, with its licence.
+- **[later]** (moved from Slice 10: the Urdu letters are generated from `data/glyphs.js`, so this is needed only for a hand-made override) `recorder.html` cannot record Urdu yet. It needs the ASCII ids from `src/session.js` (`ur-alif-madd`, `ur-be`, ...), the right-to-left direction, and a `"letter"` field in the file it exports. Then add each new id to `data/chars/index.json`.
 - ✅ **[5G]** Slice 5B's practice rounds replaced `CONFIG.lastStage`, `lettersPerStage`, `maxAssistedInRow`, `dropStage` and `completeLetter` in `src/progress.js`. Removed in 5G.
 - **[7]** The Android back button leaves the app; app pinning comes in Slice 7.
 - ✅ **[5G]** CLAUDE.md's module list now names every module, `screens.js`, `art.js` and `music.js` included.
@@ -199,3 +199,10 @@ Notes only: nothing here is built.
 - **Saving:** at the end, "Save this story?" stores the exact path (hero, sidekick, place, choices, extras) on that child's story shelf. A "read again" mode pages through it, read aloud.
 - **Islamic phrases** woven in naturally (Bismillah before brave acts, Alhamdulillah for thanks), switched on or off by the same parent setting as My Deen.
 - **[later, maybe; needs your decision first]** Free custom choices written by AI through a server, approved by a parent, never with a key in the app. This would change two project rules (CLAUDE.md "No AI and no API keys anywhere in this project" and "No network calls at runtime once installed"), so it stays a note until you decide to change them.
+
+## Slice 10A: Urdu shapes
+
+- **[later]** Two dots are often written as one short dash, and three dots as a small "^", in grown-up Urdu handwriting. For now she draws separate dots, as in a qaida, and a dash or a "^" is not counted as dots. If her teacher writes them that way, the copy round could accept a dash for two dots and a "^" for three (the marks are already told apart by length).
+- **[10B]** The Urdu shapes follow Noto Naskh Arabic for now. If photos of her qaida's letter pages arrive, draw against those instead (the faint letter on `glyphs.html` could show a photo).
+- **[10B]** ج's head runs left to right, as it is written, before the tail turns back: the one Urdu stroke so far that does not run right to left. Check it against her qaida.
+- **[10D]** The tablet shows Urdu tiles in Noto Naskh Arabic Bold now; the shapes she traces are the thinner Regular's middle line. If the bold tile and the traced shape look too different to her, the tiles could use Regular.

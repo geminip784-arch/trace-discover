@@ -14,6 +14,14 @@
       font-style: normal;
       font-display: block;
     }
+    /* Urdu tiles (Slice 10A): served from assets/fonts/ only (licence: assets/fonts/OFL-noto-naskh-arabic.txt). */
+    @font-face {
+      font-family: 'Noto Naskh Arabic';
+      src: url('assets/fonts/noto-naskh-arabic-arabic-700-normal.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+      font-display: block;
+    }
     html, body {
       margin: 0;
       width: 100%;
@@ -276,7 +284,7 @@
       touch-action: none;
     }
     .script-latin .tile { font-size: calc(var(--size, 100px) * 0.6); }
-    .script-urdu .tile { font-family: 'Noto Naskh Arabic', 'Noto Sans Arabic', serif; font-weight: 700; font-size: calc(var(--size, 100px) * 0.5); }
+    .script-urdu .tile { font-family: 'Noto Naskh Arabic', serif; font-weight: 700; font-size: calc(var(--size, 100px) * 0.5); }
     .script-urdu .glyph { padding-bottom: 0.1em; }
     .tile.bright { box-shadow: 0 5px 0 rgba(0, 0, 0, 0.12); }
     /* Slice 9A: the ABC book's page switch, last in the grid. "A a": the page it

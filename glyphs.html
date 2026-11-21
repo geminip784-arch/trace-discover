@@ -6,6 +6,14 @@
   <meta name="theme-color" content="#f7f4ec">
   <title>Character review</title>
   <style>
+    /* Served from assets/fonts/ only (licence: assets/fonts/OFL-noto-naskh-arabic.txt). */
+    @font-face {
+      font-family: 'Noto Naskh Arabic';
+      src: url('assets/fonts/noto-naskh-arabic-arabic-400-normal.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: block;
+    }
     html, body {
       margin: 0;
       background: #f7f4ec;
@@ -25,6 +33,11 @@
     figcaption { font-size: 12px; color: #555a70; text-align: center; margin-top: 2px; }
     figcaption b { color: #2a2d3e; font-size: 14px; }
     #status { margin: 20px; color: #555a70; }
+    .toggle { display: block; margin: 0 20px 8px; color: #555a70; }
+    .no-font .font-letter { display: none; }
+    .urdu figure { min-width: 150px; }
+    .urdu figure svg { margin: 0 auto; }
+    .urdu figcaption b { font-family: 'Noto Naskh Arabic', serif; font-weight: 400; }
     figure.plan { background: #fbfdff; outline: 2px dashed #c9dbf0; outline-offset: -2px; }
   </style>
 </head>
@@ -37,6 +50,8 @@
       character before it (Slice 5J): the same shape, drawn in other strokes; the model card and Jugnu show the first.
       Under each card: the number of strokes, the part names, and where the
       one-stroke rule lets her draw two strokes in one go (stroke k ends within 0.12 of where stroke k + 1 starts). The dot of i and j is a tap: its number sits on it.</p>
+    <p>Urdu samples (Slice 10A, at the end): six letters in their stand-alone form, drawn with smooth curves on the same lines (the grass line is the Urdu baseline),
+      filling from the right. The faint purple letter under each is Noto Naskh Arabic, for comparison only; she never sees it. They are not in the app yet.</p>
     <p>
       <span class="key"><i style="background:#2b6cb0"></i>stroke 1</span>
       <span class="key"><i style="background:#d98a00"></i>stroke 2</span>
