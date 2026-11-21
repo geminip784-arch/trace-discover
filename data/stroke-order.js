@@ -35,7 +35,7 @@ function join(...pieces) {
 
 const s = (say, ...pieces) => ({ say, path: join(...pieces) });
 
-import { NUMBER_IDS, numberShift, MARGIN } from './glyphs.js';
+import { NUMBER_IDS, numberShift, MARGIN, URDU_GLYPHS, piecePath } from './glyphs.js';
 
 export const STROKE_ORDER = {
   A: { family: 'straight', width: 0.8, strokes: [
@@ -319,6 +319,82 @@ for (const id of NUMBER_IDS) {
   // Width as a character file measures it: rightmost x plus the left margin.
   const width = r3(Math.max(...strokes.flatMap((st) => st.path.map((q) => q[0]))) + MARGIN);
   STROKE_ORDER[id] = { family: left.family === right.family ? left.family : 'mixed', width, strokes };
+}
+
+// ---- Urdu (Slice 10B) ----
+// The words for each stroke of each letter's default plan, right to left. The
+// rough paths, family and width are read from data/glyphs.js (URDU_GLYPHS), so
+// they always match the shapes. A dot's path is its one point.
+const BE = 'body: from the right tip down, along the grass line to the left, up to the left tip';
+const JEEM = 'head from its left end along the top to the right, then the tail back down to the left, round below the grass and out to the right';
+const DAL = 'from the top, slant down to the right, round and back along the grass line to the left';
+const RE = 'from the top, slant down to the right, then curve below the grass to the left';
+const SEEN = 'three teeth from the right, then down into the bowl and up to the left tip';
+const SUAD = 'the loop from its lower left, up and round to the right and back along the grass line, then up to the tooth, down, and round the bowl to the left tip';
+const TOE = ['body: from the left tip along the grass line to the right, round the top and back down', 'stem from the sky line down to the body'];
+const AIN = 'small head from its top right, round to the left and back to the arm, then the tail down to the left, round below the grass and out to the right';
+const KAF = 'the slant from the top right down to the left, then round and back along the grass line to the left tip';
+const T_MARK = 'small ṭ above: a short stem down, then a little loop';
+const THREE = (where) => [`dot ${where}, on the right`, `dot ${where}, on the left`, `dot ${where}, ${where === 'below' ? 'under' : 'on top of'} the other two`];
+const URDU_SAY = {
+  'ur-alif-madd': ['alif from just below the sky line straight down to the grass line', 'madd: a small wave above, right to left'],
+  'ur-alif': ['alif from the sky line straight down to the grass line'],
+  'ur-be': [BE, 'one dot below'],
+  'ur-pe': [BE, ...THREE('below')],
+  'ur-te': [BE, 'dot above, on the right', 'dot above, on the left'],
+  'ur-tte': [BE, T_MARK],
+  'ur-se': [BE, ...THREE('above')],
+  'ur-jeem': [JEEM, 'one dot inside'],
+  'ur-che': [JEEM, 'dot inside, on the right', 'dot inside, on the left', 'dot inside, under the other two'],
+  'ur-bari-he': [JEEM],
+  'ur-khe': [JEEM, 'one dot above the head'],
+  'ur-dal': [DAL],
+  'ur-ddal': [DAL, T_MARK],
+  'ur-zal': [DAL, 'one dot above'],
+  'ur-re': [RE],
+  'ur-rre': [RE, T_MARK],
+  'ur-ze': [RE, 'one dot above'],
+  'ur-zhe': [RE, ...THREE('above')],
+  'ur-seen': [SEEN],
+  'ur-sheen': [SEEN, ...THREE('above')],
+  'ur-suad': [SUAD],
+  'ur-zuad': [SUAD, 'one dot above'],
+  'ur-toe': TOE,
+  'ur-zoe': [...TOE, 'one dot above, right of the stem'],
+  'ur-ain': [AIN],
+  'ur-ghain': [AIN, 'one dot above'],
+  'ur-fe': ['the loop from the grass side, up round and back, then along the grass line to the left tip', 'one dot above the loop'],
+  'ur-qaf': ['the loop, then the deep bowl round to the left tip', 'dot above, on the right', 'dot above, on the left'],
+  'ur-kaf': [KAF],
+  'ur-gaf': [KAF, 'the second slant above, from the right down to the left'],
+  'ur-lam': ['from the sky line down, round the bowl below the grass, up to the left tip'],
+  'ur-meem': ['the round head from its left, over the top, round and back, then straight down the tail'],
+  'ur-noon': ['from the right tip down round the deep bowl, up to the left tip', 'one dot above'],
+  'ur-wao': ['the round head from its bottom, round to the left, over the top and down its right side into the tail curving left'],
+  'ur-chhoti-he': ['from the small tip at the top, round to the right, down, and back along the grass line to close the loop'],
+  'ur-do-chashmi-he': ['from the top middle round the right eye, back along the grass line, round the left eye, out to the tail at the left'],
+  'ur-hamza': ['the small head from its top right, round and back to the right, then the bar from right to left'],
+  'ur-chhoti-ye': ['from the top right, curve down to the left, back to the right, round the deep bowl, up to the left tip'],
+  'ur-bari-ye': ['from the top right down to the left, then the long sweep back to the right, ending in a point'],
+};
+const r3 = (v) => Math.round(v * 1000) / 1000;
+// About a dozen points along a stroke, for the small reference picture.
+function roughPath(st) {
+  if (st.kind === 'dot') return [st.at.map(r3)];
+  const fine = st.pieces.flatMap((p, i) => (i === 0 ? piecePath(p) : piecePath(p).slice(1)));
+  const step = Math.max(1, Math.floor(fine.length / 12));
+  const pts = fine.filter((_, i) => i % step === 0);
+  if (pts[pts.length - 1] !== fine[fine.length - 1]) pts.push(fine[fine.length - 1]);
+  return pts.map(([x, y]) => [r3(x), r3(y)]);
+}
+for (const [id, glyph] of Object.entries(URDU_GLYPHS)) {
+  const say = URDU_SAY[id];
+  if (!say || say.length !== glyph.strokes.length) throw new Error(`stroke-order.js: ${id} needs ${glyph.strokes.length} stroke words`);
+  const strokes = glyph.strokes.map((st, k) => ({ say: say[k], path: roughPath(st) }));
+  const kinds = new Set(glyph.strokes.filter((st) => !st.kind).flatMap((st) => st.pieces.map((p) => (p.type === 'line' ? 'line' : 'round'))));
+  const family = kinds.has('round') ? (kinds.has('line') ? 'mixed' : 'curved') : 'straight';
+  const xs = glyph.strokes.flatMap((st) => (st.kind === 'dot' ? [st.at[0]] : st.pieces.flatMap((p) => piecePath(p).map(([x]) => x))));
+  STROKE_ORDER[id] = { family, width: r3(Math.max(...xs) + MARGIN), strokes };
 }
 
 export const FAMILIES = ['straight', 'curved', 'mixed'];

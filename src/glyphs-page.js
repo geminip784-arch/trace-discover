@@ -2,9 +2,9 @@
 // characters. Reads data/chars/index.json and every file it lists, and draws
 // each character on the guide lines with numbered start dots and direction arrows.
 // Slice 5J: each character's other allowed stroke plans follow it, one card each.
-// Slice 10A: the Urdu sample letters, built straight from data/glyphs.js (they
-// have no character files yet), right to left, each with the Noto Naskh Arabic
-// letter drawn faintly behind it for comparison (a checkbox hides it).
+// Slice 10A and 10B: the Urdu letters, built straight from data/glyphs.js (they
+// have no character files yet), right to left in qaida order, each with the
+// Noto Naskh Arabic letter drawn faintly behind it for comparison (a checkbox hides it).
 
 import { pathLength, dist } from './geometry.js';
 import { joinGaps, glyphCharacter } from './glyph-points.js';
@@ -83,6 +83,12 @@ function card(char, font = null) {
     if (s.kind === 'dot') {
       el('circle', { cx: s.points[0][0], cy: s.points[0][1], r: 0.05, fill: color }, svg);
       return;
+    }
+    if (s.kind === 'mark') {
+      // A small mark (Slice 10B) is judged by its place: a dashed ring round its middle.
+      const cx = s.points.reduce((a, p) => a + p[0], 0) / s.points.length;
+      const cy = s.points.reduce((a, p) => a + p[1], 0) / s.points.length;
+      el('circle', { cx, cy, r: 0.2, fill: 'none', stroke: color, 'stroke-width': 0.008, 'stroke-dasharray': '0.03 0.025' }, svg);
     }
     el('polyline', {
       points: s.points.map((p) => p.join(',')).join(' '),
@@ -172,10 +178,10 @@ async function main() {
   document.body.dataset.ready = '1';
 }
 
-// The Urdu samples (Slice 10A): one card per plan, filling from the right as on the Urdu board.
+// The Urdu letters (Slice 10B): one card per plan, filling from the right as on the Urdu board.
 function urduSection() {
   const h = document.createElement('h2');
-  h.textContent = 'Urdu samples (Slice 10A)';
+  h.textContent = 'Urdu letters (Slice 10B)';
   const toggle = document.createElement('label');
   toggle.className = 'toggle';
   const box = document.createElement('input');

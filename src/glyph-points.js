@@ -31,7 +31,7 @@ export function piecePoints(piece) {
     return out;
   }
   // A smooth curve through its points (Slice 10, Urdu): finely sampled like an arc.
-  if (piece.type === 'curve') return curvePoints(piece.points);
+  if (piece.type === 'curve') return curvePoints(piece.points, 120, piece.before, piece.after);
   throw new Error(`unknown piece type ${piece.type}`);
 }
 
@@ -99,16 +99,18 @@ const roundPoint = ([x, y]) => [round3(x), round3(y)];
 
 // 'straight' (only lines), 'curved' (no lines) or 'mixed', from a glyph's pieces.
 export function familyOf(glyph) {
-  const kinds = new Set(glyph.strokes.flatMap((s) => (s.kind === 'dot' ? [] : s.pieces.map((p) => (p.type === 'line' ? 'line' : 'round')))));
+  const kinds = new Set(glyph.strokes.flatMap((s) => (s.kind === 'dot' || s.kind === 'mark' ? [] : s.pieces.map((p) => (p.type === 'line' ? 'line' : 'round')))));
   return kinds.has('round') ? (kinds.has('line') ? 'mixed' : 'curved') : 'straight';
 }
 
 // One generated stroke: { kind, part, points } (part: its short name for the
 // parent-facing lines; recorded files have none).
-// A dot stroke (the dot of i and j) keeps its single point.
+// A dot stroke (the dot of i and j) keeps its single point. A mark (Slice 10B:
+// the little ṭ and the madd) keeps its kind: its points show its shape, but it
+// is judged by its place.
 const strokeFile = (s) => (s.kind === 'dot'
   ? { kind: 'dot', part: s.part, points: [roundPoint(s.at)] }
-  : { kind: 'line', part: s.part, points: spacedPoints(strokePath(s)).map(roundPoint) });
+  : { kind: s.kind === 'mark' ? 'mark' : 'line', part: s.part, points: spacedPoints(strokePath(s)).map(roundPoint) });
 
 // The character file object for one glyph: the recorder's format, with each
 // stroke's part name, plus anyOrder (before strokes) when the glyph has one,

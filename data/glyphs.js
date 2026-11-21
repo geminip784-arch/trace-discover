@@ -555,9 +555,9 @@ Object.assign(GLYPHS, NUMBERS);
 
 // ---------------------------------------------------------------------------
 // Urdu letters (Slice 10). The isolated (stand-alone) form only, in a plain
-// Naskh print as in a qaida. Slice 10A: six sample letters, for review on
-// glyphs.html before the rest are made. They are not in the app yet (not in
-// GLYPHS, no character files).
+// Naskh print as in a qaida. Slice 10A drew six samples; Slice 10B all 39
+// letters, for review on glyphs.html. They are not in the app yet (not in
+// GLYPHS, no character files: Slice 10D).
 //
 // Urdu letters are curved, so they add a third kind of piece:
 //   curve(p0, p1, p2, ...)   a smooth curve through every point, in order
@@ -577,8 +577,10 @@ Object.assign(GLYPHS, NUMBERS);
 // origin lands, so glyphs.html can draw the font letter faintly behind it.
 //
 // Strokes: the body first, then the dots, which are taps (`dot`, scored with
-// scoreDot like the dot of i and j). Most strokes run right to left; the head
-// of ج runs left to right, as it is written, before turning back into the tail.
+// scoreDot like the dot of i and j), and small marks (`mark`: the little ṭ and
+// the madd, judged by their place). Most strokes run right to left; the head
+// of ج (and چ ح خ) runs left to right, as it is written, before turning back
+// into the tail.
 
 // The font size, in line units, at which the font's alif (671 of its 1000 units
 // per em) runs from the sky line to the grass line. The font's baseline is the grass line.
@@ -586,13 +588,22 @@ export const URDU_FONT = { family: 'Noto Naskh Arabic', size: 1000 / 671, baseli
 
 const curve = (...points) => ({ type: 'curve', points });
 
+// One smooth curve through `points`, cut in two at points[k] (where one plan's
+// stroke ends and the next begins). Each half remembers its neighbour across
+// the cut (`before`, `after`), so the two halves join with no corner.
+const splitCurve = (points, k) => [
+  { type: 'curve', points: points.slice(0, k + 1), after: points[k + 1] },
+  { type: 'curve', points: points.slice(k), before: points[k - 1] },
+];
+
 // Points along a smooth curve through `points` (centripetal Catmull-Rom: no
 // loops or overshoots between close points), `steps` per span, in order.
-// The ends carry on in the direction of their neighbour.
-export function curvePoints(points, steps = 120) {
+// The ends carry on in the direction of their neighbour, or bend towards
+// `before` and `after` when given (the two halves of a cut curve).
+export function curvePoints(points, steps = 120, before = null, after = null) {
   if (points.length < 2) return points.map((p) => [...p]);
   const ext = (a, b) => [2 * a[0] - b[0], 2 * a[1] - b[1]];
-  const P = [ext(points[0], points[1]), ...points, ext(points[points.length - 1], points[points.length - 2])];
+  const P = [before ?? ext(points[0], points[1]), ...points, after ?? ext(points[points.length - 1], points[points.length - 2])];
   const knot = (t, a, b) => t + Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1]));
   const out = [[...points[0]]];
   for (let i = 1; i < P.length - 2; i++) {
@@ -621,13 +632,19 @@ export function curvePoints(points, steps = 120) {
 // Fine points along any piece, in drawing order (line, arc or curve).
 export function piecePath(piece) {
   if (piece.type === 'line') return piece.points.map((p) => [...p]);
-  if (piece.type === 'curve') return curvePoints(piece.points);
+  if (piece.type === 'curve') return curvePoints(piece.points, 120, piece.before, piece.after);
   const steps = Math.max(8, Math.ceil(Math.abs(piece.to - piece.from) / 0.25));
   return Array.from({ length: steps + 1 }, (_, i) => arcPoint(piece.cx, piece.cy, piece.rx, piece.ry, piece.from + ((piece.to - piece.from) * i) / steps));
 }
 
 // Move a letter drawn in font coordinates so its leftmost ink sits at MARGIN.
-const movePiece = (p, dx) => (p.type === 'arc' ? { ...p, cx: p.cx + dx } : { ...p, points: p.points.map(([x, y]) => [x + dx, y]) });
+const movePoint = ([x, y], dx) => [x + dx, y];
+const movePiece = (p, dx) => (p.type === 'arc' ? { ...p, cx: p.cx + dx } : {
+  ...p,
+  points: p.points.map((q) => movePoint(q, dx)),
+  ...(p.before ? { before: movePoint(p.before, dx) } : {}),
+  ...(p.after ? { after: movePoint(p.after, dx) } : {}),
+});
 const moveStroke = (s, dx) => (s.kind === 'dot' ? { ...s, at: [s.at[0] + dx, s.at[1]] } : { ...s, pieces: s.pieces.map((p) => movePiece(p, dx)) });
 function atMargin(glyph) {
   const xs = glyph.strokes.flatMap((s) => (s.kind === 'dot' ? [s.at[0]] : s.pieces.flatMap((p) => piecePath(p).map(([x]) => x))));
@@ -641,52 +658,183 @@ function atMargin(glyph) {
   };
 }
 
-// Shared pieces (font coordinates), so every plan is drawn from the same geometry.
+// A small mark (Slice 10B): the little ṭ on ٹ ڈ ڑ and the madd on آ. It is
+// drawn in its own shape (the model card, Jugnu), but judged only by where it
+// is: a tap or any small stroke at its place counts, like a dot.
+const mark = (part, ...pieces) => ({ part, kind: 'mark', from: null, to: null, pieces });
+
+// Curves cut where an alternative plan lifts the pen (no corner there).
+const SEEN_CUT = splitCurve([[0.73, 0.68], [0.78, 0.83], [0.8, 0.97], [0.78, 1.15], [0.66, 1.28], [0.47, 1.36], [0.3, 1.36], [0.17, 1.27], [0.12, 1.12], [0.12, 1.0], [0.15, 0.93]], 2);
+const FE_CUT = splitCurve([[1.06, 0.71], [0.9, 0.69], [0.8, 0.62], [0.775, 0.5], [0.83, 0.39], [0.93, 0.35], [1.05, 0.4], [1.12, 0.52], [1.15, 0.68], [1.14, 0.8],
+  [1.08, 0.88], [0.92, 0.92], [0.68, 0.955], [0.42, 0.965], [0.24, 0.935], [0.16, 0.83], [0.145, 0.64]], 9);
+const QAF_CUT = splitCurve([[0.74, 0.92], [0.6, 0.93], [0.48, 0.85], [0.45, 0.73], [0.5, 0.62], [0.6, 0.565], [0.71, 0.6], [0.8, 0.72], [0.855, 0.88],
+  [0.87, 1.02], [0.8, 1.18], [0.65, 1.31], [0.45, 1.37], [0.27, 1.33], [0.15, 1.22], [0.115, 1.07], [0.13, 0.93]], 8);
+const MEEM_CUT = splitCurve([[0.65, 0.79], [0.5, 0.86], [0.3, 0.875], [0.17, 0.91], [0.145, 0.97], [0.15, 1.2], [0.17, 1.43]], 4);
+
+// Shared pieces (font coordinates), so every letter of a family and every plan
+// is drawn from the same geometry.
 const U = {
-  // ج: the head, from its left end along the top to its right tip (a corner),
+  // ب پ ت ٹ ث: the body from its right tip, down and along the grass line, up to its left tip.
+  be: curve([1.007, 0.42], [1.037, 0.7], [0.957, 0.86], [0.587, 0.935], [0.257, 0.89], [0.147, 0.73], [0.152, 0.58]),
+  // ج چ ح خ: the head, from its left end along the top to its right tip (a corner),
   // then the tail back down to the left, round below the grass, and out to the right.
   jeemHead: curve([0.127, 0.56], [0.237, 0.495], [0.517, 0.515], [0.857, 0.56]),
   jeemTail: curve([0.857, 0.56], [0.637, 0.64], [0.337, 0.78], [0.177, 1.03], [0.237, 1.28], [0.507, 1.385], [0.907, 1.3]),
-  // ع: the small head from its top right, round to the left and back to the
+  // د ڈ ذ: from the top, slanting down to the right, round and back along the grass line to the left.
+  dal: curve([0.387, 0.43], [0.477, 0.62], [0.527, 0.8], [0.467, 0.93], [0.297, 0.965], [0.097, 0.88]),
+  // ر ڑ ز ژ: from the top, slanting down to the right, then curving below the grass to the left.
+  re: curve([0.35, 0.52], [0.4, 0.65], [0.45, 0.8], [0.46, 0.93], [0.42, 1.08], [0.32, 1.2], [0.17, 1.27], [0, 1.23], [-0.08, 1.2]),
+  // س ش: three teeth from the right (each tooth's tip a corner), then down into the bowl.
+  teeth: [
+    curve([1.32, 0.52], [1.36, 0.75], [1.34, 0.93], [1.26, 0.955], [1.19, 0.91]),
+    line([1.19, 0.91], [1.12, 0.64]),
+    curve([1.12, 0.64], [1.13, 0.85], [1.06, 0.95], [0.93, 0.955], [0.85, 0.92]),
+    line([0.85, 0.92], [0.73, 0.68]),
+    SEEN_CUT[0],
+  ],
+  seenBowl: SEEN_CUT[1],
+  // ص ض: the loop from its lower left, up and round to the right, back along the grass line;
+  // then up to the tooth's tip (a corner), down, and round the bowl to the left tip.
+  suadLoop: curve([0.8, 0.88], [0.96, 0.69], [1.12, 0.56], [1.29, 0.5], [1.46, 0.59], [1.52, 0.71], [1.42, 0.82], [1.22, 0.92], [1.0, 0.94], [0.8, 0.905]),
+  suadTooth: line([0.8, 0.905], [0.71, 0.68]),
+  suadBowl: curve([0.71, 0.68], [0.72, 0.9], [0.75, 1.06], [0.67, 1.19], [0.52, 1.31], [0.36, 1.36], [0.22, 1.32], [0.14, 1.19], [0.13, 1.02], [0.16, 0.92]),
+  // ط ظ: the body from its left tip along the grass line to the right, round the top and back down; the stem from the sky line.
+  toeBody: curve([0.09, 0.85], [0.3, 0.955], [0.64, 0.97], [0.87, 0.935], [1.0, 0.82], [1.05, 0.69], [0.97, 0.57], [0.79, 0.505], [0.6, 0.545], [0.47, 0.66], [0.35, 0.81], [0.3, 0.9]),
+  toeStem: line([0.36, 0], [0.41, 0.75]),
+  // ع غ: the small head from its top right, round to the left and back to the
   // right arm's tip (a corner), then the tail as for ج.
   ainHead: curve([0.527, 0.42], [0.367, 0.335], [0.187, 0.4], [0.167, 0.58], [0.337, 0.7], [0.667, 0.6]),
   ainTail: curve([0.667, 0.6], [0.437, 0.71], [0.257, 0.86], [0.197, 1.09], [0.287, 1.33], [0.557, 1.405], [0.917, 1.3]),
+  // ف: the loop from the grass side up round and back, then along the grass line to the left tip.
+  feLoop: FE_CUT[0],
+  feBody: FE_CUT[1],
+  // ق: the loop, then the deep bowl round to the left tip.
+  qafLoop: QAF_CUT[0],
+  qafBowl: QAF_CUT[1],
+  // ک گ: the slant from the top right down to the left (a corner), then round
+  // and back along the grass line to the left tip. Its top is a little lower
+  // than the font's, so گ's second slant fits under the sky line.
+  kafSlant: line([1.0, 0.15], [0.47, 0.38]),
+  kafBody: curve([0.47, 0.38], [0.62, 0.44], [0.8, 0.58], [0.91, 0.75], [0.88, 0.87], [0.72, 0.94], [0.49, 0.96], [0.26, 0.94], [0.15, 0.87], [0.13, 0.72]),
+  gafTop: line([1.0, 0.01], [0.45, 0.24]),
+  // م: the round head from its left, over the top, round (a corner on the right)
+  // and back along its bottom, then straight down the tail.
+  meemHead: [
+    curve([0.18, 0.7], [0.27, 0.55], [0.36, 0.505], [0.47, 0.55], [0.58, 0.68], [0.65, 0.79]),
+    MEEM_CUT[0],
+  ],
+  meemTail: MEEM_CUT[1],
+  // ھ: from the top middle round the right eye (a corner at its foot), back
+  // along the grass line, round the left eye, and out to the tail at the left.
+  heRight: curve([0.43, 0.37], [0.62, 0.43], [0.77, 0.58], [0.84, 0.76], [0.79, 0.99]),
+  heLeft: curve([0.79, 0.99], [0.66, 0.93], [0.54, 0.87], [0.44, 0.8], [0.36, 0.71], [0.33, 0.6], [0.38, 0.53], [0.46, 0.52], [0.53, 0.6], [0.54, 0.72], [0.48, 0.83], [0.38, 0.92], [0.24, 0.95], [0.12, 0.93], [0.03, 0.91]),
+  // ء: the small head from its top right, round and back to the right (a corner), then the bar right to left.
+  hamzaHead: curve([0.44, 0.74], [0.44, 0.65], [0.35, 0.605], [0.24, 0.64], [0.19, 0.74], [0.24, 0.86], [0.38, 0.9], [0.6, 0.875]),
+  hamzaBar: curve([0.6, 0.875], [0.4, 0.935], [0.22, 0.98], [0.1, 1.01]),
 };
 
-// The six sample letters (Slice 10A), keyed by their ASCII ids (src/session.js URDU).
+// The little ṭ mark (ٹ ڈ ڑ): a short stem down, then a small loop to the right,
+// placed where the font puts it (dx, dy: moved from its place on ٹ).
+const tMark = (dx = 0, dy = 0) => mark('small ṭ',
+  line([0.49 + dx, 0.22 + dy], [0.515 + dx, 0.445 + dy]),
+  curve([0.515 + dx, 0.445 + dy], [0.6 + dx, 0.48 + dy], [0.68 + dx, 0.43 + dy], [0.66 + dx, 0.35 + dy], [0.58 + dx, 0.335 + dy], [0.52 + dx, 0.4 + dy]));
+
+// Strokes used by more than one letter.
+const body = (part, ...pieces) => stroke(part, null, null, ...pieces);
+const B = {
+  be: body('body', U.be),
+  jeem: body('head and tail', U.jeemHead, U.jeemTail),
+  jeemHead: body('head', U.jeemHead),
+  jeemTail: body('tail', U.jeemTail),
+  dal: body('body', U.dal),
+  re: body('body', U.re),
+  seen: body('teeth and bowl', ...U.teeth, U.seenBowl),
+  seenTeeth: body('teeth', ...U.teeth),
+  seenBowl: body('bowl', U.seenBowl),
+  suad: body('loop and bowl', U.suadLoop, U.suadTooth, U.suadBowl),
+  suadLoop: body('loop', U.suadLoop),
+  suadBowl: body('tooth and bowl', U.suadTooth, U.suadBowl),
+  toeBody: body('body', U.toeBody),
+  toeStem: stroke('stem', 'sky', null, U.toeStem),
+  ain: body('head and tail', U.ainHead, U.ainTail),
+  ainHead: body('head', U.ainHead),
+  ainTail: body('tail', U.ainTail),
+  kaf: body('slant and body', U.kafSlant, U.kafBody),
+  kafSlant: body('slant', U.kafSlant),
+  kafBody: body('body', U.kafBody),
+  gafTop: body('top slant', U.gafTop),
+};
+const d = (x, y) => dot('dot', x, y);
+// A letter's strokes in every plan: the family's plans, each followed by the same dots and marks.
+const withMarks = (plans, ...marks) => {
+  const [strokes, ...rest] = plans.map((p) => [...p, ...marks]);
+  return rest.length ? { strokes, plans: rest } : { strokes };
+};
+const JEEM = [[B.jeem], [B.jeemHead, B.jeemTail]];
+const SEEN = [[B.seen], [B.seenTeeth, B.seenBowl]];
+const SUAD = [[B.suad], [B.suadLoop, B.suadBowl]];
+const TOE = [[B.toeBody, B.toeStem], [B.toeStem, B.toeBody]];
+const AIN = [[B.ain], [B.ainHead, B.ainTail]];
+
+// All 39 letters (Slice 10B), keyed by their ASCII ids (src/session.js URDU), in qaida order.
+// Several dots are listed right to left, the lower ones before a dot above them;
+// she may tap them in any order (wired in Slice 10D).
 export const URDU_GLYPHS = Object.fromEntries(Object.entries({
+  // آ alif madd: the alif (starting a little below the sky line, so the madd fits), then the madd right to left.
+  'ur-alif-madd': { letter: 'آ', strokes: [
+    stroke('alif', null, 'grass', line([0.18, 0.24], [0.18, 1])),
+    mark('madd', curve([0.36, 0.05], [0.27, 0.1], [0.17, 0.1], [0.08, 0.07], [0, 0.12])),
+  ] },
   // ا alif: one stroke, from the sky line straight down to the grass line.
-  'ur-alif': { letter: 'ا', strokes: [
-    stroke('alif', 'sky', 'grass', line([0.197, 0], [0.197, 1])),
+  'ur-alif': { letter: 'ا', strokes: [stroke('alif', 'sky', 'grass', line([0.197, 0], [0.197, 1]))] },
+  'ur-be': { letter: 'ب', ...withMarks([[B.be]], d(0.56, 1.204)) },
+  'ur-pe': { letter: 'پ', ...withMarks([[B.be]], d(0.684, 1.154), d(0.471, 1.173), d(0.581, 1.283)) },
+  'ur-te': { letter: 'ت', ...withMarks([[B.be]], d(0.645, 0.415), d(0.42, 0.436)) },
+  'ur-tte': { letter: 'ٹ', ...withMarks([[B.be]], tMark()) },
+  'ur-se': { letter: 'ث', ...withMarks([[B.be]], d(0.651, 0.426), d(0.437, 0.446), d(0.545, 0.312)) },
+  'ur-jeem': { letter: 'ج', ...withMarks(JEEM, d(0.554, 1.007)) },
+  'ur-che': { letter: 'چ', ...withMarks(JEEM, d(0.662, 0.967), d(0.449, 0.987), d(0.559, 1.097)) },
+  'ur-bari-he': { letter: 'ح', ...withMarks(JEEM) },
+  'ur-khe': { letter: 'خ', ...withMarks(JEEM, d(0.501, 0.237)) },
+  'ur-dal': { letter: 'د', ...withMarks([[B.dal]]) },
+  'ur-ddal': { letter: 'ڈ', ...withMarks([[B.dal]], tMark(-0.216, -0.192)) },
+  'ur-zal': { letter: 'ذ', ...withMarks([[B.dal]], d(0.319, 0.213)) },
+  'ur-re': { letter: 'ر', ...withMarks([[B.re]]) },
+  'ur-rre': { letter: 'ڑ', ...withMarks([[B.re]], tMark(-0.238, -0.101)) },
+  'ur-ze': { letter: 'ز', ...withMarks([[B.re]], d(0.297, 0.304)) },
+  'ur-zhe': { letter: 'ژ', ...withMarks([[B.re]], d(0.412, 0.325), d(0.199, 0.344), d(0.307, 0.211)) },
+  'ur-seen': { letter: 'س', ...withMarks(SEEN) },
+  'ur-sheen': { letter: 'ش', ...withMarks(SEEN, d(1.178, 0.429), d(0.965, 0.449), d(1.073, 0.315)) },
+  'ur-suad': { letter: 'ص', ...withMarks(SUAD) },
+  'ur-zuad': { letter: 'ض', ...withMarks(SUAD, d(1.077, 0.23)) },
+  'ur-toe': { letter: 'ط', ...withMarks(TOE) },
+  'ur-zoe': { letter: 'ظ', ...withMarks(TOE, d(0.765, 0.23)) },
+  'ur-ain': { letter: 'ع', ...withMarks(AIN) },
+  'ur-ghain': { letter: 'غ', ...withMarks(AIN, d(0.332, 0.1)) },
+  'ur-fe': { letter: 'ف', ...withMarks([[body('loop and body', U.feLoop, U.feBody)], [body('loop', U.feLoop), body('body', U.feBody)]], d(0.914, 0.095)) },
+  'ur-qaf': { letter: 'ق', ...withMarks([[body('loop and bowl', U.qafLoop, U.qafBowl)], [body('loop', U.qafLoop), body('bowl', U.qafBowl)]], d(0.709, 0.315), d(0.484, 0.336)) },
+  'ur-kaf': { letter: 'ک', ...withMarks([[B.kaf], [B.kafBody, B.kafSlant]]) },
+  'ur-gaf': { letter: 'گ', ...withMarks([[B.kaf, B.gafTop], [B.kafBody, B.kafSlant, B.gafTop]]) },
+  // ل lam: from the sky line down, round the bowl below the grass, up to the left tip.
+  'ur-lam': { letter: 'ل', strokes: [stroke('body', 'sky', null, curve([0.665, 0], [0.69, 0.3], [0.72, 0.65], [0.74, 0.95], [0.72, 1.12], [0.62, 1.25], [0.42, 1.33], [0.25, 1.3], [0.14, 1.18], [0.12, 1.03], [0.15, 0.92]))] },
+  'ur-meem': { letter: 'م', ...withMarks([[body('head and tail', ...U.meemHead, U.meemTail)], [body('head', ...U.meemHead), body('tail', U.meemTail)]]) },
+  // ن noon: from the right tip, down round the deep bowl, up to the left tip; then the dot above.
+  'ur-noon': { letter: 'ن', strokes: [
+    body('body', curve([0.705, 0.69], [0.755, 0.9], [0.765, 1.07], [0.69, 1.24], [0.52, 1.34], [0.36, 1.37], [0.21, 1.32], [0.13, 1.17], [0.12, 1.02], [0.145, 0.94])),
+    d(0.405, 0.55),
   ] },
-  // ب be: the body from its right tip, down and along the grass line to the
-  // left, up to its left tip; then one dot below.
-  'ur-be': { letter: 'ب', strokes: [
-    stroke('body', null, null, curve([1.007, 0.42], [1.037, 0.7], [0.957, 0.86], [0.587, 0.935], [0.257, 0.89], [0.147, 0.73], [0.152, 0.58])),
-    dot('dot', 0.557, 1.2),
-  ] },
-  // ج jeem: the head and the tail in one go (a corner at the head's tip); then
-  // the dot inside, on the grass line. Or the head, then the tail.
-  'ur-jeem': { letter: 'ج', strokes: [
-    stroke('head and tail', null, null, U.jeemHead, U.jeemTail),
-    dot('dot', 0.557, 1),
-  ], plans: [
-    [stroke('head', null, null, U.jeemHead), stroke('tail', null, null, U.jeemTail), dot('dot', 0.557, 1)],
-  ] },
-  // د dal: from the top, slanting down to the right, round and back along the grass line to the left.
-  'ur-dal': { letter: 'د', strokes: [
-    stroke('body', null, null, curve([0.387, 0.43], [0.477, 0.62], [0.527, 0.8], [0.467, 0.93], [0.297, 0.965], [0.097, 0.88])),
-  ] },
-  // ع ain: the head and the tail in one go (a corner at the arm's tip). Or the head, then the tail.
-  'ur-ain': { letter: 'ع', strokes: [
-    stroke('head and tail', null, null, U.ainHead, U.ainTail),
-  ], plans: [
-    [stroke('head', null, null, U.ainHead), stroke('tail', null, null, U.ainTail)],
-  ] },
+  // و wao: the round head from its bottom, round to the left, up over the top, and down its right side into the tail curving left.
+  'ur-wao': { letter: 'و', strokes: [body('head and tail', curve([0.55, 0.88], [0.4, 0.935], [0.25, 0.88], [0.2, 0.75], [0.26, 0.6], [0.39, 0.555], [0.52, 0.63], [0.585, 0.8], [0.58, 0.98], [0.5, 1.14], [0.36, 1.255], [0.19, 1.27], [0.06, 1.2]))] },
+  // ہ chhoti he: from the small tip at the top, round to the right, down, and back along the grass line to close the loop.
+  'ur-chhoti-he': { letter: 'ہ', strokes: [body('loop', curve([0.26, 0.41], [0.35, 0.47], [0.45, 0.57], [0.51, 0.7], [0.49, 0.83], [0.42, 0.93], [0.29, 0.97], [0.17, 0.93], [0.12, 0.8], [0.16, 0.67], [0.26, 0.57], [0.36, 0.5]))] },
+  'ur-do-chashmi-he': { letter: 'ھ', ...withMarks([[body('eyes and tail', U.heRight, U.heLeft)], [body('right eye', U.heRight), body('left eye, tail', U.heLeft)]]) },
+  'ur-hamza': { letter: 'ء', ...withMarks([[body('head and bar', U.hamzaHead, U.hamzaBar)], [body('head', U.hamzaHead), body('bar', U.hamzaBar)]]) },
+  // ی chhoti ye: from the top right, curving down to the left, back right, round the deep bowl, up to the left tip.
+  'ur-chhoti-ye': { letter: 'ی', strokes: [body('body', curve([0.84, 0.62], [0.79, 0.535], [0.7, 0.51], [0.58, 0.59], [0.5, 0.72], [0.49, 0.86], [0.58, 0.945], [0.75, 0.985], [0.83, 1.07], [0.81, 1.19], [0.66, 1.3], [0.42, 1.37], [0.25, 1.35], [0.15, 1.25], [0.12, 1.1], [0.14, 0.95]))] },
   // ے bari ye: from the top right down to the left (a corner on the grass
   // line), then the long sweep back to the right, ending in a point.
   'ur-bari-ye': { letter: 'ے', strokes: [
-    stroke('body', null, null,
+    body('body',
       curve([0.537, 0.55], [0.427, 0.68], [0.227, 0.745], [0.147, 0.81], [0.122, 0.91]),
       curve([0.122, 0.91], [0.257, 0.96], [0.597, 0.985], [0.897, 0.965], [1.107, 0.84])),
   ] },

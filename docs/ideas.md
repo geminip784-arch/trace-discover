@@ -204,5 +204,14 @@ Notes only: nothing here is built.
 
 - **[later]** Two dots are often written as one short dash, and three dots as a small "^", in grown-up Urdu handwriting. For now she draws separate dots, as in a qaida, and a dash or a "^" is not counted as dots. If her teacher writes them that way, the copy round could accept a dash for two dots and a "^" for three (the marks are already told apart by length).
 - **[10B]** The Urdu shapes follow Noto Naskh Arabic for now. If photos of her qaida's letter pages arrive, draw against those instead (the faint letter on `glyphs.html` could show a photo).
-- **[10B]** ج's head runs left to right, as it is written, before the tail turns back: the one Urdu stroke so far that does not run right to left. Check it against her qaida.
+- **[later]** ج's head runs left to right, as it is written, before the tail turns back; you confirmed this for the whole ج family (ج چ ح خ) in Slice 10B. It is easy to flip if her qaida shows it right to left: the head is one shared piece, `U.jeemHead` in `data/glyphs.js` (list its points the other way and start the tail at its other end), then update the direction test in `tests/urdu-glyphs.test.js`.
 - **[10D]** The tablet shows Urdu tiles in Noto Naskh Arabic Bold now; the shapes she traces are the thinner Regular's middle line. If the bold tile and the traced shape look too different to her, the tiles could use Regular.
+
+## Slice 10B: all 39 Urdu letters
+
+- **[10D]** Several dots may be tapped in any order (approved in 10B). The character files do not say so yet: Slice 10D should treat a run of dots at the end of any plan as one either-order group (today `anyOrder` belongs to the default plan only, in `src/variants.js` `planChar`).
+- **[10D]** A `mark` stroke (the little ṭ, the madd) is judged by its place only: in rounds 1 and 2 a tap or a small stroke whose middle lands near the mark's middle counts. Its allowed length needs its own limit (a dot's `DOT_MAX` of 0.2 is too short for a little ṭ, about 0.3 across).
+- **[10C]** In the copy round a mark is told apart from a dot by its length: a ṭ written as a dot, or two dots written as a ṭ, needs a reason line ("Almost! It needs the little ṭ on top.").
+- **[later]** و starts at the bottom of its head and goes round to the left first, so the head is a closed loop (the 10B table said "from its lower left"; the shape is the same, the start is a little to the right).
+- **[later]** آ's madd and ک گ's slants sit lower than the font's (the font puts them above the sky line, where the round lights are). If her qaida's آ has a tall alif, the round lights could move instead.
+- **[later]** The teeth of س ش are drawn up and back down (a narrow point); a child may draw them as small round bumps. The tracing tolerance should cover it; check her real attempts.
