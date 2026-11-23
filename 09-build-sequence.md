@@ -201,7 +201,7 @@ Short words made of letters she has starred (moved from 9C). They can join her n
 The 39 letters of the Urdu board, isolated (stand-alone) form only, in a plain Naskh print as in a qaida. Joined forms are out of scope. Six pull requests, each approved before the next starts:
 
 - **10A** (built) — Shape method and six samples. Letters drawn with smooth curves (`curve` pieces in `data/glyphs.js`) on the four lines, the grass line as the Urdu baseline, following Noto Naskh Arabic. Samples ا ب ج د ع ے on `glyphs.html`, each over the faint font letter. The Noto Naskh Arabic font served locally (Urdu tiles and `glyphs.html`).
-- **10B** — All 39 letters, their default stroke plans and natural alternatives (body first, right to left, then dots and small marks), for approval on `glyphs.html`. Qaida photos, if they come, replace the font as the model.
+- **10B** (built) — All 39 letters, their default stroke plans and natural alternatives (body first, right to left, then dots and small marks), on `glyphs.html`. Letters that differ only in dots share one body. The small marks (the little ṭ, the madd) are a new stroke kind, `mark`, judged by their place. Qaida photos, if they come, replace the font as the model.
 - **10C** — Copy-round judging for Urdu: the body by shape, then the dot count and whether the dots sit above, below or inside ("Almost! It needs two dots."). Look-alikes that differ only in dots are compared with each other. Child-style templates.
 - **10D** — Urdu in the app: the board bright, rounds 1 and 2 (dots and marks as taps, `scoreDot`), practice pages (the pencil tile), reviews, per child.
 - **10E** — Picture words and find scenes, once the word table is confirmed. Letters without a good word skip their scene.

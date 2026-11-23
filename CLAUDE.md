@@ -22,7 +22,7 @@ Full product spec: `docs/spec.md`. Scope and roadmap: `02-scope.md`. Build order
 - Characters are stored in line units: y = 0 sky line, 0.5 fence (dashed), 1 grass line, 1.5 tail line (brown; where the tails of g j p q y end). x = 0 at the left edge of the character box.
 - At render time, 1 unit = pixel distance from sky line to grass line.
 - One file per character: `data/chars/<id>.json`; lowercase letters are `lower-<id>.json` (so `a.json` and `A.json` never clash on Windows or Mac; use `charFile(id)` from `src/session.js`). Format: see `data/chars/L.example.json`.
-- `strokes` are in the order she must draw them. `kind` is `line` (a path) or `dot` (a single target point, for Urdu nuqtas and the dot on i or j).
+- `strokes` are in the order she must draw them. `kind` is `line` (a path), `dot` (a single target point, for Urdu nuqtas and the dot on i or j) or `mark` (Slice 10B: a small Urdu mark, the little ṭ on ٹ ڈ ڑ or the madd on آ; its points show its shape, but it is judged only by its place, like a dot).
 - Urdu strokes run right to left. The body comes first, then dots.
 - Character files are generated from `data/glyphs.js` by `npm run glyphs` (capitals, digits and, since Slice 9A, lowercase); `recorder.html` makes hand-recorded overrides. Do not hand-edit their points.
 

@@ -6,26 +6,29 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { STROKE_ORDER, FAMILIES } from '../data/stroke-order.js';
 import { CHAR_IDS } from '../src/recording.js';
-import { charFile } from '../src/session.js';
+import { charFile, URDU } from '../src/session.js';
 
 const dir = new URL('../data/chars/', import.meta.url);
 const manifest = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
 
-test('every A to Z, 0 to 9, a to z and 10 to 20 has a stroke list', () => {
+test('every A to Z, 0 to 9, a to z, 10 to 20 and Urdu letter has a stroke list', () => {
   for (const id of CHAR_IDS) assert.ok(STROKE_ORDER[id], id);
-  assert.equal(Object.keys(STROKE_ORDER).length, 73); // A to Z, 0 to 9, a to z (Slice 9A), 10 to 20 (Slice 9B)
+  for (const { id } of URDU) assert.ok(STROKE_ORDER[id], id);
+  // A to Z, 0 to 9, a to z (Slice 9A), 10 to 20 (Slice 9B), the 39 Urdu letters (Slice 10B)
+  assert.equal(Object.keys(STROKE_ORDER).length, 73 + 39);
 });
 
 test('each entry has a family, a width and strokes with words and a rough path', () => {
   for (const [id, c] of Object.entries(STROKE_ORDER)) {
     assert.ok(FAMILIES.includes(c.family), `${id} family ${c.family}`);
-    assert.ok(c.width > 0 && c.width <= (id.length === 2 ? 1.5 : 1.2), `${id} width`); // two digits (Slice 9B): up to 1.5
+    // Two digits (Slice 9B): up to 1.5. Urdu (Slice 10B): up to 1.6 (ص ض are the widest).
+    assert.ok(c.width > 0 && c.width <= (id.startsWith('ur-') ? 1.6 : id.length === 2 ? 1.5 : 1.2), `${id} width`);
     assert.ok(c.strokes.length >= 1, id);
     for (const [k, s] of c.strokes.entries()) {
       assert.equal(typeof s.say, 'string', `${id} stroke ${k + 1}`);
       assert.ok(s.say.length > 0);
-      // A dot (i, j) has a one-point path.
-      assert.ok(s.path.length >= 2 || (/^[ij]$/.test(id) && s.path.length === 1), `${id} stroke ${k + 1} path`);
+      // A dot (i, j, the Urdu dots) has a one-point path.
+      assert.ok(s.path.length >= 2 || ((/^[ij]$/.test(id) || id.startsWith('ur-')) && s.path.length === 1), `${id} stroke ${k + 1} path`);
       for (const [x, y] of s.path) {
         assert.ok(Number.isFinite(x) && Number.isFinite(y), `${id} stroke ${k + 1}`);
         assert.ok(x >= -0.05 && x <= c.width + 0.05, `${id} stroke ${k + 1} x ${x}`);
