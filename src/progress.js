@@ -20,6 +20,7 @@ export const CONFIG = {
   roundPauseMs: 1100,     // after a round, its light comes on; the next round starts after this long
   // The copy-it round (Slice 5I, src/copy.js).
   copyWaitMs: 2000,       // judge her letter this long after her last lift (unless it is already complete)
+  copyDotWaitMs: 4000,    // Slice 10C, Urdu: her body is whole but dots or a mark are still to come: judge after this long (no hint)
   copyHintMs: 5000,       // fewer strokes than the letter needs: after this long Jugnu shows the next one on the card
   copyTries: 3,           // failed copies before the round counts as done with help
   copyDemoMs: 1100,       // Jugnu draws one stroke of the model card this fast
@@ -278,3 +279,7 @@ export function finishNameLetter(np, { assisted }) {
   const letter = firstUnfinished(done);
   return { state: { ...np, done, letter }, again: false, roundDone: letter >= done.length };
 }
+
+// How long the copy round waits before judging a letter that does not pass yet
+// (src/copy.js copyStatus 'judge-soon'): longer while an Urdu letter's dots are still to come (Slice 10C).
+export const copyWaitFor = (status, config = CONFIG) => (status.wait === 'dots' ? config.copyDotWaitMs : config.copyWaitMs);

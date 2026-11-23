@@ -83,9 +83,22 @@ export function pickVariant(child, variants, stage = 1, score = scoreStroke) {
 // ---- Either order (character files may have "anyOrder": [[0, 1], ...]) ----
 
 // The anyOrder group that holds stroke k, or [k] when it is in none.
+// Slice 10C: dots next to each other (the two or three dots of an Urdu letter)
+// are always a group: she may tap them in any order.
 export function groupOf(char, k) {
   const group = (char.anyOrder ?? []).find((g) => g.includes(k));
-  return group ? [...group].sort((a, b) => a - b) : [k];
+  if (group) return [...group].sort((a, b) => a - b);
+  return dotRun(char.strokes, k);
+}
+
+// The run of dot strokes next to each other that holds stroke k, or [k].
+export function dotRun(strokes, k) {
+  if (strokes[k]?.kind !== 'dot') return [k];
+  let a = k;
+  let b = k;
+  while (strokes[a - 1]?.kind === 'dot') a -= 1;
+  while (strokes[b + 1]?.kind === 'dot') b += 1;
+  return Array.from({ length: b - a + 1 }, (_, i) => a + i);
 }
 
 // The strokes she may draw next: the first unfinished stroke in the recorded

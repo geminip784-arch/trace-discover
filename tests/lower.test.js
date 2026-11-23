@@ -232,7 +232,8 @@ test('a small letter up between the sky and the fence: "Keep it between the fenc
 });
 
 test('the position tolerances (line units), and their order: size first, then position', () => {
-  assert.deepEqual(POSITION, { tailBelow: 0.15, tallAbove: 0.2, tAbove: 0.1, band: 0.15, smallShare: 0.7 });
+  // urduDipBelow and urduDipModel: Urdu tails and bowls (Slice 10C, tests/urdu-copy.test.js).
+  assert.deepEqual(POSITION, { tailBelow: 0.15, tallAbove: 0.2, tAbove: 0.1, band: 0.15, smallShare: 0.7, urduDipBelow: 0.15, urduDipModel: 0.2 });
   // A capital-sized c, up on the sky line, is asked to be smaller first.
   assert.equal(judge('c', scaleAt(lines('c'), 2, [0.08, 1])).reason, 'too-big');
   assert.deepEqual(['g', 'j', 'p', 'q', 'y', 'b', 'd', 'f', 'h', 'k', 'l', 't', 'i', 'a'].map(heightKind),

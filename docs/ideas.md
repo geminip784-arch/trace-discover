@@ -238,3 +238,12 @@ Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be pl
 - ✅ **[5O follow-up]** A single tap drew no ink (a path from a point to the same point is not painted), so her i and j dots did not show. Done in the Slice 5O follow-up: a tap is drawn as a round dot of her ink (`isDot` and `strokeRun` in `src/render.js`).
 - ✅ **[5O follow-up]** The setup page's "too long for one line" check used print spacing, though the copy screens write her name in slot spacing (a little wider with narrow letters). Done in the Slice 5O follow-up: the check uses the slot spacing (`slotNameWidth` in `src/name.js`).
 
+
+## Slice 10C: judging Urdu copies
+
+- **[later]** The limits (`URDU_DOTS` in `src/urdu-dots.js`: dot size 0.18, mark size 0.5; `POSITION.urduDipBelow` 0.15) were set on drawn test letters. Check her real `copy` log entries (`reason`, and `dots`: how many on top and underneath) after a week of Urdu reviews.
+- **[later]** In the copy round a single tap on top counts as the little ṭ on ٹ (no letter of its family has one dot on top), but not on ڈ and ڑ, where it is exactly ذ and ز. In tracing (Slice 10D) the place is known, so a tap at the ṭ counts on all three.
+- **[later]** Urdu letters that sit on the grass line are not checked for where they sit (only letters whose tail or bowl dips must dip). If she writes ب floating high, a gentle check like lowercase's "small" band could be added.
+- **[later]** In the copy round, a dot or mark has no start to coach for Urdu letters, so a dot a little off its place never brings "Here is the usual way". The dot of i and j still does (as before); it could follow the Urdu rule.
+- **[later]** The test file checks the pairs of Urdu letters most likely to be mixed up. While building 10C every letter was also written for every other (model and crude, 2,964 copies): none passed, and no scribble passed. That full sweep takes over a minute, so it is not in `npm test`; a `tools/` script like `tools/crude-report.js` could run it on demand.
+- **[later]** No child-style templates (`data/child-shapes.js`) were needed for Urdu: wobbly, slanted, squashed, round-cornered and shallow-tailed copies all pass on the plans alone. Add them only if her real copies need them.

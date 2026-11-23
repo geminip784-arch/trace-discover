@@ -14,7 +14,7 @@
 // script" leaves private lines out.
 
 import { OBJECTS, THINGS } from './finds.js';
-import { GLYPHS, plansOf } from './glyphs.js';
+import { GLYPHS, plansOf, URDU_GLYPHS } from './glyphs.js';
 import { TRACE_NOTES, COPY_NOTES, GAME_NOTES, ODD_NOTES, SET_NOTES, copyNote } from '../src/notes.js';
 import { LINES, fillLine } from '../src/audio.js';
 
@@ -83,6 +83,17 @@ export const PARTS = [...new Set(Object.values(GLYPHS).flatMap((g) => plansOf(g)
 // Every character a copy can be taken for ("Almost! That looks like R.").
 export const LOOKALIKE_IDS = [...LETTERS, ...DIGITS, ...TEENS];
 
+// Slice 10C, Urdu: every body part name ("Almost! The stem is missing."), every
+// letter a copy can be taken for ("Almost! That looks like ر."), and every dot
+// and mark line ("Almost! It needs two dots.").
+export const URDU_PARTS = [...new Set(Object.values(URDU_GLYPHS).flatMap((g) => plansOf(g).flat().filter((s) => !s.kind).map((s) => s.part)))].sort();
+export const URDU_LETTERS = Object.entries(URDU_GLYPHS).map(([id, g]) => ({ id, letter: g.letter }));
+export const URDU_DOT_RESULTS = [
+  ...[0, 1, 2, 3].map((need) => ({ reason: 'dot-count', need })),
+  ...['top', 'under'].flatMap((side) => [1, 2, 3].map((need) => ({ reason: 'dot-side', side, need }))),
+  ...['small ṭ', 'madd'].map((part) => ({ reason: 'missing-mark', missing: { part } })),
+];
+
 // Jugnu's lines: the extra prompts first, then every line in src/audio.js LINES
 // except `picture` ("B is for ball!"), which Slice 6B puts together from the
 // letter name and find word clips.
@@ -149,6 +160,15 @@ function noteClips() {
   for (const id of LOOKALIKE_IDS) {
     const hint = /\d/.test(id) ? `Say the number: "${NUMBER_WORDS[Number(id)]}".` : `Say the letter name: "${id}".`;
     add(`looks-like-${slug(id)}`, copyNote({ ok: false, reason: 'looks-like', lookalike: id }), hint);
+  }
+  // Urdu (Slice 10C).
+  for (const part of URDU_PARTS) add(`missing-${slug(part)}`, copyNote({ ok: false, reason: 'missing-stroke', missing: { part } }), kind);
+  for (const { id, letter } of URDU_LETTERS) {
+    add(`looks-like-${slug(id)}`, copyNote({ ok: false, reason: 'looks-like', lookalike: letter }), `Say the Urdu letter's name: "${id.slice(3).replace(/-/g, ' ')}" (${letter}).`);
+  }
+  for (const r of URDU_DOT_RESULTS) {
+    const id = r.reason === 'dot-count' ? `dots-${r.need}` : r.reason === 'dot-side' ? `dots-${r.side}-${r.need > 1 ? 'many' : 'one'}` : `mark-${slug(r.missing.part)}`;
+    add(id, copyNote({ ok: false, ...r }), r.reason === 'missing-mark' && r.missing.part === 'small ṭ' ? `${kind} "ṭ" is the hard t sound.` : kind);
   }
   // Numbers 10 to 20 (Slice 9B): a digit left out, the digits swapped, and a
   // digit's part left out ("Almost! The slant of the 7 is missing.").

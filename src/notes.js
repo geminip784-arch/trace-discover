@@ -34,10 +34,19 @@ export const COPY_NOTES = {
 
 // "Almost! The bar is missing." / "Almost! That looks like R."
 // A number's part (Slice 9B) is named with its digit: "the bumps of the 3 are missing".
-const plural = (part) => { const own = part.split(' of the ')[0]; return / and /.test(own) || /s$/.test(own); };
+// Slice 10C: Urdu part names "teeth" and "left eye, tail" are plural too.
+const plural = (part) => { const own = part.split(' of the ')[0]; return / and |, /.test(own) || /s$/.test(own) || own === 'teeth'; };
 const missingLine = (part) => `Almost! The ${part} ${plural(part) ? 'are' : 'is'} missing.`;
 const looksLine = (id) => `Almost! That looks like ${id}.`;
 const firstLine = (id) => `Almost! The ${id} comes first.`;
+
+// Urdu (Slice 10C): the dots and small marks. "Almost! It needs two dots." /
+// "Almost! It has no dots." / "Almost! The dots go on top." / "Almost! It needs the little ṭ on top."
+export const DOT_WORDS = ['no', 'one', 'two', 'three'];
+const dotCountLine = (need) => (need === 0 ? 'Almost! It has no dots.' : `Almost! It needs ${DOT_WORDS[need]} dot${need > 1 ? 's' : ''}.`);
+const dotSideLine = (side, need) => `Almost! The ${need > 1 ? 'dots go' : 'dot goes'} ${side === 'top' ? 'on top' : 'underneath'}.`;
+const MARK_NAMES = { 'small ṭ': 'the little ṭ', madd: 'the madd' };
+const markLine = (part) => `Almost! It needs ${MARK_NAMES[part] ?? 'the little mark'} on top.`;
 
 // The line for a judged copy, or null for a usual pass (nothing to say).
 // A failed copy always has a line.
@@ -52,6 +61,9 @@ export function copyNote(result) {
   // Numbers 10 to 20 (Slice 9B): "Almost! The 7 is missing." / "Almost! The 1 comes first."
   if (result.reason === 'missing-digit') return part ? missingLine(part) : 'Almost! A number is missing.';
   if (result.reason === 'swapped-digits') return firstLine(result.first);
+  if (result.reason === 'dot-count') return dotCountLine(result.need ?? 0);
+  if (result.reason === 'dot-side') return dotSideLine(result.side, result.need ?? 1);
+  if (result.reason === 'missing-mark') return markLine(result.missing?.part);
   return COPY_NOTES[result.reason] ?? "Let's watch Jugnu write it.";
 }
 
