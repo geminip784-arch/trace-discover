@@ -226,3 +226,10 @@ Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be pl
 ## Slice 5O part 1: undo one stroke
 
 - ✅ **[5O part 2]** Jugnu's resting place was partly behind the undo button on her name's copy screens. Done in Slice 5O part 2: he now rests in the button column, just under undo (`restingSpot` in `src/jugnu.js`).
+
+## Slice 5O part 3: letter slots in name writing
+
+- **[later]** The slots of i, j, l and I are narrow (as narrow as the model letter: about 0.1 of a line unit). Her strokes are given to letters by the whole letter boxes, which touch, so a stick a little to one side still counts; but if the narrow boxes look too small to her on the tablet, they could be drawn wider than the letter (borrowing a little from the neighbours' gaps).
+- **[later]** One hard case is still read wrongly, with or without slots: a long name with narrow letters (the made-up "Isabella") written 1.2 times bigger and nudged off-centre, so that neighbouring letters overlap a lot. Check her real `name` log entries (`slots`, `overlap`) before tuning `NAME_SLOT_RULES` in `src/name-copy.js`.
+- **[later]** Found while building the slots: a perfectly straight up-and-down line judged as a wide letter (e, a, o, m, W) made the copy judge crash (`fitToParts` in `src/copy.js` scaled it by a width of almost 0). Fixed in this slice: such a stroke is now fitted by its height and fails kindly. A finger rarely draws a perfectly straight line, so it may never have happened on the tablet.
+

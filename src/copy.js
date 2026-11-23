@@ -360,7 +360,9 @@ export function fitToParts(strokes, char, cfg = DEFAULTS, match = COPY_MATCH) {
   const ref = boxOf(linePoints(char.strokes));
   const hers = boxOf(strokes);
   if (!ref || !hers || Math.max(hers.w, hers.h) < cfg.minLength) return null;
-  const tall = ref.h >= ref.w;
+  // Slice 5O part 3: fitted by the height when hers has next to no width (a
+  // straight up-and-down line judged as a wide letter such as e), never by a width of almost 0.
+  const tall = ref.h >= ref.w || hers.w < cfg.minLength;
   const ky = tall ? (hers.h > 0 ? ref.h / hers.h : 1) : ref.w / Math.max(hers.w, 1e-9);
   const wantX = hers.w > 1e-9 ? ref.w / hers.w : ky * match.maxStretch;
   const kx = Math.min(ky * match.maxStretch, Math.max(ky / match.maxStretch, wantX));

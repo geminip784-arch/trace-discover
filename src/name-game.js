@@ -55,7 +55,7 @@
 
 import {
   drawLines, drawStageTrack, createInk, createFx, letterToPx, pxToLetter, START_DOT_RADIUS, trackLook, markPath,
-  drawModelCard, drawCopyHelper, nameHelperMarks, CARD, INK,
+  drawModelCard, drawCopyHelper, nameHelperMarks, CARD, INK, drawNameSlots,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker, withMinLeeway } from './geometry.js';
@@ -75,8 +75,8 @@ import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js'
 import { createJugnu, restingSpot } from './jugnu.js';
 import { createDebugPanel } from './debug.js';
 import { loadChar, pauseAnimations } from './game.js';
-import { NAME_ID, nameLayout, nameCopyLayout, nameWidth, placeLetters, nameLogEntry, NAME_DEMO_MS } from './name.js';
-import { scoreName, nameCompareIds, assignStrokes, nameCopyLogEntry } from './name-copy.js';
+import { NAME_ID, nameLayout, nameCopyLayout, nameWidth, placeLetters, nameLogEntry, NAME_DEMO_MS, nameSlots, slotLook } from './name.js';
+import { scoreName, nameCompareIds, nameCopyLogEntry } from './name-copy.js';
 import { refBox, POSITION_LINES } from './copy.js';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
 
@@ -106,6 +106,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     return { stop: () => panel?.remove(), pause() {}, resume() {} };
   }
   const placed = placeLetters(loaded); // each letter in the name's units
+  const slots = nameSlots(placed);     // Slice 5O part 3: a box on the lines per letter, where it goes
   const width = nameWidth(loaded);
   // The whole name as one character, for the model card and the helper.
   const nameChar = { id: NAME_ID, width, strokes: placed.flatMap((c) => c.strokes) };
@@ -144,6 +145,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   let reversedStrokes = [];
   let goodStrokes = 0;
   let undoList = EMPTY_UNDO; // Slice 5O: her strokes she may take back, last on top
+  let lastGroups = null;     // her last judged copy, letter by letter (the glow at the end)
 
   let phase = 'trace';
   let alive = true;
@@ -222,6 +224,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     drawLines(els.lines, layout);
     if (card) {
       drawModelCard(els.lines, layout, card, nameChar, placed);
+      drawNameSlots(els.lines, layout, layout.offset, slots, slotLook(helper.level)); // Slice 5O part 3
       drawCopyHelper(els.lines, layout, nameChar, layout.offset, { level: helper.level, marks: nameHelperMarks(placed, helper.level, started()) });
       return;
     }
@@ -456,6 +459,13 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   async function showWhy(result) {
     // Slice 5O part 2: her ink goes faint first, so the reason is always seen on top of it.
     if (!(await faintFirst())) return false;
+    // Slice 5O part 3: the slot of the letter it is about glows on the lines, over her faint ink.
+    if (result.letter !== null && slots[result.letter]) {
+      const sl = slots[result.letter];
+      const [x0, y0] = toPx([sl.x0, sl.y0]);
+      const [x1, y1] = toPx([sl.x1, sl.y1]);
+      fx.slotGlow({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, CONFIG.copyReasonMs);
+    }
     const how = result.reason;
     const paths = (result.show?.paths ?? []).map((p) => markPath(p));
     if (how === 'no-letter') return showOnCard(namePaths(), CONFIG.copySlowMs);
@@ -471,7 +481,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
         fx.partGlow([[layout.originX, py], [layout.lineEnd, py]], LINE_GLOW_WIDTH * layout.unit, CONFIG.copyReasonMs);
       }
     }
-    const hers = boxOfStrokes(assignStrokes(copy.strokes, placed).groups[k] ?? []);
+    const hers = boxOfStrokes(result.groups?.[k] ?? []);
     if ((how === 'too-small' || how === 'too-big' || how === 'wrong-case') && hers) {
       // A dashed outline the letter's own size, standing on the lines where her letter is.
       const model = refBox(loaded[k]);
@@ -486,7 +496,8 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   async function judgeName() {
     if (phase !== 'trace' || copy.strokes.length === 0) return;
     phase = 'held';
-    const result = scoreName(copy.strokes, placed, loaded, { othersOf });
+    const result = scoreName(copy.strokes, placed, loaded, { othersOf, slots });
+    lastGroups = result.groups;
     showNote(nameCopyNote(result, letters));
     if (result.reason === 'unfinished') return hintName(result);
     undoList = EMPTY_UNDO; // a judged copy is never undone
@@ -532,7 +543,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     redraw();
     speak('letterDone');
     letterChime();
-    const groups = her ? assignStrokes(her, placed).groups : null;
+    const groups = her ? lastGroups : null; // her letters as they were judged (by the slots)
     placed.forEach((c, i) => {
       const lines = groups?.[i] ?? c.strokes.map((s) => markPath(s.points));
       later(() => fx.letterGlow(lines.map((pts) => pts.map(toPx)), LETTER_GLOW_WIDTH * layout.unit, CONFIG.letterGlowMs), i * NAME_GLOW_STEP_MS);

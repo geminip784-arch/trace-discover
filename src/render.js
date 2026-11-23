@@ -742,6 +742,15 @@ export function createFx(svg) {
       }, keys, { duration: ms });
       for (const pts of strokes) add('polyline', polyAttrs(pts, width, FX.beside.color), keys, { duration: ms });
     },
+    // Slice 5O part 3: a letter's slot glows gold, softly, twice (a box in area px), over her faint ink.
+    slotGlow({ x, y, w, h }, ms) {
+      const u = layout.unit;
+      const keys = [{ opacity: 0 }, { opacity: 1 }, { opacity: 0.4 }, { opacity: 1 }, { opacity: 0 }];
+      add('rect', {
+        x, y, width: w, height: h, rx: SLOT_LOOK.radius * u, fill: FX.letter.glow, 'fill-opacity': 0.35,
+        stroke: FX.letter.color, 'stroke-width': FX.outline.width * u,
+      }, keys, { duration: ms, easing: 'ease-in-out' });
+    },
     // Slice 5J: a part of the model glows gold, softly, twice (pts in area px).
     partGlow(pts, width, ms) {
       const keys = [{ opacity: 0 }, { opacity: 1 }, { opacity: 0.35 }, { opacity: 1 }, { opacity: 0 }];
@@ -1006,6 +1015,44 @@ export function drawCopyHelper(svg, layout, char, offset, { level, done = null, 
       });
       t.textContent = String(d.label);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Letter slots (Slice 5O part 3): a faint box on the lines for each letter of
+// her name (src/name.js nameSlots), in the guide layer under her ink. look:
+// 'fill' (helper level 1: a faint fill and an outline), 'outline' (level 2, and
+// her name's practice screens 2 and 3), 'ticks' (level 3: only small ticks on
+// the grass line where each letter begins and the last one ends).
+export const SLOT_LOOK = { stroke: '#B9CFEA', width: 0.012, fill: '#EEF5FD', fillOpacity: 0.7, radius: 0.05, tick: 0.09, tickWidth: 0.016 };
+export function drawNameSlots(svg, layout, offset, slots, look) {
+  const { unit } = layout;
+  const px = letterToPx(layout, offset);
+  const make = (tag, attrs) => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    svg.appendChild(el);
+    return el;
+  };
+  if (look === 'ticks') {
+    const xs = [...slots.map((s) => s.x0), slots[slots.length - 1].x1];
+    for (const x of xs) {
+      const [tx, ty] = px([x, 1]);
+      make('line', {
+        class: 'name-slot-tick', x1: tx, x2: tx, y1: ty - SLOT_LOOK.tick * unit, y2: ty,
+        stroke: SLOT_LOOK.stroke, 'stroke-width': SLOT_LOOK.tickWidth * unit, 'stroke-linecap': 'round',
+      });
+    }
+    return;
+  }
+  for (const s of slots) {
+    const [x0, y0] = px([s.x0, s.y0]);
+    const [x1, y1] = px([s.x1, s.y1]);
+    make('rect', {
+      class: 'name-slot', x: x0, y: y0, width: x1 - x0, height: y1 - y0, rx: SLOT_LOOK.radius * unit,
+      fill: look === 'fill' ? SLOT_LOOK.fill : 'none', 'fill-opacity': SLOT_LOOK.fillOpacity,
+      stroke: SLOT_LOOK.stroke, 'stroke-width': SLOT_LOOK.width * unit,
+    });
   }
 }
 
