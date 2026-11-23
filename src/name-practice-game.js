@@ -55,8 +55,8 @@ import { logAttempt, readProfile, savePracticePage } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, popSound, setProfile } from './audio.js';
 import { createJugnu, restingSpot } from './jugnu.js';
 import { loadChar, pauseAnimations } from './game.js';
-import { NAME_ID, nameWidth, placeLetters, NAME_DEMO_MS, nameSlots, slotLook } from './name.js';
-import { nameCompareIds } from './name-copy.js';
+import { NAME_ID, nameWidth, placeLetters, placeInSlots, NAME_DEMO_MS, nameSlots, slotLook } from './name.js';
+import { nameCompareIds, afterTry } from './name-copy.js';
 import { refBox, POSITION_LINES } from './copy.js';
 import { DUE_MARK, NEXT_PAGE } from './art.js';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
@@ -81,10 +81,15 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   const compared = [...new Set(letters.flatMap(nameCompareIds))];
   const byId = new Map((await Promise.all(compared.map(async (id) => [id, await loadChar(id, manifest)]))).filter(([, c]) => c));
   const othersOf = (id) => nameCompareIds(id).map((x) => byId.get(x)).filter(Boolean);
-  const placed = placeLetters(loaded); // each letter in the name's units
-  const slots = nameSlots(placed);     // Slice 5O part 3: a box on the lines per letter, where it goes
-  const width = nameWidth(loaded);
-  const nameChar = { id: NAME_ID, width, strokes: placed.flatMap((c) => c.strokes) };
+  // Each letter in the name's units: screen 1 (traced) in print spacing; screens
+  // 2 and 3 placed for writing in slots, none narrower than NAME_SLOTS.minWidth
+  // (Slice 5O part 4). applyLayout picks the one for the screen on show.
+  const traced = placeLetters(loaded);
+  const spaced = placeInSlots(loaded);
+  const slots = nameSlots(spaced);     // Slice 5O part 3: a box on the lines per letter, where it goes
+  let placed = traced;
+  let width = nameWidth(placed);
+  let nameChar = { id: NAME_ID, width, strokes: placed.flatMap((c) => c.strokes) };
 
   const ink = createInk(els.ink);
   const fx = createFx(els.fx);
@@ -187,10 +192,10 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     drawLines(els.lines, layout);
     if (card) {
       drawModelCard(els.lines, layout, card, nameChar, placed);
-      drawNameSlots(els.lines, layout, layout.offset, slots, 'outline'); // Slice 5O part 3: no helper here
+      drawNameSlots(els.lines, layout, layout.offset, slots, 'outline', { focus: copy?.rewrite ?? null }); // Slice 5O parts 3 and 4: no helper here
       // A screen Jugnu wrote (after 3 failed copies): his name stays on the lines, lit gold.
       const s = page.spaces[screen()];
-      if (s.done && s.helped) placed.forEach((c) => drawStageTrack(els.lines, layout, c, layout.offset, { stage: TRACE_STAGE, done: allDone(c), markers: false }));
+      if (s.done && s.helped) placed.forEach((c, i) => (s.mine?.[i] ? null : drawStageTrack(els.lines, layout, c, layout.offset, { stage: TRACE_STAGE, done: allDone(c), markers: false }))); // the letters Jugnu wrote; hers stay hers
       return;
     }
     placed.forEach((c, i) => {
@@ -204,6 +209,9 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   function applyLayout() {
     const w = els.area.clientWidth || window.innerWidth;
     const h = els.area.clientHeight || window.innerHeight;
+    placed = screen() === 0 ? traced : spaced;
+    width = nameWidth(placed);
+    nameChar = { id: NAME_ID, width, strokes: placed.flatMap((c) => c.strokes) };
     layout = nameScreenLayout(w, h, width, screen());
     if (layout.card) {
       const { unit, originX, top, offset } = layout;
@@ -322,7 +330,8 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   // Screen 2: Jugnu writes her name on the card (fast, and a touch finishes it).
   // Screen 3: it is already there; she writes at once.
   async function beginCopy() {
-    copy = { strokes: [], ids: [], hinted: false };
+    // locked[k]: her strokes of a letter that counted (Slice 5O part 4); rewrite: the letter she writes again now.
+    copy = { strokes: [], ids: [], hinted: false, locked: placed.map(() => null), rewrite: null };
     undoList = EMPTY_UNDO;
     redraw();
     speak('copy');
@@ -382,8 +391,18 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   // Nothing is judged or logged, and it is not a failed copy.
   async function hintName(result) {
     copy.hinted = true;
+    glowSlot(result.letter, CONFIG.copyReasonMs); // Slice 5O part 4: where the next letter goes
     if (!(await showOnCard(result.show.paths.map((p) => markPath(p))))) return;
     phase = 'trace';
+  }
+
+  // Slice 5O parts 3 and 4: letter k's slot glows gold on the lines (only that one).
+  function glowSlot(k, ms) {
+    const sl = k !== null && k !== undefined ? slots[k] : null;
+    if (!sl) return;
+    const [x0, y0] = toPx([sl.x0, sl.y0]);
+    const [x1, y1] = toPx([sl.x1, sl.y1]);
+    fx.slotGlow({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, ms);
   }
 
   // Slice 5O part 2: before a reason shows, all her ink goes faint (it stays:
@@ -399,12 +418,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     // Slice 5O part 2: her ink goes faint first, so the reason is always seen on top of it.
     if (!(await faintFirst())) return false;
     // Slice 5O part 3: the slot of the letter it is about glows on the lines, over her faint ink.
-    if (result.letter !== null && slots[result.letter]) {
-      const sl = slots[result.letter];
-      const [x0, y0] = toPx([sl.x0, sl.y0]);
-      const [x1, y1] = toPx([sl.x1, sl.y1]);
-      fx.slotGlow({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, CONFIG.copyReasonMs);
-    }
+    glowSlot(result.letter, CONFIG.copyReasonMs);
     const how = result.reason;
     const paths = (result.show?.paths ?? []).map((p) => markPath(p));
     if (how === 'no-letter') return showOnCard(namePaths(), CONFIG.copySlowMs);
@@ -436,7 +450,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     if (phase !== 'trace' || !copy || copy.strokes.length === 0) return;
     phase = 'held';
     const k = page.space;
-    const result = scoreNameScreen(copy.strokes, placed, loaded, { othersOf, slots });
+    const result = scoreNameScreen(copy.strokes, placed, loaded, { othersOf, slots, locked: copy.locked });
     showNote(nameCopyNote(result, letters));
     if (result.reason === 'unfinished') return hintName(result);
     undoList = EMPTY_UNDO; // a judged copy is never undone
@@ -458,30 +472,47 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
       return screenDone(k, r.pageDone);
     }
     speak('copyAgain');
+    // Slice 5O part 4: the letters that counted stay and are locked; only the
+    // first that did not (from the left) is written again, in its slot.
+    const t = afterTry(result, copy.strokes, copy.locked);
     if (!(await showWhy(result))) return;
-    // Her name fades (the one place her writing fades: room for a fresh copy).
-    for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
-    ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id))); // the rest of her ink comes back
-    copy = { strokes: [], ids: [], hinted: false };
     page = r.state;
     if (r.helpedOut) {
-      // Never stuck: Jugnu writes her name on the lines, and it counts as done, with help.
+      // Never stuck: every letter still open fades, and Jugnu writes just those, each
+      // in its slot; the letters she got right stay hers. The screen counts as done, with help.
+      for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
+      ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id)));
+      const open = t.locked.map((g, i) => (g ? null : i)).filter((i) => i !== null);
+      page.spaces[k].mine = t.locked.map(Boolean);
+      copy = { strokes: [], ids: [], hinted: false, locked: t.locked, rewrite: null };
       await wait(CONFIG.copyFadeMs);
       if (!alive) return;
       speak('assist');
       lastCopy = null;
-      if (!(await jugnuWrites())) return;
+      if (!(await jugnuWrites(open))) return;
       return screenDone(k, r.pageDone);
     }
-    redraw();
+    // Only that letter fades (room for a fresh copy of it); the rest of her ink comes back.
+    const fading = t.fade.map((s) => copy.ids[copy.strokes.indexOf(s)]);
+    for (const id of fading) ink.fade(id, CONFIG.copyFadeMs);
+    ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !fading.includes(id)));
+    const keep = copy.strokes.map((s, j) => [s, copy.ids[j]]).filter(([s]) => !t.fade.includes(s) && !t.locked.some((g) => g?.includes(s)));
+    copy.strokes = keep.map(([s]) => s); // strokes of letters still to be shown, one at a time
+    copy.ids = keep.map(([, id]) => id);
+    copy.locked = t.locked;
+    copy.rewrite = t.rewrite;
+    copy.hinted = false;
+    redraw(); // her slot to rewrite stays softly gold
     phase = 'trace';
   }
 
   // Jugnu writes her whole name on the lines; then it stays there, lit gold.
-  async function jugnuWrites() {
+  // `only`: the letters he writes (Slice 5O part 4: those still open), else all.
+  async function jugnuWrites(only = null) {
     phase = 'held';
     const trails = [];
-    for (const path of namePaths()) {
+    const paths = placed.flatMap((c, i) => (only && !only.includes(i) ? [] : c.strokes.map((s) => markPath(s.points))));
+    for (const path of paths) {
       const trail = fx.trail(path.map(toPx), TRAIL_WIDTH * layout.unit);
       trails.push(trail);
       const flown = await jugnu.demo(path, CONFIG.assistMs, CONFIG.hopMs, (f) => trail.set(f));

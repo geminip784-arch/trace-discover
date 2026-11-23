@@ -170,7 +170,25 @@ export const NAME_SLOTS = {
   tops: [0, 0.5],      // the lines a slot may start at
   bottoms: [1, 1.5],   // the lines a slot may end at
   slack: 0.03,  // a letter this close past a line still counts as reaching only that line
+  // Slice 5O part 4: no slot narrower than this (line units): about half the
+  // width of a small letter such as a (0.66), so a narrow letter's box
+  // (i, l, I, 1) is easy for her to hit. The letter stands in its middle.
+  minWidth: 0.33,
 };
+
+// Slice 5O part 4: her name's letters placed for writing in slots (the copy
+// round and her name's practice screens 2 and 3): as placeLetters, but each
+// letter's box is wide enough for a slot of at least `minWidth`, the letter
+// centred in it, so the letters after it move along to make room.
+export function placeInSlots(chars, rules = NAME_SLOTS) {
+  const least = rules.minWidth + 2 * rules.inset;
+  return placeLetters(chars.map((c) => {
+    if (c.width >= least) return c;
+    const dx = (least - c.width) / 2;
+    const move = (strokes) => strokes.map((s) => ({ ...s, points: s.points.map(([x, y]) => [x + dx, y]) }));
+    return { ...c, width: least, strokes: move(c.strokes), ...(c.plans ? { plans: c.plans.map((p) => ({ ...p, strokes: move(p.strokes) })) } : {}) };
+  }));
+}
 
 // The slots of placed letters (placeLetters), in the name's units:
 // [{ index, id, x0, x1, y0, y1 }].

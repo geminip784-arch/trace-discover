@@ -75,8 +75,8 @@ import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js'
 import { createJugnu, restingSpot } from './jugnu.js';
 import { createDebugPanel } from './debug.js';
 import { loadChar, pauseAnimations } from './game.js';
-import { NAME_ID, nameLayout, nameCopyLayout, nameWidth, placeLetters, nameLogEntry, NAME_DEMO_MS, nameSlots, slotLook } from './name.js';
-import { scoreName, nameCompareIds, nameCopyLogEntry } from './name-copy.js';
+import { NAME_ID, nameLayout, nameCopyLayout, nameWidth, placeLetters, placeInSlots, nameLogEntry, NAME_DEMO_MS, nameSlots, slotLook } from './name.js';
+import { scoreName, nameCompareIds, nameCopyLogEntry, afterTry } from './name-copy.js';
 import { refBox, POSITION_LINES } from './copy.js';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
 
@@ -105,9 +105,11 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     panel?.message('A letter of the name could not be loaded');
     return { stop: () => panel?.remove(), pause() {}, resume() {} };
   }
-  const placed = placeLetters(loaded); // each letter in the name's units
+  // Each letter in the name's units. A review (the copy round) places them for
+  // writing in slots: no slot narrower than NAME_SLOTS.minWidth (Slice 5O part 4).
+  const placed = review ? placeInSlots(loaded) : placeLetters(loaded);
   const slots = nameSlots(placed);     // Slice 5O part 3: a box on the lines per letter, where it goes
-  const width = nameWidth(loaded);
+  const width = nameWidth(placed);
   // The whole name as one character, for the model card and the helper.
   const nameChar = { id: NAME_ID, width, strokes: placed.flatMap((c) => c.strokes) };
 
@@ -217,14 +219,14 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     return placed.map((c) => {
       const [sx, sy] = c.strokes[0].points[0];
       return (copy?.strokes ?? []).some((pts) => Math.hypot(pts[0][0] - sx, pts[0][1] - sy) <= STARTED_NEAR);
-    });
+    }).map((begun, k) => begun || Boolean(copy?.locked?.[k])); // a letter that already counted is begun
   }
 
   function redraw() {
     drawLines(els.lines, layout);
     if (card) {
       drawModelCard(els.lines, layout, card, nameChar, placed);
-      drawNameSlots(els.lines, layout, layout.offset, slots, slotLook(helper.level)); // Slice 5O part 3
+      drawNameSlots(els.lines, layout, layout.offset, slots, slotLook(helper.level), { focus: copy?.rewrite ?? null }); // Slice 5O parts 3 and 4
       drawCopyHelper(els.lines, layout, nameChar, layout.offset, { level: helper.level, marks: nameHelperMarks(placed, helper.level, started()) });
       return;
     }
@@ -402,7 +404,8 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   const namePaths = () => placed.flatMap((c) => c.strokes.map((s) => markPath(s.points)));
 
   async function beginCopy() {
-    copy = { strokes: [], ids: [], fails: 0, hinted: false };
+    // locked[k]: her strokes of a letter that counted (Slice 5O part 4); rewrite: the letter she writes again now.
+    copy = { strokes: [], ids: [], fails: 0, hinted: false, locked: placed.map(() => null), rewrite: null };
     undoList = EMPTY_UNDO;
     progress = { ...progress, stage: COPY_STAGE };
     redraw();
@@ -443,8 +446,18 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   // Nothing is judged or logged, and it is not a failed copy.
   async function hintName(result) {
     copy.hinted = true; // this copy had Jugnu's help: it cannot move the helper up
+    glowSlot(result.letter, CONFIG.copyReasonMs); // Slice 5O part 4: where the next letter goes
     if (!(await showOnCard(result.show.paths.map((p) => markPath(p))))) return;
     phase = 'trace';
+  }
+
+  // Slice 5O parts 3 and 4: letter k's slot glows gold on the lines (only that one).
+  function glowSlot(k, ms) {
+    const sl = k !== null && k !== undefined ? slots[k] : null;
+    if (!sl) return;
+    const [x0, y0] = toPx([sl.x0, sl.y0]);
+    const [x1, y1] = toPx([sl.x1, sl.y1]);
+    fx.slotGlow({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, ms);
   }
 
   // Slice 5O part 2: before a reason shows, all her ink goes faint (it stays:
@@ -460,12 +473,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
     // Slice 5O part 2: her ink goes faint first, so the reason is always seen on top of it.
     if (!(await faintFirst())) return false;
     // Slice 5O part 3: the slot of the letter it is about glows on the lines, over her faint ink.
-    if (result.letter !== null && slots[result.letter]) {
-      const sl = slots[result.letter];
-      const [x0, y0] = toPx([sl.x0, sl.y0]);
-      const [x1, y1] = toPx([sl.x1, sl.y1]);
-      fx.slotGlow({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, CONFIG.copyReasonMs);
-    }
+    glowSlot(result.letter, CONFIG.copyReasonMs);
     const how = result.reason;
     const paths = (result.show?.paths ?? []).map((p) => markPath(p));
     if (how === 'no-letter') return showOnCard(namePaths(), CONFIG.copySlowMs);
@@ -496,7 +504,7 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
   async function judgeName() {
     if (phase !== 'trace' || copy.strokes.length === 0) return;
     phase = 'held';
-    const result = scoreName(copy.strokes, placed, loaded, { othersOf, slots });
+    const result = scoreName(copy.strokes, placed, loaded, { othersOf, slots, locked: copy.locked });
     lastGroups = result.groups;
     showNote(nameCopyNote(result, letters));
     if (result.reason === 'unfinished') return hintName(result);
@@ -519,18 +527,25 @@ export async function startNameGame(els, { letters, manifest = [], debugOn = fal
         const paths = result.habits.coach.flatMap((k) => placed[k].strokes.map((s) => markPath(s.points)));
         if (paths.length && !(await showOnCard(paths, NAME_DEMO_MS))) return;
       }
-      return afterRound(r, copy.strokes);
+      return afterRound(r, result.groups.filter(Boolean).flat());
     }
     copy.fails = r.fails;
     speak('copyAgain');
+    // Slice 5O part 4: the letters that counted stay and are locked; only the
+    // first that did not (from the left) is written again, in its slot.
+    const t = afterTry(result, copy.strokes, copy.locked);
     if (!(await showWhy(result))) return;
-    // Her name fades (the one place her writing fades: room for a fresh copy).
-    for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
-    ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id))); // the rest of her ink comes back
-    copy.strokes = [];
-    copy.ids = [];
+    // Only that letter fades (room for a fresh copy of it); the rest of her ink comes back.
+    const fading = t.fade.map((s) => copy.ids[copy.strokes.indexOf(s)]);
+    for (const id of fading) ink.fade(id, CONFIG.copyFadeMs);
+    ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !fading.includes(id)));
+    const keep = copy.strokes.map((s, j) => [s, copy.ids[j]]).filter(([s]) => !t.fade.includes(s) && !t.locked.some((g) => g?.includes(s)));
+    copy.strokes = keep.map(([s]) => s); // strokes of letters still to be shown, one at a time
+    copy.ids = keep.map(([, id]) => id);
+    copy.locked = t.locked;
+    copy.rewrite = t.rewrite;
     copy.hinted = false;
-    redraw(); // the helper may have dropped a level: her next try has more help at once
+    redraw(); // her slot to rewrite stays softly gold; the helper may have dropped a level
     if (r.helpedOut) return afterRound(r, null);
     phase = 'trace';
   }

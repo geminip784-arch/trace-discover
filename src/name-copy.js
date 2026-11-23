@@ -297,7 +297,13 @@ function nameReason(r, id) {
 // reason (null when ok): 'no-letter' (nothing written), 'unfinished' (the last
 // letters left out: a hint, not a fail), 'missing-letter', 'wrong-case', or any
 // reason src/copy.js gives for that letter.
-export function scoreName(strokes, letters, chars, { othersOf = () => [], rules = NAME_COPY, match = COPY_MATCH, slots = null, slotRules = NAME_SLOT_RULES } = {}) {
+export function scoreName(strokes, letters, chars, { othersOf = () => [], rules = NAME_COPY, match = COPY_MATCH, slots = null, slotRules = NAME_SLOT_RULES, locked = null } = {}) {
+  // Slice 5O part 4: letters that passed an earlier try are locked (`locked[k]`:
+  // her strokes for letter k, or null when it is open). Only the open letters are
+  // judged, with her new strokes; the locked ones keep theirs and stay good.
+  if (locked && locked.some(Boolean)) {
+    return scoreOpen(strokes, letters, chars, locked, { othersOf, rules, match, slots, slotRules });
+  }
   // Slice 5O part 3: by the slots when her writing is on them; otherwise by place and shape.
   const judgeLetter = (k, g) => {
     const letter = letters[k];
@@ -390,6 +396,54 @@ export function scoreName(strokes, letters, chars, { othersOf = () => [], rules 
   return { ...out, reason: bad.reason, letter: bad.index, lookalike, show: partToShow(bad.result, letters[bad.index], chars) };
 }
 
+// ---------------------------------------------------------------------------
+// Rewriting only the wrong letter (Slice 5O part 4)
+
+// Her new strokes judged for the open letters only (scoreName with `locked`).
+// The open letters are judged exactly as a name of their own (by their slots,
+// the overlap rule, every reason), then put back in their places: locked
+// letters are good, with the strokes they kept. Indices in the result are the
+// whole name's.
+function scoreOpen(strokes, letters, chars, locked, opts) {
+  const open = letters.map((_, k) => k).filter((k) => !locked[k]);
+  const sub = scoreName(strokes, open.map((k, i) => ({ ...letters[k], index: i })), open.map((k) => chars[k]), {
+    ...opts, slots: opts.slots ? open.map((k) => opts.slots[k]) : null, locked: null,
+  });
+  const at = (i) => (i === null || i === undefined ? i : open[i]);
+  const results = letters.map((letter, k) => {
+    const i = open.indexOf(k);
+    if (i >= 0) return { ...sub.letters[i], index: k };
+    return { id: letter.id, index: k, strokes: locked[k].length, ok: true, reason: null, lookalike: null, part: null, distance: null, mirrored: false, usual: true, result: null, locked: true };
+  });
+  const groups = letters.map((_, k) => (locked[k] ? locked[k] : sub.groups[open.indexOf(k)]));
+  return {
+    ...sub,
+    letter: at(sub.letter),
+    letters: results,
+    groups,
+    overlap: sub.overlap.map((o) => ({ ...o, slots: o.slots.map(at), start: at(o.start) })),
+    habits: { ...sub.habits, coach: sub.habits.coach.map(at) },
+    open,
+  };
+}
+
+// After a judged try that did not pass: what to keep and what to rewrite.
+// `result` from scoreName for her `strokes`, `locked` the letters locked before it (or null).
+// Returns { locked, rewrite, fade }: the letters now locked (with their
+// strokes: every letter that passed), the one letter she rewrites now (the
+// first that did not count, from the left: result.letter), and her strokes
+// that fade (that letter's, and any unclear stroke it was asked about).
+// Her other strokes stay on the lines: the other letters that did not count
+// are shown one at a time, after this one.
+export function afterTry(result, strokes, locked = null) {
+  const now = result.letters.map((x, k) => (locked?.[k] ? locked[k] : x.ok && result.groups[k] ? result.groups[k] : null));
+  const rewrite = result.letter;
+  const fade = new Set(rewrite !== null && rewrite !== undefined ? result.groups[rewrite] ?? [] : []);
+  for (const o of result.overlap ?? []) if (o.unclear && o.start === rewrite && strokes[o.stroke]) fade.add(strokes[o.stroke]);
+  if (rewrite !== null && rewrite !== undefined) now[rewrite] = null;
+  return { locked: now, rewrite, fade: [...fade] };
+}
+
 // Her strokes for letter k (for the size outline and the line glow), or [].
 export const strokesOfLetter = (strokes, letters, k, rules = NAME_COPY) => assignStrokes(strokes, letters, rules).groups[k] ?? [];
 
@@ -409,6 +463,7 @@ export function nameCopyLogEntry({ result, attempt, helper = null, helped = fals
     letter: result.letter,
     order: result.habits.order,
     slots: result.slots === true, // Slice 5O part 3: strokes given by the letter slots
+    open: result.open ?? result.letters.map((_, k) => k), // Slice 5O part 4: the letters judged this time (the rest were locked)
     overlap: (result.overlap ?? []).map((o) => ({ ...o })),
     letters: result.letters.map((x) => ({
       letter: x.id,

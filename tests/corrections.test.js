@@ -91,9 +91,11 @@ for (const { file, what, judge, shows } of SCREENS) {
   test(`${what}: after the reason, her copy fades out and the rest of her ink comes back`, () => {
     const j = body(s, judge);
     const why = j.indexOf('await showWhy(result)');
-    const fade = j.indexOf('for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);');
-    const back = j.indexOf('ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id)));');
-    assert.ok(why > 0 && fade > why && back > fade, 'reason, then her copy fades, then the rest comes back');
+    // A letter or a practice space: her whole copy fades. Her name (Slice 5O part 4): only the letter she rewrites.
+    const name = judge === 'judgeName';
+    const fade = j.indexOf(name ? 'for (const id of fading) ink.fade(id, CONFIG.copyFadeMs);' : 'for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);');
+    const back = j.indexOf(name ? 'ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !fading.includes(id)));' : 'ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id)));');
+    assert.ok(why > 0 && fade > why && back > fade, 'reason, then her copy (or that letter) fades, then the rest comes back');
   });
 
   test(`${what}: Jugnu rests at the resting spot`, () => {
