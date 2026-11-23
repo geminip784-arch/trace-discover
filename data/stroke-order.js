@@ -378,14 +378,23 @@ const URDU_SAY = {
   'ur-bari-ye': ['from the top right down to the left, then the long sweep back to the right, ending in a point'],
 };
 const r3 = (v) => Math.round(v * 1000) / 1000;
-// About a dozen points along a stroke, for the small reference picture.
+// Points along a stroke, for the small reference picture: about one every
+// 0.04 line units, and the ends of every piece (so corners, like the tips of
+// س's teeth, stay where they are).
 function roughPath(st) {
   if (st.kind === 'dot') return [st.at.map(r3)];
-  const fine = st.pieces.flatMap((p, i) => (i === 0 ? piecePath(p) : piecePath(p).slice(1)));
-  const step = Math.max(1, Math.floor(fine.length / 12));
-  const pts = fine.filter((_, i) => i % step === 0);
-  if (pts[pts.length - 1] !== fine[fine.length - 1]) pts.push(fine[fine.length - 1]);
-  return pts.map(([x, y]) => [r3(x), r3(y)]);
+  const out = [];
+  st.pieces.forEach((p, i) => {
+    const fine = piecePath(p);
+    let since = Infinity;
+    fine.forEach((q, j) => {
+      if (i > 0 && j === 0) return; // the join is the last piece's end
+      const last = out[out.length - 1];
+      if (last) since += Math.hypot(q[0] - last[0], q[1] - last[1]);
+      if (since >= 0.04 || j === fine.length - 1) { out.push(q); since = 0; }
+    });
+  });
+  return out.map(([x, y]) => [r3(x), r3(y)]);
 }
 for (const [id, glyph] of Object.entries(URDU_GLYPHS)) {
   const say = URDU_SAY[id];

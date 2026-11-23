@@ -180,6 +180,9 @@ export function usableStrokes(strokes, char, cfg = DEFAULTS) {
 // capital or digit has one). Her size is measured along the same side.
 const side = (box, tall) => (tall ? box.h : box.w);
 
+// Urdu (Slice 10D): a letter box this wide and this tall (line units) is measured both ways.
+const URDU_MEASURE = 0.2;
+
 // Fit her strokes to the reference box with one uniform scale, centre on centre.
 // Returns { scale, size, sizeOk, strokes } (strokes fitted, in letter units), or
 // a result with scale null when her letter has no height to measure.
@@ -193,8 +196,16 @@ export function fitLetter(strokes, char, size = COPY_SIZE, cfg = DEFAULTS, extra
   const refSide = side(ref, tall);
   const herSide = hers ? side(hers, tall) : 0;
   if (!hers || herSide < cfg.minLength) return { scale: null, size: 0, sizeOk: false, strokes, extra };
-  const scale = refSide / herSide;
-  const ratio = herSide / refSide;
+  let scale = refSide / herSide;
+  let ratio = herSide / refSide;
+  // Slice 10D: an Urdu letter is measured on its height and width together (the
+  // middle of the two ratios), so one written a little narrower but full height,
+  // or wider but low, is judged on its whole size. A straight up-and-down letter
+  // (ا) has no width to measure: its height alone.
+  if (isUrdu(char) && ref.w >= URDU_MEASURE && ref.h >= URDU_MEASURE && hers.w >= cfg.minLength && hers.h >= cfg.minLength) {
+    ratio = Math.sqrt((hers.w / ref.w) * (hers.h / ref.h));
+    scale = 1 / ratio;
+  }
   const move = (pts) => pts.map(([x, y]) => [
     ref.cx + (x - hers.cx) * scale,
     ref.cy + (y - hers.cy) * scale,

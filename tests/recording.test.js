@@ -192,12 +192,14 @@ test('exportBundle keeps each point on one line', () => {
 
 // ---- Picker ----
 
-test('the picker offers A to Z, 0 to 9, a to z (Slice 9A) and 10 to 20 (Slice 9B), each once', () => {
-  assert.deepEqual(CHAR_GROUPS.map((g) => g.name), ['Capitals', 'Digits', 'Lowercase', 'Numbers']);
-  assert.equal(CHAR_IDS.length, 73);
-  assert.equal(new Set(CHAR_IDS).size, 73);
+test('the picker offers A to Z, 0 to 9, a to z (Slice 9A) and 10 to 20 (Slice 9B), each once; Urdu is generated but not recorded (Slice 10D)', () => {
+  assert.deepEqual(CHAR_GROUPS.map((g) => g.name), ['Capitals', 'Digits', 'Lowercase', 'Numbers', 'Urdu']);
+  assert.deepEqual(CHAR_GROUPS.filter((g) => g.recorder !== false).map((g) => g.name), ['Capitals', 'Digits', 'Lowercase', 'Numbers']);
+  assert.equal(CHAR_IDS.length, 112);
+  assert.equal(new Set(CHAR_IDS).size, 112);
   assert.equal(CHAR_IDS.slice(0, 62).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz');
-  assert.deepEqual(CHAR_IDS.slice(62), ['10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']);
+  assert.deepEqual(CHAR_IDS.slice(62, 73), ['10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']);
+  assert.equal(CHAR_IDS.slice(73).length, 39);
 });
 
 test('a lowercase letter is saved with case "lower"', () => {

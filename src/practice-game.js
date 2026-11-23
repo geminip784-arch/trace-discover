@@ -59,6 +59,7 @@ const TRACE_STAGE = 1;          // space 1 is traced like round 1
 // Returns { stop(), pause(), resume() }.
 export async function startPractice(els, { charId, manifest = [] }) {
   const char = await loadChar(charId, manifest);
+  const rtl = char.direction === 'rtl'; // an Urdu letter (Slice 10D): Jugnu perches to the right of start dots
   if (!char) return { stop() {} };
   const strokes = char.strokes; // the default plan: the model, and Jugnu's demonstrations
   const others = (await Promise.all(compareIds(char.id).filter((id) => id !== char.id).map((id) => loadChar(id, manifest)))).filter(Boolean);
@@ -67,7 +68,7 @@ export async function startPractice(els, { charId, manifest = [] }) {
   let layout = null;
   let cfg = DEFAULTS; // the stage tolerances with the 45 px floor, for this screen
   const toPx = (p) => letterToPx(layout, layout.offset)(p);
-  const jugnu = createJugnu(els.jugnu, (p) => (layout ? toPx(p) : [0, 0]));
+  const jugnu = createJugnu(els.jugnu, (p) => (layout ? toPx(p) : [0, 0]), { rtl });
   setProfile(readProfile());
 
   let page = startPage();
@@ -92,7 +93,7 @@ export async function startPractice(els, { charId, manifest = [] }) {
   const stageCfg = () => cfg.stages[TRACE_STAGE];
   const ref = () => planNow()[progress.current].points;
   const startDot = () => ref()[0];
-  const home = () => restingSpot(layout, layout.offset); // Slice 5O part 2: in the button column, under undo
+  const home = () => restingSpot(layout, layout.offset, undefined, rtl); // Slice 5O part 2: in the button column, under undo
   const bandWidth = () => trackLook(TRACE_STAGE).band * layout.unit;
   const modelPaths = () => strokes.map((s) => markPath(s.points));
   const allDone = (c) => c.strokes.map(() => true);
@@ -162,7 +163,7 @@ export async function startPractice(els, { charId, manifest = [] }) {
   function applyLayout() {
     const w = els.area.clientWidth || window.innerWidth;
     const h = els.area.clientHeight || window.innerHeight;
-    layout = practiceLayout(w, h, char.width);
+    layout = practiceLayout(w, h, char.width, undefined, { rtl }); // Urdu: right to left (Slice 10D)
     cfg = withMinLeeway(DEFAULTS, layout.unit);
     redraw();
     ink.resize(layout, layout.offset);

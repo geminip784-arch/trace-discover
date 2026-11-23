@@ -16,9 +16,10 @@ const MANIFEST = JSON.parse(readFileSync(new URL('../data/chars/index.json', imp
 const inkOf = (strokes) => boxOf(strokes.map((s) => s.points));
 const close = (a, b, tol = 0.0015) => Math.abs(a - b) <= tol;
 
-test('the numbers are 10 to 20, each in the manifest after the lowercase letters', () => {
+test('the numbers are 10 to 20, each in the manifest after the lowercase letters (then the Urdu letters, Slice 10D)', () => {
   assert.deepEqual(NUMBER_IDS, ['10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']);
-  assert.deepEqual(MANIFEST.slice(-11), NUMBER_IDS);
+  assert.deepEqual(MANIFEST.slice(62, 73), NUMBER_IDS);
+  assert.ok(MANIFEST.slice(73).every((id) => id.startsWith('ur-')));
 });
 
 test('each number names its two digits, the left one unmoved', () => {

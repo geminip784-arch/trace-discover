@@ -294,8 +294,9 @@ test('the size lines, and a usual pass says nothing', () => {
 });
 
 test('the tracing rounds: a short line for a wrong start, a wrong direction, off the track and a stroke traced the other way', () => {
-  assert.deepEqual(Object.keys(TRACE_NOTES).sort(), ['off-path', 'off-target', 'reversed', 'wrong-direction', 'wrong-start']);
+  assert.deepEqual(Object.keys(TRACE_NOTES).sort(), ['off-mark', 'off-path', 'off-target', 'reversed', 'wrong-direction', 'wrong-start']);
   assert.equal(traceNote('off-target'), 'Tap right on the dot.'); // Slice 9A: a tap that missed the dot of i or j
+  assert.equal(traceNote('off-mark'), 'Tap right on the mark.'); // Slice 10D: a tap that missed an Urdu mark
   assert.equal(traceNote('reversed'), 'That counts! Here is the usual way.');
   assert.equal(traceNote('wrong-start'), 'Start at the glowing dot.');
   assert.equal(traceNote('wrong-direction'), 'Go the other way. Watch Jugnu.');

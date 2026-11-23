@@ -1,4 +1,5 @@
 import { resample, pathLength } from './geometry.js';
+import { markCentre, markReach } from './variants.js';
 
 // Guide lines (SVG) and her ink (canvas). Everything is sized in line units:
 // 1 unit = sky line to grass line, worked out from the viewport height.
@@ -220,6 +221,8 @@ export function trackWidths(stage) {
 // A dot stroke's target on the track (line units): a soft round band at least
 // `min` across, with a small solid core in round 1.
 export const DOT_TARGET = { min: 0.07, core: 0.025 };
+// Slice 10D: an Urdu mark's target: a dashed ring (line units) and its shape at this share of the track's band.
+export const MARK_RING = { width: 0.012, dash: 0.03, band: 0.5 };
 
 export const START_DOT_RADIUS = 0.075; // line units, the big numbered dot (26 px in mockup4)
 
@@ -345,6 +348,22 @@ export function drawStageTrack(svg, layout, char, offset, { stage, done, markers
         disc(at, Math.max(look.band / 2, DOT_TARGET.min), TRACK_COLOR, { 'fill-opacity': look.opacity });
         if (look.dots) disc(at, DOT_TARGET.core, look.dots.color, { 'fill-opacity': look.dots.opacity });
       }
+      return;
+    }
+    if (stroke.kind === 'mark') {
+      // Slice 10D: an Urdu mark (the little ṭ, the madd): its small shape, and a
+      // dashed ring round it where a tap or a small stroke counts (markReach). Gold once done.
+      if (done[i]) {
+        path(stroke.points, DONE_LOOK.color, DONE_LOOK.core);
+        return;
+      }
+      const [cx, cy] = px(markCentre(stroke.points));
+      make('circle', {
+        cx, cy, r: markReach(stage) * unit, fill: TRACK_COLOR, 'fill-opacity': look.opacity * 0.35,
+        stroke: TRACK_COLOR, 'stroke-opacity': look.opacity, 'stroke-width': MARK_RING.width * unit,
+        'stroke-dasharray': `${MARK_RING.dash * unit} ${MARK_RING.dash * unit}`,
+      });
+      path(stroke.points, TRACK_COLOR, look.band * MARK_RING.band, { 'stroke-opacity': look.opacity });
       return;
     }
     if (stroke.kind !== 'line') return;
@@ -860,6 +879,31 @@ export function modelCard(layout, offset, char) {
   return { x, y, w, h, origin, k, lineEnd: x - CARD.gap * unit, toMain };
 }
 
+// Pure: where a character's screen puts things (src/game.js applyLayout): the
+// lines, the character box's x (`offset`) and, in the copy-it round (`copy`),
+// the model card, with the writing lines stopping short of it.
+export function writingLayout(w, h, char, copy = false) {
+  const full = computeLayout(w, h, char.width); // a wide character gets smaller lines (Slice 9B)
+  if (!copy) {
+    const offset = letterOffset(full, char.width);
+    return { layout: full, offset, card: null };
+  }
+  const layout = { ...full, lineEnd: modelCard(full, 0, char).lineEnd };
+  const offset = letterOffset(layout, char.width);
+  return { layout, offset, card: modelCard(full, offset, char) };
+}
+
+// The round lights (index.html #rounds .rl), top right, in CSS px: at most three
+// (the practice page's fireflies), each `size` across with a `shadow` below.
+// tests/lights.test.js checks these against index.html, and that no letter's
+// model ink (Urdu marks above ک گ آ included) ever reaches them.
+export const ROUND_LIGHTS = { top: 6, right: 28, size: 44, gap: 10, shadow: 4, most: 3 };
+// Their box on a screen `width` px wide: { x0, x1, y0, y1 }.
+export function roundLightsBox(width, lights = ROUND_LIGHTS) {
+  const x1 = width - lights.right;
+  return { x0: x1 - lights.most * lights.size - (lights.most - 1) * lights.gap, x1, y0: lights.top, y1: lights.top + lights.size + lights.shadow };
+}
+
 // Pure: the card's markers, in card units. Every stroke gets a numbered start
 // dot; a dot that would sit on an earlier one (A's two legs start together)
 // slides along its own stroke until it is clear. Every line stroke gets an arrow
@@ -869,12 +913,27 @@ export function cardMarkers(char) {
   const dots = [];
   const arrows = [];
   char.strokes.forEach((stroke, i) => {
+    // Slice 10D: dots side by side (an Urdu letter's two or three) may be
+    // tapped in any order, so only the first of them has a numbered dot; the
+    // others show as the letter's own dots.
+    if (stroke.kind === 'dot' && char.strokes[i - 1]?.kind === 'dot') return;
     const pts = stroke.points;
     const len = stroke.kind === 'line' ? pathLength(pts) : 0;
     // How far a dot here is from the nearest earlier dot, edge to edge, less the gap.
     const clearance = (at) => Math.min(Infinity, ...dots.map((d) => Math.hypot(at[0] - d.at[0], at[1] - d.at[1]) - 2 * (dot.r + dot.ring) - slide.gap));
     let along = 0;
     let at = pts[0];
+    if (len === 0 && clearance(at) < 0) {
+      // Slice 10D: a dot (ذ's, near its body's start) has no stroke to slide
+      // along: its number moves straight away from the nearest earlier one until
+      // clear. The dot itself stays drawn in its place.
+      const near = dots.reduce((a, d) => (Math.hypot(at[0] - d.at[0], at[1] - d.at[1]) < Math.hypot(at[0] - a.at[0], at[1] - a.at[1]) ? d : a));
+      const dx = at[0] - near.at[0];
+      const dy = at[1] - near.at[1];
+      const d = Math.hypot(dx, dy) || 1;
+      const need = 2 * (dot.r + dot.ring) + slide.gap;
+      at = [near.at[0] + (dx / d) * need, near.at[1] + (dy / d) * need];
+    }
     if (len > 0 && clearance(at) < 0) {
       // Slide along until clear; if it never is, keep the clearest place.
       let best = { along, at, c: clearance(at) };
@@ -935,6 +994,15 @@ export function drawModelCard(svg, layout, card, char, groups = [char]) {
     if (stroke.kind !== 'dot') continue;
     const [cx, cy] = px(stroke.points[0]);
     make('circle', { cx, cy, r: CARD.letter.width * card.k, fill: CARD.letter.color }, g);
+  }
+  // Slice 10D: a small Urdu mark (the little ṭ, the madd), a little thinner than the letter.
+  for (const stroke of char.strokes) {
+    if (stroke.kind !== 'mark') continue;
+    make('polyline', {
+      points: stroke.points.map(px).map((p) => p.join(',')).join(' '),
+      fill: 'none', stroke: CARD.letter.color, 'stroke-width': 0.7 * CARD.letter.width * card.k,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }, g);
   }
   const marks = groups.map(cardMarkers);
   const dots = marks.flatMap((m) => m.dots);

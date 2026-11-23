@@ -839,3 +839,6 @@ export const URDU_GLYPHS = Object.fromEntries(Object.entries({
       curve([0.122, 0.91], [0.257, 0.96], [0.597, 0.985], [0.897, 0.965], [1.107, 0.84])),
   ] },
 }).map(([id, g]) => [id, atMargin(g)]));
+
+// Slice 10D: the Urdu letters are in the app: `npm run glyphs` writes their files.
+Object.assign(GLYPHS, URDU_GLYPHS);

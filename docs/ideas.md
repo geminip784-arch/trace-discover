@@ -247,3 +247,10 @@ Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be pl
 - **[later]** In the copy round, a dot or mark has no start to coach for Urdu letters, so a dot a little off its place never brings "Here is the usual way". The dot of i and j still does (as before); it could follow the Urdu rule.
 - **[later]** The test file checks the pairs of Urdu letters most likely to be mixed up. While building 10C every letter was also written for every other (model and crude, 2,964 copies): none passed, and no scribble passed. That full sweep takes over a minute, so it is not in `npm test`; a `tools/` script like `tools/crude-report.js` could run it on demand.
 - **[later]** No child-style templates (`data/child-shapes.js`) were needed for Urdu: wobbly, slanted, squashed, round-cornered and shallow-tailed copies all pass on the plans alone. Add them only if her real copies need them.
+
+## Slice 10D: Urdu in the app
+
+- **[later]** On an English (or number) practice page, space 3 sits under the fireflies (top right): the top of a letter that reaches the sky line there (E F J S 0 2 4 5 6 7 9 d f) tucks a few px under them, and its glow and track a little more. This was so before Slice 10. Urdu practice pages end left of the fireflies (`PRACTICE.clear`); English ones could do the same (their spaces would be a little smaller), or the fireflies could sit higher. `tests/lights.test.js` checks Urdu practice pages only, for now.
+- **[later]** A mark's dashed ring is fairly big (its reach is the stage's dot radius plus 0.08 line units), so a 4-year-old's rough ṭ counts. If it looks too generous on the tablet, `MARK.reach` in `src/variants.js` is the one place to change.
+- **[later]** In round 1 Jugnu demonstrates a mark by drawing its real shape; she may tap. If the shape confuses her, he could tap its middle instead (as he does for a dot).
+- **[10E]** Until the picture words are approved, every Urdu letter goes back to the board after its star (no find scene), as X does.

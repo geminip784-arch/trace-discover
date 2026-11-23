@@ -4,14 +4,17 @@
 import { resample, pathLength, DEFAULTS, dist } from './geometry.js';
 import { JOIN_GAP } from './variants.js';
 import { STROKE_ORDER } from '../data/stroke-order.js';
+import { URDU } from './session.js';
 
-// The recorder's picker, one row per group. Urdu gets its own group here
-// later; everything else reads CHAR_IDS.
+// Every generated character, one group per kind (the recorder's picker shows
+// every group but Urdu: recorder support for Urdu is for later, docs/ideas.md).
+// `npm run glyphs` and everything else read CHAR_IDS.
 export const CHAR_GROUPS = [
   { name: 'Capitals', ids: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('') },
   { name: 'Digits', ids: '0123456789'.split('') },
   { name: 'Lowercase', ids: 'abcdefghijklmnopqrstuvwxyz'.split('') }, // Slice 9A
   { name: 'Numbers', ids: Array.from({ length: 11 }, (_, k) => String(10 + k)) }, // Slice 9B: 10 to 20
+  { name: 'Urdu', ids: URDU.map((t) => t.id), recorder: false }, // Slice 10D: the 39 letters, in qaida order
 ];
 export const CHAR_IDS = CHAR_GROUPS.flatMap((g) => g.ids);
 export const SMOOTH_PASSES = 3;   // Chaikin corner-cutting passes for the Smooth button

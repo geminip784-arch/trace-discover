@@ -73,7 +73,7 @@ export const pointCount = (length) => Math.max(MIN_POINTS, Math.ceil(length / PO
 // Evenly spaced points along a fine path. Corners stay exactly where they are:
 // the path is cut at each corner and every piece between corners is spaced
 // evenly, with its share of the points.
-export function spacedPoints(pts) {
+export function spacedPoints(pts, { fill = false } = {}) {
   const cuts = [0, ...cornerIndexes(pts), pts.length - 1];
   const runs = [];
   for (let i = 1; i < cuts.length; i++) runs.push(pts.slice(cuts[i - 1], cuts[i] + 1));
@@ -86,6 +86,10 @@ export function spacedPoints(pts) {
   let left = gaps - share.reduce((a, b) => a + b, 0);
   const order = exact.map((e, i) => [e - Math.floor(e), i]).sort((a, b) => b[0] - a[0]);
   for (let j = 0; left > 0; j = (j + 1) % order.length, left--) share[order[j][1]]++;
+  // Slice 10D, Urdu only (`fill`): a short run between corners (س's teeth) can
+  // round down to too few points; it gets one more until no gap is wider than
+  // POINT_SPACING. Capitals, digits and lowercase keep their points exactly.
+  if (fill) lengths.forEach((l, i) => { while (l / share[i] > POINT_SPACING + 1e-9) share[i] += 1; });
   const out = [];
   runs.forEach((run, i) => {
     const r = resample(run, share[i] + 1);
@@ -108,9 +112,9 @@ export function familyOf(glyph) {
 // A dot stroke (the dot of i and j) keeps its single point. A mark (Slice 10B:
 // the little ṭ and the madd) keeps its kind: its points show its shape, but it
 // is judged by its place.
-const strokeFile = (s) => (s.kind === 'dot'
+const strokeFile = (s, fill = false) => (s.kind === 'dot'
   ? { kind: 'dot', part: s.part, points: [roundPoint(s.at)] }
-  : { kind: s.kind === 'mark' ? 'mark' : 'line', part: s.part, points: spacedPoints(strokePath(s)).map(roundPoint) });
+  : { kind: s.kind === 'mark' ? 'mark' : 'line', part: s.part, points: spacedPoints(strokePath(s), { fill }).map(roundPoint) });
 
 // The character file object for one glyph: the recorder's format, with each
 // stroke's part name, plus anyOrder (before strokes) when the glyph has one,
@@ -119,7 +123,8 @@ const strokeFile = (s) => (s.kind === 'dot'
 // Urdu (Slice 10): the file also has the letter itself (after its script) and,
 // until data/stroke-order.js lists it, a family worked out from its pieces.
 export function glyphCharacter(id, glyph) {
-  const strokes = glyph.strokes.map(strokeFile);
+  const fill = Boolean(glyph.letter); // Urdu (Slice 10D)
+  const strokes = glyph.strokes.map((st) => strokeFile(st, fill));
   const built = buildCharacter(id, strokes);
   const { strokes: plain, ...head } = built;
   if (glyph.letter && !STROKE_ORDER[id]) head.family = familyOf(glyph);
@@ -127,7 +132,7 @@ export function glyphCharacter(id, glyph) {
   if (glyph.anyOrder) out.anyOrder = glyph.anyOrder;
   if (glyph.digits) out.digits = glyph.digits;
   out.strokes = plain.map((st, k) => ({ kind: st.kind, part: strokes[k].part, points: st.points }));
-  if (glyph.plans?.length) out.plans = glyph.plans.map((plan) => ({ strokes: plan.map(strokeFile) }));
+  if (glyph.plans?.length) out.plans = glyph.plans.map((plan) => ({ strokes: plan.map((st) => strokeFile(st, fill)) }));
   return out;
 }
 

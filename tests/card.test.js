@@ -64,7 +64,9 @@ test('Slice 9B: only a character too wide to copy at 125% gets smaller lines (20
       else assert.deepEqual(fitted, plain, id);
     }
   }
-  assert.deepEqual(smaller, ['20 1280x800']);
+  // Slice 10D: the widest Urdu letters (س ش ص ض) too, on the full screen only.
+  assert.deepEqual(smaller, ['20 1280x800', 'ur-seen 1280x800', 'ur-sheen 1280x800', 'ur-suad 1280x800', 'ur-zuad 1280x800']);
+  for (const id of ['ur-suad', 'ur-zuad']) assert.ok(computeLayout(1280, 800, load(id).width).unit >= 0.8 * computeLayout(1280, 800).unit, `${id} stays big`);
   const twenty = computeLayout(1280, 800, load('20').width);
   assert.ok(Math.abs(twenty.unit - fitUnit(1280, load('20').width)) < 1e-9);
   assert.ok(twenty.unit > 0.85 * computeLayout(1280, 800).unit, `20 stays big: ${twenty.unit}`);
@@ -88,7 +90,9 @@ test('every stroke gets one numbered dot and every line stroke an arrow', () => 
   for (const id of MANIFEST) {
     const char = load(id);
     const { dots, arrows } = cardMarkers(char);
-    assert.deepEqual(dots.map((d) => d.label), char.strokes.map((_, i) => i + 1), id);
+    // Slice 10D: dots side by side share the first one's number (any order).
+    const numbered = char.strokes.map((_, i) => i + 1).filter((_, i) => !(char.strokes[i].kind === 'dot' && char.strokes[i - 1]?.kind === 'dot'));
+    assert.deepEqual(dots.map((d) => d.label), numbered, id);
     assert.equal(arrows.length, char.strokes.filter((s) => s.kind === 'line').length, id);
   }
 });

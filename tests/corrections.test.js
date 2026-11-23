@@ -99,7 +99,8 @@ for (const { file, what, judge, shows } of SCREENS) {
   });
 
   test(`${what}: Jugnu rests at the resting spot`, () => {
-    assert.match(s, /const home = \(\) => restingSpot\(layout, (layout\.)?offset\);/);
+    // Slice 10D: a letter's screens pass rtl (an Urdu letter: the same spot, worked out with his mirrored perch); her name's never need it.
+    assert.match(s, /const home = \(\) => restingSpot\(layout, (layout\.)?offset(, undefined, rtl)?\);/);
     assert.ok(!s.includes('jugnu.placeAt(home())'), 'he is put there by his perch rule (restAt), as hopTo does');
     assert.ok(!/const HOME = /.test(s), 'no old resting place left');
   });

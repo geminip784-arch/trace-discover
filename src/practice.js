@@ -10,7 +10,7 @@
 // The practice page is extra: it never changes stars, reviews, helper levels or
 // the practice-more list. It only adds 'practice' entries to the attempt log.
 
-import { computeLayout, COPY_ROOM, BUTTONS_RIGHT, TAIL_LINE } from './render.js';
+import { computeLayout, COPY_ROOM, BUTTONS_RIGHT, TAIL_LINE, roundLightsBox } from './render.js';
 import { CONFIG } from './progress.js';
 import { scoreCopy, copyStatus } from './copy.js';
 import { nameLayout, nameCopyLayout, NAME_ID } from './name.js';
@@ -20,6 +20,7 @@ export const PRACTICE = {
   spaces: 3,              // practice spaces on a page
   tries: CONFIG.copyTries, // failed copies in a space before Jugnu writes it (3)
   right: 24,              // px kept free at the screen's right edge
+  clear: 12,              // Slice 10D, Urdu: px kept free left of the fireflies (space 1 is on the right)
 };
 
 // ---------------------------------------------------------------------------
@@ -41,16 +42,23 @@ export const spaceWidth = (charWidth) => COPY_ROOM.size * charWidth + COPY_ROOM.
 // of computeLayout (unit, areaWidth, areaHeight, originX, top, lineEnd), plus
 //   offset  space 1's character box x (units from the start of the lines), as letterOffset gives
 //   step    units from one space's character box to the next one's
-//   spaces  [{ x0, x1 }] each space's left and right edge, in area px
-export function practiceLayout(w, h, charWidth, cfg = PRACTICE) {
+//   spaces  [{ x0, x1 }] each space's left and right edge, in area px, space 1 first
+// `rtl` (Slice 10D, an Urdu letter): the spaces run right to left, as Urdu is
+// written. Space 1 (the one she traces) is on the right, and `step` is negative.
+// Space 1 would then sit under the fireflies (the round lights, top right), so
+// the spaces end PRACTICE.clear px left of them (tests/lights.test.js).
+export function practiceLayout(w, h, charWidth, cfg = PRACTICE, { rtl = false } = {}) {
   const base = computeLayout(w, h);
-  const room = w - BUTTONS_RIGHT - cfg.right;
+  const right = rtl ? Math.max(cfg.right, w - roundLightsBox(w).x0 + cfg.clear) : cfg.right;
+  const room = w - BUTTONS_RIGHT - right;
   const step = spaceWidth(charWidth);
   const unit = Math.min(base.unit, room / (cfg.spaces * step));
   const pad = base.originX / base.unit; // the gap at each end of the lines, in units
   const originX = pad * unit;
   const left = BUTTONS_RIGHT + (room - cfg.spaces * step * unit) / 2; // space 1's left edge, px
-  const spaces = Array.from({ length: cfg.spaces }, (_, k) => ({ x0: left + k * step * unit, x1: left + (k + 1) * step * unit }));
+  const ltr = Array.from({ length: cfg.spaces }, (_, k) => ({ x0: left + k * step * unit, x1: left + (k + 1) * step * unit }));
+  const spaces = rtl ? [...ltr].reverse() : ltr;
+  const first = (left - originX) / unit + (step - charWidth) / 2; // the leftmost space's character box
   return {
     unit,
     areaWidth: w,
@@ -58,8 +66,8 @@ export function practiceLayout(w, h, charWidth, cfg = PRACTICE) {
     originX,
     top: (h - TAIL_LINE * unit) / 2,
     lineEnd: w - pad * unit,
-    offset: (left - originX) / unit + (step - charWidth) / 2,
-    step,
+    offset: rtl ? first + (cfg.spaces - 1) * step : first,
+    step: rtl ? -step : step,
     spaces,
   };
 }

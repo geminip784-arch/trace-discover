@@ -25,7 +25,9 @@ for (const file of files) {
       assert.ok(Array.isArray(stroke.points), `${where}: has points`);
       if (stroke.kind === 'line') assert.ok(stroke.points.length >= 2, `${where}: a line needs at least 2 points`);
       else if (stroke.kind === 'dot') assert.equal(stroke.points.length, 1, `${where}: a dot has exactly 1 point`);
-      else assert.fail(`${where}: kind must be line or dot, got ${stroke.kind}`);
+      // Slice 10B: a small Urdu mark (the little ṭ, the madd): its shape, judged by its place.
+      else if (stroke.kind === 'mark') assert.ok(stroke.points.length >= 2, `${where}: a mark has its shape`);
+      else assert.fail(`${where}: kind must be line, dot or mark, got ${stroke.kind}`);
       for (const p of stroke.points) {
         assert.ok(Array.isArray(p) && p.length === 2, `${where}: each point is [x, y]`);
         assert.ok(inRange(p[0], -0.2, 2), `${where}: x ${p[0]} is between -0.2 and 2`);

@@ -384,10 +384,11 @@ test('practice mode: the pencil badge only on starred, bright tiles; every other
       assert.equal(t.star, stars.includes(t.id)); // stars still show
     }
   }
-  // Urdu has no pencil tile: practice mode never applies there.
-  assert.ok(boardTiles('urdu', MANIFEST, stars, [], undefined, true).every((t) => !t.pencil));
-  assert.deepEqual(PRACTICE_BOOKS, ['abc', 'num']);
-  assert.equal(hasPencil('urdu'), false);
+  // Slice 10D: Urdu has its pencil tile too: only a starred Urdu letter shows the badge.
+  const urdu = boardTiles('urdu', [...MANIFEST, 'ur-be', 'ur-te'], ['ur-be'], [], undefined, true);
+  assert.deepEqual(urdu.filter((t) => t.pencil).map((t) => t.id), ['ur-be']);
+  assert.deepEqual(PRACTICE_BOOKS, ['abc', 'num', 'urdu']);
+  assert.equal(hasPencil('urdu'), true);
 });
 
 test('the pencil tile turns practice mode on and off; leaving the board ends it', () => {
@@ -399,9 +400,9 @@ test('the pencil tile turns practice mode on and off; leaving the board ends it'
   const lower = navigate(on, { type: 'turnPage' });
   assert.deepEqual(lower, { screen: 'board', book: 'abc', page: 'lower', practice: true });
   assert.deepEqual(navigate(lower, { type: 'togglePractice' }), { screen: 'board', book: 'abc', page: 'lower' });
-  // 123 has one too; Urdu does not.
+  // 123 has one too; and since Slice 10D, Urdu.
   assert.deepEqual(navigate({ screen: 'board', book: 'num' }, { type: 'togglePractice' }), { screen: 'board', book: 'num', practice: true });
-  assert.deepEqual(navigate({ screen: 'board', book: 'urdu' }, { type: 'togglePractice' }), { screen: 'board', book: 'urdu' });
+  assert.deepEqual(navigate({ screen: 'board', book: 'urdu' }, { type: 'togglePractice' }), { screen: 'board', book: 'urdu', practice: true });
   // Home leaves the board: practice mode is gone when she comes back.
   assert.deepEqual(navigate(on, { type: 'home' }), { screen: 'shelf' });
   assert.deepEqual(navigate(navigate(on, { type: 'home' }), { type: 'openBook', book: 'abc' }), board);
@@ -440,9 +441,9 @@ test('with the pencil tile, every board tile is still at least 88 px on both scr
       assert.ok(size >= 88, `${book} ${page} ${w}x${h}: ${size} px`);
     }
   }
-  // The counts: 26 letters + "A a" + pencil; 21 numbers + pencil; Urdu unchanged.
+  // The counts: 26 letters + "A a" + pencil; 21 numbers + pencil; 39 Urdu letters + pencil (Slice 10D).
   assert.equal(boardTileCount('abc', 'upper'), 28);
   assert.equal(boardTileCount('abc', 'lower'), 28);
   assert.equal(boardTileCount('num'), 22);
-  assert.equal(boardTileCount('urdu'), 39);
+  assert.equal(boardTileCount('urdu'), 40);
 });
