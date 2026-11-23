@@ -28,7 +28,7 @@
 
 import {
   drawLines, drawStageTrack, drawPracticeSpaces, createInk, createFx, letterToPx, pxToLetter,
-  START_DOT_RADIUS, trackLook, markPath,
+  START_DOT_RADIUS, trackLook, markPath, INK,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker, withMinLeeway } from './geometry.js';
@@ -43,13 +43,11 @@ import {
 } from './practice.js';
 import { logAttempt, readProfile, savePracticePage } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, popSound, setProfile } from './audio.js';
-import { createJugnu } from './jugnu.js';
+import { createJugnu, restingSpot } from './jugnu.js';
 import { loadChar, pauseAnimations } from './game.js';
 import { DUE_MARK, NEXT_PAGE } from './art.js';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
 
-// Jugnu's home, near the left: px from the left as line units, and height in line units (as game.js).
-const HOME = { x: 0.35, y: 0.65 };
 const TRAIL_WIDTH = 0.16;       // Jugnu's glowing trail, line units
 const LINE_GLOW_WIDTH = 0.03;   // a guide line's gold glow (lowercase line position)
 const LETTER_GLOW_WIDTH = 0.12; // the whole page's glow at the end
@@ -94,7 +92,7 @@ export async function startPractice(els, { charId, manifest = [] }) {
   const stageCfg = () => cfg.stages[TRACE_STAGE];
   const ref = () => planNow()[progress.current].points;
   const startDot = () => ref()[0];
-  const home = () => [HOME.x - layout.offset, HOME.y];
+  const home = () => restingSpot(layout, layout.offset); // Slice 5O part 2: in the button column, under undo
   const bandWidth = () => trackLook(TRACE_STAGE).band * layout.unit;
   const modelPaths = () => strokes.map((s) => markPath(s.points));
   const allDone = (c) => c.strokes.map(() => true);
@@ -287,8 +285,18 @@ export async function startPractice(els, { charId, manifest = [] }) {
     phase = 'trace';
   }
 
+  // Slice 5O part 2: before a reason shows, all her ink goes faint (it stays:
+  // only a failed copy fades out afterwards). Resolves false if stopped.
+  async function faintFirst() {
+    ink.dimTo(INK.faintAlpha, CONFIG.faintMs);
+    await wait(CONFIG.faintMs);
+    return alive;
+  }
+
   // Why the copy did not count, while her letter is still there (src/copy.js copyShow).
   async function showWhy(result) {
+    // Slice 5O part 2: her ink goes faint first, so the reason is always seen on top of it.
+    if (!(await faintFirst())) return false;
     const how = copyShow(result);
     const missing = result.missing ? (result.missing.paths ?? [result.missing.points]).map((pts) => markPath(pts)) : [];
     if (how === 'part') return showOnModel(missing);
@@ -345,6 +353,7 @@ export async function startPractice(els, { charId, manifest = [] }) {
     speak('copyAgain');
     if (!(await showWhy(result))) return;
     for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
+    ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id))); // the rest of her ink comes back
     copy = { strokes: [], ids: [], hinted: false };
     page = r.state;
     if (r.helpedOut) {
@@ -627,7 +636,7 @@ export async function startPractice(els, { charId, manifest = [] }) {
 
   applyLayout();
   els.jugnu.hidden = false;
-  jugnu.placeAt(home());
+  jugnu.restAt(home());
   drawLights();
   begin();
 
