@@ -235,6 +235,6 @@ Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be pl
 
 ## Slice 5O part 4: rewriting only the wrong letter
 
-- **[soon, needs your OK]** Found while taking the screenshots: a single tap draws no ink at all on her ink layer (`createInk` in `src/render.js` draws a tap as a path from a point to the same point, which the browser does not paint). So the dot she taps on an i or j (and later the Urdu dots) is judged correctly but does not show. It was like this before Slice 5O. A small fix would draw a tap as a filled round dot the size of her ink line.
-- **[later]** With slot spacing, a name full of narrow letters (the made-up "Isabella": I, l, l) is a little wider on the copy screens than in print, so its lines are a little smaller there. The setup page's "too long for one line" check still uses print spacing; check it on the tablet with her real name.
+- ✅ **[5O follow-up]** A single tap drew no ink (a path from a point to the same point is not painted), so her i and j dots did not show. Done in the Slice 5O follow-up: a tap is drawn as a round dot of her ink (`isDot` and `strokeRun` in `src/render.js`).
+- ✅ **[5O follow-up]** The setup page's "too long for one line" check used print spacing, though the copy screens write her name in slot spacing (a little wider with narrow letters). Done in the Slice 5O follow-up: the check uses the slot spacing (`slotNameWidth` in `src/name.js`).
 

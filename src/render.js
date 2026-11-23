@@ -437,6 +437,14 @@ export function drawPracticeSpaces(svg, layout, spaces, active = -1) {
 // where its own segments meet.
 const FULL = { dim: false, glow: true };
 
+// Slice 5O follow-up: points from..to of a stroke (line units) all at one place: drawn as a dot.
+export function isDot(points, from = 0, to = points.length - 1) {
+  for (let i = from + 1; i <= to; i++) {
+    if (Math.abs(points[i].x - points[from].x) > 1e-9 || Math.abs(points[i].y - points[from].y) > 1e-9) return false;
+  }
+  return true;
+}
+
 export function createInk(canvas) {
   const ctx = canvas.getContext('2d');
   const baked = document.createElement('canvas');
@@ -456,13 +464,28 @@ export function createInk(canvas) {
   }
 
   function strokeRun(c, points, from, to, style, alpha) {
+    const base = alpha * (style.dim ? INK.dimAlpha : 1);
+    // A tap (or a stroke that never moved) shows as a round dot of ink, as thick
+    // as her line, with the same glow (Slice 5O follow-up): a path from a point
+    // to the same point is not painted at all.
+    if (isDot(points, from, to)) {
+      const { x, y } = points[from];
+      const disc = (width, color, a) => {
+        c.beginPath();
+        c.arc(x, y, width / 2, 0, Math.PI * 2);
+        c.globalAlpha = a;
+        c.fillStyle = color;
+        c.fill();
+      };
+      if (style.glow) for (const layer of INK.glow) disc(layer.width, layer.color, base * layer.alpha);
+      disc(INK.core.width, INK.core.color, base);
+      return;
+    }
     c.beginPath();
     c.moveTo(points[from].x, points[from].y);
-    if (from === to) c.lineTo(points[from].x, points[from].y); // a tap shows as a dot
     for (let i = from + 1; i <= to; i++) c.lineTo(points[i].x, points[i].y);
     c.lineCap = 'round';
     c.lineJoin = 'round';
-    const base = alpha * (style.dim ? INK.dimAlpha : 1);
     if (style.glow) {
       for (const layer of INK.glow) {
         c.globalAlpha = base * layer.alpha;

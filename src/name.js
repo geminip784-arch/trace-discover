@@ -57,6 +57,11 @@ export const nameWidth = (chars) => chars.reduce((sum, c) => sum + c.width, 0);
 // The unit her name's room allows on a screen `w` px wide.
 const unitByWidth = (w, width, fit) => (w - fit.left - fit.right) / (fit.room * width);
 
+// Slice 5O follow-up: her name's width as the copy screens write it, in slots
+// (placeInSlots: no slot narrower than NAME_SLOTS.minWidth). The widest of her
+// screens' spacings, so a name that fits this way fits on every screen.
+export const slotNameWidth = (chars) => nameWidth(placeInSlots(chars));
+
 // A name `width` units wide fits on her tablet.
 export const nameFits = (width, fit = NAME_FIT) => width > 0 && unitByWidth(TABLET_WIDTH, width, fit) >= fit.floor;
 
