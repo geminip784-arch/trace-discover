@@ -1025,7 +1025,9 @@ export function drawCopyHelper(svg, layout, char, offset, { level, done = null, 
 // her name's practice screens 2 and 3), 'ticks' (level 3: only small ticks on
 // the grass line where each letter begins and the last one ends).
 export const SLOT_LOOK = { stroke: '#B9CFEA', width: 0.012, fill: '#EEF5FD', fillOpacity: 0.7, radius: 0.05, tick: 0.09, tickWidth: 0.016 };
-export function drawNameSlots(svg, layout, offset, slots, look) {
+// Slice 5O part 4: the slot of the letter she rewrites now, softly gold at every level, until she has rewritten it.
+export const FOCUS_SLOT = { stroke: '#FFD43B', width: 0.022, fill: '#FFF3C4', fillOpacity: 0.55 };
+export function drawNameSlots(svg, layout, offset, slots, look, { focus = null } = {}) {
   const { unit } = layout;
   const px = letterToPx(layout, offset);
   const make = (tag, attrs) => {
@@ -1034,6 +1036,17 @@ export function drawNameSlots(svg, layout, offset, slots, look) {
     svg.appendChild(el);
     return el;
   };
+  const box = (s, attrs) => {
+    const [x0, y0] = px([s.x0, s.y0]);
+    const [x1, y1] = px([s.x1, s.y1]);
+    make('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, rx: SLOT_LOOK.radius * unit, ...attrs });
+  };
+  if (focus !== null && focus !== undefined && slots[focus]) {
+    box(slots[focus], {
+      class: 'name-slot-focus', fill: FOCUS_SLOT.fill, 'fill-opacity': FOCUS_SLOT.fillOpacity,
+      stroke: FOCUS_SLOT.stroke, 'stroke-width': FOCUS_SLOT.width * unit,
+    });
+  }
   if (look === 'ticks') {
     const xs = [...slots.map((s) => s.x0), slots[slots.length - 1].x1];
     for (const x of xs) {
@@ -1045,15 +1058,13 @@ export function drawNameSlots(svg, layout, offset, slots, look) {
     }
     return;
   }
-  for (const s of slots) {
-    const [x0, y0] = px([s.x0, s.y0]);
-    const [x1, y1] = px([s.x1, s.y1]);
-    make('rect', {
-      class: 'name-slot', x: x0, y: y0, width: x1 - x0, height: y1 - y0, rx: SLOT_LOOK.radius * unit,
-      fill: look === 'fill' ? SLOT_LOOK.fill : 'none', 'fill-opacity': SLOT_LOOK.fillOpacity,
+  slots.forEach((s, k) => {
+    if (k === focus) return;
+    box(s, {
+      class: 'name-slot', fill: look === 'fill' ? SLOT_LOOK.fill : 'none', 'fill-opacity': SLOT_LOOK.fillOpacity,
       stroke: SLOT_LOOK.stroke, 'stroke-width': SLOT_LOOK.width * unit,
     });
-  }
+  });
 }
 
 // Pure: the fading helper for her name (Slice 9C part 2), in the name's units.
