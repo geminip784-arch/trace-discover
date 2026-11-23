@@ -25,7 +25,9 @@
 // start dot and an arrow on every stroke. Jugnu draws it once on the card, then
 // she writes the whole letter anywhere on the lines. It is judged as a whole
 // (src/copy.js) once she has drawn enough strokes, or CONFIG.copyWaitMs after her
-// last lift when fewer strokes make the whole letter joined. If she stops part
+// last lift when fewer strokes make the whole letter joined. (Slice 5O: at once
+// only when it passes; a whole letter that would fail waits CONFIG.copyWaitMs,
+// so she can undo a slip.) If she stops part
 // way, after CONFIG.copyHintMs Jugnu shows the next stroke on the card (a hint,
 // not a fail). A fail: her letter fades and Jugnu draws, on the card, the stroke
 // that went wrong (all of it when the size was wrong); she tries again. After
@@ -391,8 +393,9 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   }
 
   // Her finger lifted in the copy round (src/copy.js copyStatus): judge now if
-  // the letter is complete; judge after a short wait if it reads as a whole
-  // joined letter; if it reads as unfinished, wait longer and then let Jugnu
+  // the letter passes; judge after a short wait if it is whole but would fail
+  // (Slice 5O: she can still undo a slip), or reads as a whole joined letter;
+  // if it reads as unfinished, wait longer and then let Jugnu
   // show the next stroke on the card. Any new touch cancels the wait.
   function endCopyStroke(a) {
     const id = ink.end();

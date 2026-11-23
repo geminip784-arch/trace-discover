@@ -158,3 +158,24 @@ test('the undo button: picture only, in the left column, at least 88 px, on the 
   assert.match(art, /undo: icon\(/);
   assert.ok(!/undo: icon\([^)]*<text/.test(art), 'a picture, no text');
 });
+
+// ---- a slip before judging (Slice 5O, before merging part 1) ----
+
+test('a letter copy is judged at once only when it passes; otherwise it waits, with undo there', () => {
+  for (const file of ['src/game.js', 'src/practice-game.js']) {
+    const end = body(src(file), 'endCopyStroke');
+    assert.match(end, /if \(action === 'judge-now'\) judgeCopy\(\);\s*else if \(action === 'judge-soon'\) later\(judgeCopy, CONFIG\.copyWaitMs\);/, file);
+  }
+  // copyStatus says 'judge-now' only for a pass (tests/copy.test.js checks the cases).
+  const status = body(src('src/copy.js'), 'copyStatus');
+  assert.match(status, /scoreCopy\(strokes, char, opts\)\.ok\) return \{ action: 'judge-now'/);
+  assert.match(status, /used\.length >= mostStrokes\(char\)\) return \{ action: 'judge-soon'/);
+});
+
+test('her name is never judged at once: every stroke starts the 3-second wait, with undo there', () => {
+  for (const file of ['src/name-game.js', 'src/name-practice-game.js']) {
+    const end = body(src(file), 'endCopyStroke');
+    assert.match(end, /later\(judgeName, NAME_WAIT_MS\);/, file);
+    assert.ok(!/judgeName\(\)/.test(end), `${file}: never judged straight from her lift`);
+  }
+});
