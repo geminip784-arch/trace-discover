@@ -887,10 +887,12 @@ function readings(n, pc, gap) {
 }
 
 // After her lift, what the copy round does next:
-//   'judge-now'  she has drawn as many strokes as the longest plan has, or her
-//                letter already passes
-//   'judge-soon' fewer strokes, but they read best as a whole letter (in some
-//                plan, joined): judged CONFIG.copyWaitMs after her last lift
+//   'judge-now'  her letter passes: a success is never kept waiting
+//   'judge-soon' it does not pass yet, but it is whole: she has drawn as many
+//                strokes as the longest plan has (Slice 5O: a slip in her last
+//                stroke waits too, so she can undo it before it is judged), or
+//                fewer that read best as a whole letter (in some plan, joined):
+//                judged CONFIG.copyWaitMs after her last lift
 //   'hint'       fewer strokes, and they read best as the start of the letter:
 //                after CONFIG.copyHintMs Jugnu shows `next` (a stroke of `plan`)
 //                on the model card. Her strokes stay; it is not a failed copy.
@@ -900,7 +902,9 @@ function readings(n, pc, gap) {
 export function copyStatus(strokes, char, opts = {}) {
   const cfg = opts.cfg ?? DEFAULTS;
   const used = usableStrokes(strokes, char, cfg);
-  if (used.length > 0 && copyReady(strokes, char, opts)) return { action: 'judge-now', next: null, plan: 0, done: null };
+  if (used.length > 0 && scoreCopy(strokes, char, opts).ok) return { action: 'judge-now', next: null, plan: 0, done: null };
+  // Complete but not passing: judged after the wait, with undo still there (Slice 5O).
+  if (used.length >= mostStrokes(char)) return { action: 'judge-soon', next: null, plan: 0, done: null };
   let best = null;
   for (let p = 0; p < planCount(char); p++) {
     const pc = planChar(char, p);

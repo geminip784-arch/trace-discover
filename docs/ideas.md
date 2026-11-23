@@ -215,3 +215,14 @@ Notes only: nothing here is built.
 - **[later]** و starts at the bottom of its head and goes round to the left first, so the head is a closed loop (the 10B table said "from its lower left"; the shape is the same, the start is a little to the right).
 - **[later]** آ's madd and ک گ's slants sit lower than the font's (the font puts them above the sky line, where the round lights are). If her qaida's آ has a tall alif, the round lights could move instead.
 - **[later]** The teeth of س ش are drawn up and back down (a narrow point); a child may draw them as small round bumps. The tracing tolerance should cover it; check her real attempts.
+
+## After Slice 10 (Urdu): two big pieces to plan once Urdu is complete
+
+Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be planned once Slice 10 (all of Urdu) is complete.
+
+- **[after 10]** **A major redesign of the front end.** A fresh look for every screen she sees: the front door, the bookshelf, the boards, the writing screens and the games, so that the app looks and feels like one whole. To be planned as its own set of slices, with mockups approved first. The child-screen rules stay as they are: no text for her, at most 3 choices, 88 px targets, never red, the whole writing screen writable.
+- **[after 10]** **A General Knowledge section for children.** A new book on the shelf with simple picture-and-voice knowledge for a 4-year-old (for example: animals and where they live, the body, the weather, the seasons, day and night, colors in nature). The topics, the level and how it is played need your decisions first; it would follow the same rules (no reading needed, no network, per child).
+
+## Slice 5O part 1: undo one stroke
+
+- **[5O part 2]** (to be done in PR 2, as you asked) Jugnu's resting place (`HOME` in `src/game.js`, `src/name-game.js` and the practice pages: 0.35 of a line unit from the left, 0.65 down) sits just above the undo button on letter screens, and partly behind it on her name's copy screens and name practice screens 2 and 3 (smaller lines that sit lower). He never takes taps, so nothing breaks, but he could rest a little lower or further right there.

@@ -136,6 +136,15 @@ test('spaces 2 and 3: a letter stopped part way waits for a hint, as in the copy
   assert.equal(spaceStatus(written(E, 1, step), E, 1, step, { others: othersOf(E) }).action, 'judge-now');
 });
 
+test('Slice 5O: spaces 2 and 3: a complete letter that would fail waits, so she can undo the slip; a pass is judged at once', () => {
+  const L = load('L');
+  const { step } = practiceLayout(1280, 626, L.width);
+  const good = written(L, 1, step);
+  assert.equal(spaceStatus(good, L, 1, step, { others: othersOf(L) }).action, 'judge-now');
+  const slip = [good[0], good[1].map(([x, y]) => [x, y - 0.5])]; // the foot up at the fence
+  assert.equal(spaceStatus(slip, L, 1, step, { others: othersOf(L) }).action, 'judge-soon');
+});
+
 // ---------------------------------------------------------------------------
 // The page: fireflies, never stuck, next page
 

@@ -571,6 +571,17 @@ export function createInk(canvas) {
       fading = true;
       requestFrame();
     },
+    // Slice 5O: take one finished stroke away at once (undo). Other strokes stay.
+    // Returns true if it was there.
+    remove(id) {
+      const before = strokes.length;
+      strokes = strokes.filter((t) => t.id !== id);
+      if (strokes.length === before) return false;
+      fading = strokes.some((t) => t.fade);
+      rebake();
+      requestFrame();
+      return true;
+    },
     // Finish every fade at once (her finger is down: nothing may animate).
     settle() {
       if (!fading) return;

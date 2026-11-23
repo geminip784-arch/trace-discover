@@ -34,6 +34,7 @@ export function createJugnu(img, toPx) {
   let pausedSince = 0;
   let pausedTotal = 0; // ms spent paused, ever; a move subtracts what it saw
   let rewinds = 0;     // bumped by rewind(); a demonstrated stroke starts over when it sees a new value
+  let demoRun = -1;    // Slice 5O: the run of the stroke being demonstrated now (undo waits for it), else -1
 
   function place() {
     const [x, y] = toPx(pos);
@@ -128,10 +129,12 @@ export function createJugnu(img, toPx) {
     // onProgress(f) reports how far along the stroke itself Jugnu is (0..1).
     async demo(points, ms, hopMs, onProgress) {
       const myRun = ++run;
+      demoRun = myRun;
       cancelAnimationFrame(raf);
       if (!(await moveAlong([points[0]], hopMs, myRun))) return false;
       onProgress?.(0);
       if (!(await moveAlong(points.slice(1), ms, myRun, onProgress, true))) return false;
+      if (demoRun === myRun) demoRun = -1;
       onProgress?.(1);
       return moveAlong(hopPath(perchOf(points[0])), hopMs, myRun);
     },
@@ -156,6 +159,9 @@ export function createJugnu(img, toPx) {
     rewind() {
       rewinds++;
     },
+    // Slice 5O: is Jugnu flying a stroke now (a demonstration, or drawing one for her)?
+    // Any other move (a hop, a stop) ends it.
+    demoing: () => demoRun === run,
     sleep(point) {
       this.placeAt(point);
       img.classList.add('sleeping');

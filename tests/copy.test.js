@@ -283,12 +283,33 @@ test('the copy log entry is a "copy" type with the shape match, the size, the ha
 
 // ---- After her lift: judge, or wait and hint (copyStatus) ----
 
-test('a complete letter (as many strokes as the model) is judged at once, right or wrong', () => {
+test('a complete letter that passes is judged at once', () => {
   for (const id of ['L', 'H', 'E', '4']) {
     const char = load(id);
     assert.deepEqual(copyStatus(copyOf(char, { k: 0.9, dx: -1 }), char), { action: 'judge-now', next: null, plan: 0 }, id);
     assert.equal(copyStatus(copyOf(char, { reverse: [0] }), char).action, 'judge-now', id);
   }
+});
+
+test('Slice 5O: a complete letter that would fail waits the 2 seconds, so she can undo the slip first', () => {
+  for (const id of ['L', 'H', 'E', '4']) {
+    const char = load(id);
+    // Every stroke, but far too big: whole, and it fails.
+    const big = copyOf(char, { k: 1.7 });
+    assert.equal(scoreCopy(big, char).ok, false, id);
+    assert.deepEqual(copyStatus(big, char), { action: 'judge-soon', next: null, plan: 0 }, id);
+  }
+  // A slip in the last stroke: L's foot drawn up at the fence instead of on the grass.
+  const l = load('L');
+  const slip = [l.strokes[0].points, l.strokes[1].points.map(([x, y]) => [x, y - 0.5])];
+  assert.equal(scoreCopy(slip, l).ok, false);
+  assert.equal(copyStatus(slip, l).action, 'judge-soon');
+  // She undoes the slip and draws the foot again: now it passes, at once.
+  assert.equal(copyStatus([slip[0]], l).action, 'hint');
+  assert.equal(copyStatus([slip[0], l.strokes[1].points], l).action, 'judge-now');
+  // More strokes than any plan has, and failing: it waits too.
+  const extra = [...copyOf(l, { k: 1.7 }), [[2, 0.2], [2.3, 0.2]]];
+  assert.equal(copyStatus(extra, l).action, 'judge-soon');
 });
 
 test('a joined letter that passes is judged at once', () => {
