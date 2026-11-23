@@ -24,6 +24,7 @@ export const CONFIG = {
   copyTries: 3,           // failed copies before the round counts as done with help
   copyDemoMs: 1100,       // Jugnu draws one stroke of the model card this fast
   copyFadeMs: 900,        // after a failed copy, her letter fades out over this long
+  faintMs: 350,           // Slice 5O part 2: before a reason shows, her ink goes faint over this long
   // Slice 5J: why a copy failed is shown before her letter fades.
   copySlowMs: 2200,       // not recognizable: Jugnu traces each stroke of the model this slowly
   copyReasonMs: 2600,     // her letter beside the model, or the size outline, shows this long

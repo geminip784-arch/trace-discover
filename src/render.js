@@ -31,7 +31,15 @@ export const INK = {
   ],
   core: { color: '#1D2B8F', width: 0.035 },
   dimAlpha: 0.35, // off the path, or a stroke that started in the wrong place
+  // Slice 5O part 2: while a reason is shown (a glowing part, Jugnu drawing a
+  // missing stroke, a size outline), her ink goes this faint first, so the
+  // correction on the layer above is always seen on top of it.
+  faintAlpha: 0.22,
 };
+
+// Slice 5O part 2: a stroke's brightness `t` (0..1) of the way through a change
+// from `from` to `to` (her ink going faint, coming back, or fading out).
+export const alphaBetween = (from, to, t) => from + (to - from) * Math.min(1, Math.max(0, t));
 
 // The button column on the left (src/session.js BOARD_BOX.left): her writing room starts right of it.
 export const BUTTONS_RIGHT = 136;
@@ -434,6 +442,7 @@ export function createInk(canvas) {
   const baked = document.createElement('canvas');
   const bakedCtx = baked.getContext('2d');
   let strokes = []; // finished strokes: { id, points (line units), styles, alpha, fade }
+  // fade: { ms, start, from, to, drop }: alpha moves from `from` to `to`; drop: forget the stroke at the end
   let current = null;
   let nextId = 1;
   let layout = null;
@@ -498,9 +507,11 @@ export function createInk(canvas) {
       for (const s of strokes) {
         if (!s.fade) continue;
         s.fade.start ??= now;
-        s.alpha = Math.max(0, 1 - (now - s.fade.start) / s.fade.ms);
+        const t = s.fade.ms > 0 ? (now - s.fade.start) / s.fade.ms : 1;
+        s.alpha = alphaBetween(s.fade.from, s.fade.to, t);
+        if (t >= 1) s.fade = s.fade.drop ? { ...s.fade, done: true } : null;
       }
-      strokes = strokes.filter((s) => !s.fade || s.alpha > 0);
+      strokes = strokes.filter((s) => !s.fade?.done);
       fading = strokes.some((s) => s.fade);
       rebake();
       if (fading) requestFrame();
@@ -563,13 +574,30 @@ export function createInk(canvas) {
       current = null;
       requestFrame();
     },
-    // Fade one finished stroke out over `ms`, then forget it. Other strokes stay.
+    // Fade one finished stroke out over `ms` (from how bright it is now), then forget it. Other strokes stay.
     fade(id, ms) {
       const s = strokes.find((t) => t.id === id);
       if (!s) return;
-      s.fade = { ms, start: null };
+      s.fade = { ms, start: null, from: s.alpha, to: 0, drop: true };
       fading = true;
       requestFrame();
+    },
+    // Slice 5O part 2: change finished strokes' brightness to `alpha` over `ms`
+    // and keep them (INK.faintAlpha while a reason shows; 1 to bring them back).
+    // ids: the strokes, or every finished stroke when left out. A stroke already
+    // fading out keeps fading out.
+    dimTo(alpha, ms, ids = null) {
+      for (const s of strokes) {
+        if (ids && !ids.includes(s.id)) continue;
+        if (s.fade?.drop) continue;
+        s.fade = { ms, start: null, from: s.alpha, to: alpha, drop: false };
+        fading = true;
+      }
+      requestFrame();
+    },
+    // The ids of every finished stroke still on the lines.
+    ids() {
+      return strokes.filter((s) => !s.fade?.drop).map((s) => s.id);
     },
     // Slice 5O: take one finished stroke away at once (undo). Other strokes stay.
     // Returns true if it was there.
@@ -582,9 +610,11 @@ export function createInk(canvas) {
       requestFrame();
       return true;
     },
-    // Finish every fade at once (her finger is down: nothing may animate).
+    // Finish every fade at once (her finger is down: nothing may animate): a
+    // stroke fading out goes, one going faint (or coming back) is there at once.
     settle() {
       if (!fading) return;
+      for (const s of strokes) if (s.fade && !s.fade.drop) { s.alpha = s.fade.to; s.fade = null; }
       strokes = strokes.filter((s) => !s.fade);
       fading = false;
       rebake();

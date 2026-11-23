@@ -70,7 +70,7 @@
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
-  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD, drawCopyHelper, markPath,
+  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD, drawCopyHelper, markPath, INK,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
@@ -88,13 +88,11 @@ import {
   logAttempt, readAttempts, readProfile, readRounds, saveRounds, clearRounds, readHelper, saveHelper,
 } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js';
-import { createJugnu } from './jugnu.js';
+import { createJugnu, restingSpot } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
 import { canLoad, charFile } from './session.js';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
 
-// Jugnu's home, near the left: area px from the left as line units, and height in line units.
-const HOME = { x: 0.35, y: 0.65 };
 // Width of Jugnu's glowing trail when he draws a stroke himself, in line units.
 const TRAIL_WIDTH = 0.16;
 // Width of a guide line's gold glow when her lowercase letter is not where it belongs (Slice 9A), in line units.
@@ -195,7 +193,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // The stroke Jugnu demonstrates: the first unfinished one of the shown plan.
   const ref = () => planNow()[progress.current].points;
   const startDot = () => ref()[0];
-  const home = () => [HOME.x - offset, HOME.y];
+  const home = () => restingSpot(layout, offset); // Slice 5O part 2: in the button column, under undo
   const bandWidth = () => trackLook(progress.stage).band * layout.unit;
 
   // Delayed steps. While she traces, a touch-down cancels them all; while a
@@ -435,9 +433,19 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     phase = 'trace';
   }
 
+  // Slice 5O part 2: before a reason shows, all her ink goes faint (it stays:
+  // only a failed copy fades out afterwards). Resolves false if stopped.
+  async function faintFirst() {
+    ink.dimTo(INK.faintAlpha, CONFIG.faintMs);
+    await wait(CONFIG.faintMs);
+    return alive;
+  }
+
   // Why the copy failed, shown while her letter is still there (src/copy.js copyShow).
   // Resolves false if stopped.
   async function showWhy(result) {
+    // Slice 5O part 2: her ink goes faint first, so the reason is always seen on top of it.
+    if (!(await faintFirst())) return false;
     const how = copyShow(result);
     // A missing digit (Slice 9B) is several strokes: `paths`, all drawn.
     if (how === 'part') return showOnCard((result.missing.paths ?? [result.missing.points]).map((pts) => markPath(pts)));
@@ -510,6 +518,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     speak('copyAgain');
     if (!(await showWhy(result))) return;
     for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
+    ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id))); // the rest of her ink comes back
     copy.strokes = [];
     copy.ids = [];
     copy.hinted = false;
@@ -787,7 +796,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
 
   applyLayout();
   els.jugnu.hidden = false;
-  jugnu.placeAt(home());
+  jugnu.restAt(home());
   drawLights();
   beginStroke();
 

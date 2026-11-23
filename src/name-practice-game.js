@@ -39,7 +39,7 @@
 
 import {
   drawLines, drawStageTrack, createInk, createFx, letterToPx, pxToLetter, START_DOT_RADIUS, trackLook, markPath,
-  drawModelCard, CARD,
+  drawModelCard, CARD, INK,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker, withMinLeeway } from './geometry.js';
@@ -53,7 +53,7 @@ import {
 } from './practice.js';
 import { logAttempt, readProfile, savePracticePage } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, popSound, setProfile } from './audio.js';
-import { createJugnu } from './jugnu.js';
+import { createJugnu, restingSpot } from './jugnu.js';
 import { loadChar, pauseAnimations } from './game.js';
 import { NAME_ID, nameWidth, placeLetters, NAME_DEMO_MS } from './name.js';
 import { nameCompareIds, assignStrokes } from './name-copy.js';
@@ -61,7 +61,6 @@ import { refBox, POSITION_LINES } from './copy.js';
 import { DUE_MARK, NEXT_PAGE } from './art.js';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
 
-const HOME = { x: 0.35, y: 0.65 };   // Jugnu's home, as in game.js
 const TRAIL_WIDTH = 0.16;            // Jugnu's trail when he draws on the lines, line units
 const LETTER_GLOW_WIDTH = 0.12;      // a letter's glow when it is done, line units
 const LETTER_GLOW_MS = 900;          // one letter lights up this long
@@ -129,7 +128,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   const stageCfg = () => cfg.stages[TRACE_STAGE];
   const ref = () => planNow()[progress.current].points;
   const startDot = () => ref()[0];
-  const home = () => [HOME.x - layout.offset, HOME.y];
+  const home = () => restingSpot(layout, layout.offset); // Slice 5O part 2: in the button column, under undo
   const bandWidth = () => trackLook(TRACE_STAGE).band * layout.unit;
   const namePaths = () => placed.flatMap((c) => c.strokes.map((s) => markPath(s.points)));
   const allDone = (c) => c.strokes.map(() => true);
@@ -364,7 +363,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     const show = cardShow;
     cardShow = null;
     show.skip();
-    jugnu.placeAt(home()); // at once, off the card
+    jugnu.restAt(home()); // at once, off the card
     fx.clear();
     phase = 'trace';
   }
@@ -385,8 +384,18 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     phase = 'trace';
   }
 
+  // Slice 5O part 2: before a reason shows, all her ink goes faint (it stays:
+  // only a failed copy fades out afterwards). Resolves false if stopped.
+  async function faintFirst() {
+    ink.dimTo(INK.faintAlpha, CONFIG.faintMs);
+    await wait(CONFIG.faintMs);
+    return alive;
+  }
+
   // Why her name did not count, while it is still there (as the copy round). Resolves false if stopped.
   async function showWhy(result) {
+    // Slice 5O part 2: her ink goes faint first, so the reason is always seen on top of it.
+    if (!(await faintFirst())) return false;
     const how = result.reason;
     const paths = (result.show?.paths ?? []).map((p) => markPath(p));
     if (how === 'no-letter') return showOnCard(namePaths(), CONFIG.copySlowMs);
@@ -443,6 +452,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     if (!(await showWhy(result))) return;
     // Her name fades (the one place her writing fades: room for a fresh copy).
     for (const id of copy.ids) ink.fade(id, CONFIG.copyFadeMs);
+    ink.dimTo(1, CONFIG.faintMs, ink.ids().filter((id) => !copy.ids.includes(id))); // the rest of her ink comes back
     copy = { strokes: [], ids: [], hinted: false };
     page = r.state;
     if (r.helpedOut) {
@@ -734,7 +744,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
 
   applyLayout();
   els.jugnu.hidden = false;
-  jugnu.placeAt(home());
+  jugnu.restAt(home());
   drawLights();
   begin();
 

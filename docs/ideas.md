@@ -225,4 +225,4 @@ Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be pl
 
 ## Slice 5O part 1: undo one stroke
 
-- **[5O part 2]** (to be done in PR 2, as you asked) Jugnu's resting place (`HOME` in `src/game.js`, `src/name-game.js` and the practice pages: 0.35 of a line unit from the left, 0.65 down) sits just above the undo button on letter screens, and partly behind it on her name's copy screens and name practice screens 2 and 3 (smaller lines that sit lower). He never takes taps, so nothing breaks, but he could rest a little lower or further right there.
+- ✅ **[5O part 2]** Jugnu's resting place was partly behind the undo button on her name's copy screens. Done in Slice 5O part 2: he now rests in the button column, just under undo (`restingSpot` in `src/jugnu.js`).

@@ -17,9 +17,34 @@ export const perchFor = (dot) => {
   return [dot[0] + dx, dot[1] + dy];
 };
 // Jugnu's size, in line units.
-const SIZE = 0.32;
+export const SIZE = 0.32;
 // The point of the picture that sits on the path: the glowing tail (jugnu.svg is 120 x 120).
-const ANCHOR = [60 / 120, 82 / 120];
+export const ANCHOR = [60 / 120, 82 / 120];
+
+// Slice 5O part 2: where Jugnu rests on the writing screens, out of her way and
+// never behind a button: in the left button column (index.html .btn: 96 px at
+// left 16, with a 7 px shadow), in the gap between the undo button (top 240)
+// and the music button (bottom 16). In px: `x` the column's middle, `below` the
+// highest his picture's top may be (undo's bottom and its shadow, plus a gap),
+// `above` the room kept free at the bottom (music and a gap), `edge` the least
+// gap to the screen's left edge (on a big screen he is wider than the column).
+export const REST = { x: 64, below: 240 + 96 + 7 + 8, above: 16 + 96 + 8, edge: 4 };
+// His resting place in line units, for a screen's layout (unit, originX, top,
+// areaHeight) and its character box's x (`offset`): just under the undo button.
+// Like a start dot, it is where he perches beside: hopTo(spot) and restAt(spot)
+// put his tail at perchFor(spot), which is the place in the column.
+export function restingSpot(layout, offset, rest = REST) {
+  const h = SIZE * layout.unit;
+  const x = Math.max(rest.x, ANCHOR[0] * h + rest.edge);
+  const y = rest.below + ANCHOR[1] * h; // his tail, with his whole picture below undo
+  const tail = [(x - layout.originX) / layout.unit - offset, (y - layout.top) / layout.unit];
+  return [tail[0] - PERCH[0], tail[1] - PERCH[1]]; // that tail is the perch of this point (it lies below PERCH_TOP's band)
+}
+// His picture's box in px when his tail is at [x, y] (for checks).
+export function pictureBox([x, y], unit) {
+  const w = SIZE * unit;
+  return { x0: x - ANCHOR[0] * w, x1: x + (1 - ANCHOR[0]) * w, y0: y - ANCHOR[1] * w, y1: y + (1 - ANCHOR[1]) * w };
+}
 // How high a hop arcs, in line units.
 const HOP_HEIGHT = 0.15;
 
