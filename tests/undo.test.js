@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from '../src/undo.js';
-import { initialState, applyPlanPass } from '../src/progress.js';
+import { initialState, applyPlanPass, copyWaitFor, CONFIG } from '../src/progress.js';
 
 const src = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -164,8 +164,11 @@ test('the undo button: picture only, in the left column, at least 88 px, on the 
 test('a letter copy is judged at once only when it passes; otherwise it waits, with undo there', () => {
   for (const file of ['src/game.js', 'src/practice-game.js']) {
     const end = body(src(file), 'endCopyStroke');
-    assert.match(end, /if \(action === 'judge-now'\) judgeCopy\(\);\s*else if \(action === 'judge-soon'\) later\(judgeCopy, CONFIG\.copyWaitMs\);/, file);
+    // Slice 10C: the wait comes from copyWaitFor (2 seconds; 4 while an Urdu letter's dots are still to come).
+    assert.match(end, /if \(action === 'judge-now'\) judgeCopy\(\);\s*else if \(action === 'judge-soon'\) later\(judgeCopy, copyWaitFor\(status\)\);/, file);
   }
+  assert.equal(copyWaitFor({ action: 'judge-soon' }), CONFIG.copyWaitMs);
+  assert.equal(copyWaitFor({ action: 'judge-soon', wait: 'dots' }), CONFIG.copyDotWaitMs);
   // copyStatus says 'judge-now' only for a pass (tests/copy.test.js checks the cases).
   const status = body(src('src/copy.js'), 'copyStatus');
   assert.match(status, /scoreCopy\(strokes, char, opts\)\.ok\) return \{ action: 'judge-now'/);

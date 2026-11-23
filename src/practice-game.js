@@ -35,7 +35,7 @@ import { DEFAULTS, dist, createLiveTracker, withMinLeeway } from './geometry.js'
 import {
   variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar, scoreMark,
 } from './variants.js';
-import { CONFIG, initialState, applyLift, applyPlanPass, strokeLogEntry } from './progress.js';
+import { CONFIG, copyWaitFor, initialState, applyLift, applyPlanPass, strokeLogEntry } from './progress.js';
 import { copyLogEntry, copyShow, compareIds, boxOf, refBox, POSITION_LINES } from './copy.js';
 import { traceNote, copyNote } from './notes.js';
 import {
@@ -271,9 +271,10 @@ export async function startPractice(els, { charId, manifest = [] }) {
     copy.strokes.push(a.points);
     copy.ids.push(id);
     undoList = pushUndo(undoList, { kind: 'copy', id });
-    const { action, next, plan } = spaceStatus(copy.strokes, char, page.space, layout.step, { others });
+    const status = spaceStatus(copy.strokes, char, page.space, layout.step, { others });
+    const { action, next, plan } = status;
     if (action === 'judge-now') judgeCopy();
-    else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
+    else if (action === 'judge-soon') later(judgeCopy, copyWaitFor(status)); // Urdu: longer while dots are to come (Slice 10C)
     else later(() => hintCopy(markPath(planStrokes(char, plan)[next].points)), CONFIG.copyHintMs);
   }
 

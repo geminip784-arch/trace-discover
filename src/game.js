@@ -80,7 +80,7 @@ import {
 import {
   CONFIG, ROUNDS, COPY_STAGE, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
   startRounds, startReview, markHelp, isHelp, finishRound, starEarned, roundLights, finishCopy,
-  startHelper, applyHelperCopy, strokeLogEntry,
+  startHelper, applyHelperCopy, strokeLogEntry, copyWaitFor,
 } from './progress.js';
 import { scoreCopy, copyStatus, copyLogEntry, copyShow, compareIds, boxOf, refBox, POSITION_LINES } from './copy.js';
 import { traceNote, copyNote } from './notes.js';
@@ -400,9 +400,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     copy.strokes.push(a.points);
     copy.ids.push(id);
     undoList = pushUndo(undoList, { kind: 'copy', id });
-    const { action, next, plan } = readCopy();
+    const status = readCopy();
+    const { action, next, plan } = status;
     if (action === 'judge-now') judgeCopy();
-    else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
+    else if (action === 'judge-soon') later(judgeCopy, copyWaitFor(status)); // Urdu: longer while dots are to come (Slice 10C)
     else later(() => hintCopy(markPath(planStrokes(char, plan)[next].points)), CONFIG.copyHintMs);
   }
 

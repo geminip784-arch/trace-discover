@@ -17,6 +17,10 @@
 // A mirrored letter (nearest to the target turned round) passes: reversals
 // are a direction cue, never an error. Jugnu shows the right way round once.
 //
+// Urdu (Slice 10C, src/urdu-dots.js): the body is judged by shape against every
+// Urdu letter's body (letters that share a body count as the same shape), then
+// her dots and small marks: how many, and on top or not (scoreUrdu).
+//
 // Habits (start points, direction, stroke order and plan) never decide pass or
 // fail. They are read by fitting her strokes, in the order she drew them, to
 // each allowed plan (scoreStroke at Stage 3, as before) and are logged; when
@@ -28,6 +32,9 @@ import { cloudOf, mirrorStrokes, matchDistance } from './pdollar.js';
 import { BOARDS, pageOf, pageTiles } from './session.js';
 import { CHILD_SHAPES } from '../data/child-shapes.js';
 import { MARGIN } from '../data/glyphs.js';
+import {
+  isUrdu, sameBody, familyOf, sortSmall, readMarks, expectedMarks, compareMarks, marksToShow, memberMatching, marksSummary, middleOf, tapCanBeMark,
+} from './urdu-dots.js';
 
 // Her letter's size, as a share of the model's height.
 export const COPY_SIZE = { min: 0.75, max: 1.25 };
@@ -107,7 +114,10 @@ export function compareIds(id) {
 //   small (the rest, and the body of i): at least `smallShare` of her ink
 //     between `band` above the fence and `band` below the grass
 // Line units: sky 0, fence 0.5, grass 1, tail line 1.5. Capitals and digits are never checked.
-export const POSITION = { tailBelow: 0.15, tallAbove: 0.2, tAbove: 0.1, band: 0.15, smallShare: 0.7 };
+// Urdu (Slice 10C): a letter whose model dips at least `urduDipModel` below the
+// grass line (a tail or a bowl: ر س ص ق ل م ن و ی, the ج and ع families) must
+// dip at least `urduDipBelow` below it too. Letters that sit on the grass line are not checked.
+export const POSITION = { tailBelow: 0.15, tallAbove: 0.2, tAbove: 0.1, band: 0.15, smallShare: 0.7, urduDipBelow: 0.15, urduDipModel: 0.2 };
 export const LOWER_HEIGHTS = { tail: 'gjpqy', tall: 'bdfhklt' };
 export function heightKind(id) {
   if (!isLower(id)) return null;
@@ -159,9 +169,10 @@ export function splitMarks(strokes, char, match = COPY_MATCH) {
 export const isTap = (pts, cfg = DEFAULTS) => pts.length < 2 || pathLength(pts) < cfg.minLength;
 
 // The strokes that take part. Taps are dropped unless the character has dots
-// (Urdu nuqtas, the dot on i and j), where a tap is a real stroke.
+// (the dot on i and j) or is Urdu (Slice 10C: a tap is a dot, or a little ṭ by
+// its place, and a dot on a letter with none is a mistake to name), where a tap is a real stroke.
 export function usableStrokes(strokes, char, cfg = DEFAULTS) {
-  const hasDots = char.strokes.some((s) => s.kind === 'dot');
+  const hasDots = isUrdu(char) || char.strokes.some((s) => s.kind === 'dot');
   return strokes.filter((pts) => pts.length > 0 && (hasDots || !isTap(pts, cfg)));
 }
 
@@ -455,16 +466,27 @@ function twinOf(id, char, ranked) {
 
 // ---- habits: start points, directions, order and plan ----
 
+// A stroke judged by its place: a dot, or an Urdu mark (Slice 10C).
+const isSpot = (s) => s.kind === 'dot' || s.kind === 'mark';
+
 // Score one of her fitted strokes against what may come next in one plan
 // (`pc`, planChar). Returns { from, to, variant, ok, reason, startOk, directionOk, shapeOk, error }.
 function scoreNext(pts, pc, done, stage, cfg) {
   const next = nextStrokes(pc, done);
-  const k = next[0];
-  if (pc.strokes[k].kind === 'dot') {
-    const r = scoreDot(pts, pc.strokes[k].points[0], stage, cfg);
+  let k = next[0];
+  if (isSpot(pc.strokes[k])) {
+    // A dot, or an Urdu mark (Slice 10C) by its middle. Dots side by side may
+    // come in any order: hers is read as the nearest one still to draw.
+    const at = (j) => (pc.strokes[j].kind === 'dot' ? pc.strokes[j].points[0] : middleOf(pc.strokes[j].points));
+    const spots = next.filter((j) => isSpot(pc.strokes[j]));
+    const mine = middleOf(pts);
+    k = spots.reduce((a, j) => (Math.hypot(at(j)[0] - mine[0], at(j)[1] - mine[1]) < Math.hypot(at(a)[0] - mine[0], at(a)[1] - mine[1]) ? j : a), spots[0]);
+    const r = scoreDot(pts, at(k), stage, cfg);
+    // Urdu: a dot or a mark has no start or direction to coach (only its order and place are read).
+    const urdu = pc.script === 'urdu';
     return {
       from: k, to: k, variant: 'alone', ok: r.ok, reason: r.reason,
-      startOk: r.ok, directionOk: true, shapeOk: r.ok, error: r.error,
+      startOk: urdu || r.ok, directionOk: true, shapeOk: r.ok, error: r.error,
     };
   }
   const pick = pickCandidate(pts, candidatesFor(pc, done), stage, (c, ref, s) => scoreStroke(c, ref, s, cfg), cfg);
@@ -550,8 +572,11 @@ export function readHabits(fitted, char, stage = COPY_STAGE, cfg = DEFAULTS) {
 //   'too-small' | 'too-big'
 //   'position-tail' | 'position-tall' | 'position-small'  lowercase only (Slice 9A):
 //                    not where it belongs on the lines (checkPosition)
+//   Urdu (Slice 10C, scoreUrdu): 'missing-mark', 'dot-count', 'dot-side', and
+//                    'position-tail' for a tail or bowl that does not dip below the grass
 export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE, cfg = DEFAULTS, others = [], match = COPY_MATCH, position = POSITION } = {}) {
   if (isNumber(char)) return scoreNumber(strokes, char, { stage, size, cfg, others, match });
+  if (isUrdu(char)) return scoreUrdu(strokes, char, { stage, size, cfg, others, match, position });
   const all = usableStrokes(strokes, char, cfg);
   // i and j (Slice 9A): her dots are checked on their own, after the shape;
   // the shape and the size are judged on her lines alone.
@@ -628,6 +653,107 @@ export function scoreCopy(strokes, char, { stage = COPY_STAGE, size = COPY_SIZE,
   if (lost) return { ...out, reason: 'missing-stroke', missing: lost };
   if (!fit.sizeOk) return { ...out, reason: fit.size < size.min ? 'too-small' : 'too-big' };
   // Lowercase: where it sits on the lines (her lines as she wrote them, not fitted).
+  const placed = checkPosition(used, char, position);
+  if (placed) return { ...out, reason: placed };
+  return { ...out, ok: true };
+}
+
+// ---- Urdu (Slice 10C) ----
+
+// Judge her Urdu letter: the body by shape, then her dots and marks
+// (src/urdu-dots.js), then size and where it sits. Same result as scoreCopy,
+// plus `dots` (marksSummary) and, for 'looks-like', `lookalikeId`; `lookalike`
+// is the letter itself ("That looks like ر"). Her middling strokes are read as
+// part of the body or as marks, whichever lets the body read best.
+function scoreUrdu(strokes, char, { stage, size, cfg, others, match, position }) {
+  const all = usableStrokes(strokes, char, cfg);
+  const small = sortSmall(all);
+  const n = small.middling.length;
+  // Each reading of her middling strokes (as part of the body, or as marks).
+  // The nearest wins; but a reading whose body is the target's family, nearly
+  // as near (within match.closeCall), gets the benefit of the doubt (گ's second
+  // slant drawn small is part of its body, not a mark).
+  let nearest = null;
+  let ownBest = null;
+  for (let mask = 0; mask < (n <= 3 ? 1 << n : 1); mask++) {
+    const asBody = n <= 3 ? small.middling.filter((_, i) => mask & (1 << i)) : small.middling;
+    const body = all.filter((pts) => small.lines.includes(pts) || asBody.includes(pts));
+    if (body.length === 0) continue;
+    const rec = recognize(body, char, others, match);
+    const reading = { body, marks: small.middling.filter((pts) => !asBody.includes(pts)), rec };
+    if (!nearest || rec.best.distance < nearest.rec.best.distance) nearest = reading;
+    if (sameBody(rec.best.id, char.id) && (!ownBest || rec.best.distance < ownBest.rec.best.distance)) ownBest = reading;
+  }
+  const pick = ownBest && ownBest.rec.best.distance <= nearest.rec.best.distance + match.closeCall ? ownBest : nearest;
+  const empty = { ok: false, reason: 'no-letter', scale: null, size: 0, sizeOk: false, match: null, lookalike: null, missing: null, mirrored: false, dots: null };
+  const noHabits = { plan: 0, strokes: [], starts: [], directions: [], order: 'usual', usual: true };
+  if (!pick) return { ...empty, habits: noHabits, strokes: [] };
+  const used = pick.body;
+  const fit = fitLetter(used, char, size, cfg, [...small.dots, ...pick.marks]);
+  if (fit.scale === null) return { ...empty, habits: noHabits, strokes: [] };
+  const fittedOf = new Map([...used.map((p, i) => [p, fit.strokes[i]]), ...[...small.dots, ...pick.marks].map((p, i) => [p, fit.extra[i]])]);
+  const habits = readHabits(all.map((p) => fittedOf.get(p)), char, stage, cfg);
+  const hers = readMarks(fit.extra.slice(0, small.dots.length), fit.extra.slice(small.dots.length), fit.strokes);
+  const out = {
+    ok: false, reason: null, scale: fit.scale, size: fit.size, sizeOk: fit.sizeOk,
+    match: null, lookalike: null, missing: null, mirrored: false, habits, strokes: habits.strokes, dots: marksSummary(hers),
+  };
+  const { ranked } = pick.rec;
+  let best = pick.rec.best;
+  out.match = best;
+  if (!(best.distance <= match.maxDistance)) return { ...out, reason: 'unrecognized' };
+  const charOf = (id) => (id === char.id ? char : others.find((o) => o.id === id));
+  const shapeOf = (t) => {
+    const c = sameBody(t.id, char.id) ? char : charOf(t.id);
+    if (!c) return null;
+    if (t.child !== null && t.child !== undefined) return childChar(c, t.child);
+    return t.mirrored ? mirrorChar(c) : c;
+  };
+  // Shapes alike that differ in where they sit (د on the grass, ر dipping
+  // below it): her ink decides, as long as the target's shape is within the
+  // shape limit. Otherwise a close call, as for every other letter: the closer
+  // lines decide, with the benefit of the doubt to the target.
+  if (!sameBody(best.id, char.id)) {
+    const own = ranked.find((t) => sameBody(t.id, char.id));
+    const otherChar = charOf(best.id);
+    const dips = Math.max(...inkSamples(used).map((p) => p[1])) >= 1 + position.urduDipBelow;
+    if (own && otherChar && own.distance <= match.maxDistance
+      && urduDips(char, position) !== urduDips(otherChar, position) && dips === urduDips(char, position)) best = own;
+    else if (own && otherChar && own.distance - best.distance <= match.closeCall) {
+      if (chamfer(used, shapeOf(own), cfg, match) <= match.closeKind * chamfer(used, shapeOf(best) ?? otherChar, cfg, match)) best = own;
+    }
+  }
+  out.match = best;
+  const mine = sameBody(best.id, char.id);
+  const target = mine ? shapeOf(best) : char;
+  const looks = mine ? target : shapeOf(best) ?? target;
+  if (inkExplained(used, looks, cfg, match) < match.inkMin || inkRatio(used, looks, cfg, match) > match.maxInk) return { ...out, reason: 'unrecognized' };
+  if (!mine) {
+    // Her body is another family's: named as the letter her dots make with it (ز, not ر).
+    const members = familyOf(best.id).map(charOf).filter(Boolean);
+    const named = memberMatching(hers, members) ?? charOf(best.id);
+    const least = missingFrom(linePoints(looks.strokes), char, cfg, match);
+    return {
+      ...out, reason: 'looks-like', lookalike: named.letter ?? named.id, lookalikeId: named.id,
+      missing: least && least.coverage < match.coverMin ? strip(least, false, char) : null,
+    };
+  }
+  out.mirrored = best.mirrored;
+  const gone = partCoverage(used, target, cfg, match).find((p) => p.coverage < match.coverMin);
+  if (gone) return { ...out, reason: 'missing-stroke', missing: best.child !== null && best.child !== undefined ? modelPart(gone, char) : strip(gone, out.mirrored, char) };
+  // Her dots and marks: how many, and on top or not.
+  const want = expectedMarks(char);
+  const problem = compareMarks(hers, want, { tapForMark: tapCanBeMark(char, familyOf(char.id).map(charOf).filter(Boolean)) });
+  if (problem) {
+    if (problem.reason === 'extra-mark') {
+      // A mark on a letter with none (ر with a little ṭ): the letter it makes, if there is one.
+      const named = memberMatching(hers, familyOf(char.id).map(charOf).filter(Boolean));
+      if (named) return { ...out, reason: 'looks-like', lookalike: named.letter ?? named.id, lookalikeId: named.id };
+      return { ...out, reason: 'dot-count', need: 0, missing: null };
+    }
+    return { ...out, reason: problem.reason, need: problem.need ?? null, side: problem.side ?? null, missing: marksToShow(problem, want) };
+  }
+  if (!fit.sizeOk) return { ...out, reason: fit.size < size.min ? 'too-small' : 'too-big' };
   const placed = checkPosition(used, char, position);
   if (placed) return { ...out, reason: placed };
   return { ...out, ok: true };
@@ -772,6 +898,10 @@ export function scoreNumber(strokes, char, { stage = COPY_STAGE, size = COPY_SIZ
 // 'position-tall' or 'position-small'), or null when it sits well (and for
 // capitals and digits). `lines`: her strokes in letter units, as she wrote them.
 export function checkPosition(lines, char, pos = POSITION) {
+  if (isUrdu(char)) {
+    if (lines.length === 0 || !urduDips(char, pos)) return null;
+    return Math.max(...inkSamples(lines).map((p) => p[1])) >= 1 + pos.urduDipBelow ? null : 'position-tail';
+  }
   const kind = heightKind(char.id);
   if (!kind || lines.length === 0) return null;
   const ys = inkSamples(lines).map((p) => p[1]);
@@ -780,6 +910,9 @@ export function checkPosition(lines, char, pos = POSITION) {
   const inside = ys.filter((y) => y >= 0.5 - pos.band && y <= 1 + pos.band).length;
   return inside / ys.length >= pos.smallShare ? null : 'position-small';
 }
+
+// Urdu (Slice 10C): the model's body dips below the grass line (a tail or a bowl).
+export const urduDips = (char, pos = POSITION) => refBox(char).y1 >= 1 + pos.urduDipModel;
 
 // The first dot of `char` with none of her fitted marks near it, as a part to
 // show on the model card ({ plan: 0, stroke, part, points, coverage: 0 }), or null.
@@ -829,6 +962,8 @@ export function copyShow(result) {
     case 'missing-stroke': return 'part';
     case 'too-small': case 'too-big': return 'size';
     case 'position-tail': case 'position-tall': case 'position-small': return 'lines';
+    // Urdu (Slice 10C): the letter's dots or mark glow on the card; with no dots to show, Jugnu writes it.
+    case 'missing-mark': case 'dot-count': case 'dot-side': return result.missing ? 'part' : 'slow';
     default: return 'slow';
   }
 }
@@ -875,7 +1010,7 @@ function readings(n, pc, gap) {
     if (i === n) return out.push({ refs, done });
     if (done.every(Boolean)) return; // more strokes than the plan has: no reading
     const next = nextStrokes(pc, done);
-    const options = pc.strokes[next[0]].kind === 'dot'
+    const options = isSpot(pc.strokes[next[0]])
       ? next.map((k) => ({ from: k, to: k, points: pc.strokes[k].points }))
       : candidatesFor(pc, done, gap);
     for (const v of options) {
@@ -888,9 +1023,30 @@ function readings(n, pc, gap) {
   return out;
 }
 
+// Urdu (Slice 10C): her bigger strokes read best as a whole body (in some
+// plan, its dots and marks left out), and she has drawn fewer small strokes
+// than the letter has dots and marks.
+function urduAwaitsDots(used, char, gap, cfg) {
+  const { lines, dots, middling } = sortSmall(used);
+  const want = expectedMarks(char);
+  if (dots.length + middling.length >= want.dots.length + want.marks.length || lines.length === 0) return false;
+  let best = null;
+  for (let p = 0; p < planCount(char); p++) {
+    const pc = planChar(char, p);
+    const body = { ...pc, anyOrder: undefined, strokes: pc.strokes.filter((s) => s.kind === 'line') };
+    for (const r of readings(lines.length, body, gap)) {
+      const error = readingError(lines, r.refs, cfg);
+      if (!best || error < best.error) best = { ...r, error };
+    }
+  }
+  return best !== null && best.error < Infinity && best.done.every(Boolean);
+}
+
 // After her lift, what the copy round does next:
 //   'judge-now'  her letter passes: a success is never kept waiting
-//   'judge-soon' it does not pass yet, but it is whole: she has drawn as many
+//   'judge-soon' (Urdu, Slice 10C: with wait 'dots' when her body is whole and
+//                dots or a mark are still to come, see urduAwaitsDots)
+//                it does not pass yet, but it is whole: she has drawn as many
 //                strokes as the longest plan has (Slice 5O: a slip in her last
 //                stroke waits too, so she can undo it before it is judged), or
 //                fewer that read best as a whole letter (in some plan, joined):
@@ -905,6 +1061,10 @@ export function copyStatus(strokes, char, opts = {}) {
   const cfg = opts.cfg ?? DEFAULTS;
   const used = usableStrokes(strokes, char, cfg);
   if (used.length > 0 && scoreCopy(strokes, char, opts).ok) return { action: 'judge-now', next: null, plan: 0, done: null };
+  // Urdu (Slice 10C): her body is whole but she has drawn fewer dots and marks
+  // than the letter has. No hint shows where they go: the letter is judged after
+  // a longer wait (wait 'dots', CONFIG.copyDotWaitMs), which every new stroke restarts.
+  if (isUrdu(char) && urduAwaitsDots(used, char, opts.gap, cfg)) return { action: 'judge-soon', wait: 'dots', next: null, plan: 0, done: null };
   // Complete but not passing: judged after the wait, with undo still there (Slice 5O).
   if (used.length >= mostStrokes(char)) return { action: 'judge-soon', next: null, plan: 0, done: null };
   let best = null;
@@ -942,6 +1102,8 @@ export function copyLogEntry({ char, result, attempt, helped = false, helper = n
     lookalike: result.lookalike,
     missing: result.missing ? { plan: result.missing.plan, stroke: result.missing.stroke, part: result.missing.part } : null,
     mirrored: result.mirrored,
+    // Urdu (Slice 10C): her dots and marks, on top or not; null for other letters.
+    dots: result.dots ?? null,
     // Habits: never pass or fail, only coached.
     plan: h.plan,         // the stroke plan her strokes follow best (0: the default)
     starts: h.starts,     // per stroke of hers: started in the right place
