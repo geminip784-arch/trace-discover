@@ -41,6 +41,9 @@ export const ICONS = {
   // Slice 5J part 2: "show me" in the games: Jugnu with a play mark.
   showMe: icon('<image href="assets/jugnu.svg" x="2" y="0" width="50" height="50"/>'
     + '<circle cx="47" cy="47" r="14" fill="#35D07F" stroke="#fff" stroke-width="3"/><path d="M42.5 39.5 L55 47 L42.5 54.5 Z" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>'),
+  // Slice 5O: undo one stroke: a curved arrow turning back (not the back button's chevron).
+  undo: icon('<path d="M22 24 H38 a13 13 0 0 1 0 26 H28" fill="none" stroke="#4D6BFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<path d="M26 12 L12 24 L26 36 Z" fill="#4D6BFF" stroke="#4D6BFF" stroke-width="4" stroke-linejoin="round"/>'),
   musicOff: icon('<path d="M14 24 H24 L36 14 V50 L24 40 H14 Z" fill="#2A2370"/><path d="M44 24 L56 40 M56 24 L44 40" stroke="#2A2370" stroke-width="6" stroke-linecap="round"/>'),
 };
 

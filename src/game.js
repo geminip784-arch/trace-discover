@@ -58,6 +58,13 @@
 // - The tracing rounds: a stroke traced along the track the other way (from its far
 //   end) counts (src/variants.js scoreEitherWay). Her ink keeps glowing. It is
 //   logged as a habit, and after the letter Jugnu flies it the usual way once.
+//
+// Slice 5O: undo one stroke (src/undo.js; the shell's undo button calls undo()).
+// Rounds 1 and 2: her last stroke that counted goes, with what it scored (the
+// stroke is not done again, its start dot and Jugnu's perch come back). The
+// copy round: her last stroke goes, and the judging wait (or the hint wait) is
+// cancelled: nothing is judged until her next stroke; only the hint comes back.
+// A finished round, a judged copy and a stroke Jugnu drew are never undone.
 
 import {
   computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
@@ -82,6 +89,7 @@ import { speak, unlock, hush, chime, letterChime, setProfile } from './audio.js'
 import { createJugnu } from './jugnu.js';
 import { createDebugPanel, createCopyAttemptsButton } from './debug.js';
 import { canLoad, charFile } from './session.js';
+import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
 
 // Jugnu's home, near the left: area px from the left as line units, and height in line units.
 const HOME = { x: 0.35, y: 0.65 };
@@ -177,6 +185,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   let helperRead = { plan: 0, done: null };
   // Rounds 1 and 2: strokes she traced the other way this round (reference paths, the usual way).
   let reversedStrokes = [];
+  // Slice 5O: her strokes she may take back (src/undo.js), last on top.
+  let undoList = EMPTY_UNDO;
   const isCopy = () => review;
 
   const stageCfg = () => DEFAULTS.stages[progress.stage];
@@ -329,6 +339,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // Never stuck: Jugnu draws stroke k himself, leaving a glowing trail.
   async function assist(k, letterDone) {
     phase = 'held';
+    undoList = EMPTY_UNDO; // a stroke Jugnu drew is never undone, nor anything before it
     speak('assist');
     const pts = markPath(planNow()[k].points);
     const trail = fx.trail(pts.map(toPx), TRAIL_WIDTH * layout.unit);
@@ -349,6 +360,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   async function beginCopy() {
     copy = { strokes: [], ids: [], fails: 0, hinted: false };
     helperRead = { plan: 0, done: null };
+    undoList = EMPTY_UNDO;
     redraw();
     updateDebug();
     speak('copy');
@@ -386,16 +398,29 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     const id = ink.end();
     copy.strokes.push(a.points);
     copy.ids.push(id);
-    const { action, next, plan, done } = copyStatus(copy.strokes, char, { others });
+    undoList = pushUndo(undoList, { kind: 'copy', id });
+    const { action, next, plan } = readCopy();
+    if (action === 'judge-now') judgeCopy();
+    else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
+    else later(() => hintCopy(markPath(planStrokes(char, plan)[next].points)), CONFIG.copyHintMs);
+  }
+
+  // What her copy strokes so far read as (src/copy.js copyStatus); the helper follows it.
+  function readCopy() {
+    if (copy.strokes.length === 0) {
+      helperRead = { plan: 0, done: null };
+      if (helper.level < 3) redraw();
+      return { action: 'none' };
+    }
+    const status = copyStatus(copy.strokes, char, { others });
+    const { action, plan, done } = status;
     // The helper follows the plan her strokes read as (level 2's start dots; level 1's first dot goes).
     // Judging now or soon: her letter is whole, so no dots are left. A hint with no
     // reading (only taps so far): the first stroke counts as begun.
     const all = planStrokes(char, plan).map(() => true);
     helperRead = action !== 'hint' ? { plan, done: all } : { plan, done: done ?? all.map((_, i) => i === 0) };
     if (helper.level < 3) redraw();
-    if (action === 'judge-now') judgeCopy();
-    else if (action === 'judge-soon') later(judgeCopy, CONFIG.copyWaitMs);
-    else later(() => hintCopy(markPath(planStrokes(char, plan)[next].points)), CONFIG.copyHintMs);
+    return status;
   }
 
   // She stopped part way: Jugnu draws the next stroke on the card. Her strokes
@@ -454,6 +479,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   async function judgeCopy() {
     if (phase !== 'trace' || copy.strokes.length === 0) return;
     phase = 'held';
+    undoList = EMPTY_UNDO; // a judged copy is never undone
     const result = scoreCopy(copy.strokes, char, { others });
     const r = finishCopy(rp, { ok: result.ok, fails: copy.fails });
     logAttempt(copyLogEntry({ char: char.id, result, attempt: copy.fails + 1, helped: r.helpedOut, helper: helper.level }));
@@ -495,6 +521,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // last round the whole letter glows.
   async function endRound() {
     phase = 'held';
+    undoList = EMPTY_UNDO;
     redraw();
     // Direction coaches, never blocks: each stroke she traced the other way,
     // Jugnu now flies the usual way once.
@@ -537,6 +564,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     progress = freshRound();
     following = startPlans(char);
     reversedStrokes = [];
+    undoList = EMPTY_UNDO;
     applyLayout();
     phase = 'trace';
     beginStroke();
@@ -639,6 +667,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     if (counted && !a.startOk) result = { ...result, ok: false, reason: 'wrong-start', startOk: false };
     if (counted && result.reason === 'wrong-start') sitting.wrongStarts += 1;
     const variant = result.ok ? variantLabel(pick.variant) : 'none';
+    // What this stroke may change, as it was before it (an undo puts it back).
+    const snap = { progress, following, reversedStrokes: [...reversedStrokes], goodStrokes };
     let lift;
     if (result.ok) {
       // A passed stroke: keep the plans it fits, and show the first of them.
@@ -668,6 +698,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
       chime();
       fx.sparkle(markPath(pick.variant.points).map(toPx), CONFIG.sparkleMs);
       if (lift.letterDone) return endRound();
+      undoList = pushUndo(undoList, { kind: 'trace', id, snap, char: char.id });
       goodStrokes += 1;
       if (goodStrokes % CONFIG.goodEvery === 0) speak('good');
       redraw();
@@ -677,6 +708,40 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
     ink.fade(id, CONFIG.fadeMs);
     if (lift.assist) return assist(current, lift.letterDone);
     react(result.reason, lift.demo, pick.variant.points);
+  }
+
+  // ---- undo one stroke (Slice 5O) ----
+
+  const undoAllowed = () => canUndo({
+    list: undoList, phase, drawing: attempt !== null || holding !== null, demoing: jugnu.demoing(), paused: turned !== null, alive,
+  });
+
+  // Her last stroke goes, with anything it scored.
+  function undo() {
+    if (!undoAllowed()) return false;
+    const { entry, list } = popUndo(undoList);
+    undoList = list;
+    cancelLater(); // the next stroke's demonstration, a judging wait or a hint wait
+    hush();
+    fx.clear();
+    ink.remove(entry.id);
+    showNote(null);
+    const extra = review ? { review: true, round: 3 } : { round: rp.round + 1, stage: progress.stage };
+    if (entry.kind === 'copy') {
+      copy.strokes.pop();
+      copy.ids.pop();
+      logAttempt(undoLogEntry({ char: char.id, mode: 'copy', stroke: copy.strokes.length, extra }));
+      updateDebug();
+      // Nothing is judged until her next stroke; if she stopped part way, the hint still comes.
+      const { action, next, plan } = readCopy();
+      if (action === 'hint') later(() => hintCopy(markPath(planStrokes(char, plan)[next].points)), CONFIG.copyHintMs);
+      return true;
+    }
+    ({ progress, following, goodStrokes } = entry.snap);
+    reversedStrokes = entry.snap.reversedStrokes;
+    logAttempt(undoLogEntry({ char: char.id, mode: 'trace', stroke: undoList.length, extra }));
+    beginStroke(); // the stroke she took back is the one to trace again (Jugnu shows it in round 1)
+    return true;
   }
 
   const stopTracking = trackSinglePointer(els.area, {
@@ -760,6 +825,8 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   return {
     pause,
     resume,
+    undo,
+    canUndo: undoAllowed,
     // She left (the home button): stop everything and leave a clean screen.
     stop() {
       if (!alive) return;

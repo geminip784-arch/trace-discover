@@ -135,6 +135,11 @@
     #music { bottom: 16px; }
     /* Slice 5J part 2: "show me" in the games, under back; the resting Jugnu moves down out of its way. */
     #showme { top: 240px; }
+    /* Slice 5O: undo one stroke, on every writing screen (where "show me" never shows). */
+    #undo { top: 240px; transition: opacity 0.2s; }
+    #undo svg { width: 72px; height: 72px; }
+    #undo:disabled { opacity: 0.35; cursor: default; }
+    #undo:not(:disabled):active { transform: translateY(4px); }
     #showme svg { width: 72px; height: 72px; }
     .view-play .buddy.at-left { top: auto; bottom: 124px; }
     #music.off { opacity: 0.75; }
@@ -760,6 +765,7 @@
   <button id="home" class="btn" type="button" aria-label="Home" hidden></button>
   <button id="back" class="btn" type="button" aria-label="Back" hidden></button>
   <button id="showme" class="btn" type="button" aria-label="Show me" hidden></button>
+  <button id="undo" class="btn" type="button" aria-label="Undo" hidden disabled></button>
   <button id="music" class="btn" type="button" aria-label="Music" hidden></button>
   <!-- Slice 8A: on the shelf, the child's own picture: back to the children's tiles. -->
   <button id="switch" class="btn" type="button" aria-label="Switch child" hidden></button>
@@ -778,7 +784,7 @@
     const $ = (id) => document.getElementById(id);
     // index.html?setup=1 is the parent setup page. Every other address is the app.
     if (params.get('setup') === '1') {
-      for (const id of ['shell', 'home', 'back', 'music', 'switch', 'rounds', 'note', 'turn', 'nextpage']) $(id).remove();
+      for (const id of ['shell', 'home', 'back', 'undo', 'music', 'switch', 'rounds', 'note', 'turn', 'nextpage']) $(id).remove();
       const { showSetup } = await import('./src/setup.js');
       showSetup();
     } else {
@@ -791,7 +797,7 @@
       const { startShell } = await import('./src/screens.js');
       startShell({
         shell: $('shell'), area: $('area'), lines: $('lines'), ink: $('ink'), fx: $('fx'), jugnu: $('jugnu'), rounds: $('rounds'), note: $('note'),
-        home: $('home'), back: $('back'), showme: $('showme'), music: $('music'), turn: $('turn'), next: $('nextpage'), switch: $('switch'),
+        home: $('home'), back: $('back'), showme: $('showme'), undo: $('undo'), music: $('music'), turn: $('turn'), next: $('nextpage'), switch: $('switch'),
       }, { manifest, params });
     }
   </script>

@@ -138,6 +138,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   els.home.innerHTML = ICONS.home;
   els.back.innerHTML = ICONS.back;
   if (els.showme) els.showme.innerHTML = ICONS.showMe;
+  if (els.undo) els.undo.innerHTML = ICONS.undo;
   const showMusicIcon = () => {
     els.music.innerHTML = musicOn ? ICONS.musicOn : ICONS.musicOff;
     els.music.classList.toggle('off', !musicOn);
@@ -155,6 +156,10 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   els.back.addEventListener('click', () => go(navigate(state, { type: 'back' })));
   // Slice 5J part 2: Jugnu shows the current set again; the game decides what, and never moves for her.
   els.showme?.addEventListener('click', () => { if (state.screen === 'play') game?.showMe?.(); });
+  // Slice 5O: undo one stroke on the writing screens; the game decides whether it may.
+  els.undo?.addEventListener('click', () => {
+    if (isWriting() && game?.undo?.()) popSound();
+  });
   els.music.addEventListener('click', () => {
     musicOn = !musicOn;
     saveMusic(musicOn);
@@ -176,6 +181,32 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     els.note.classList.toggle('on', !!text);
     if (text) els.note.textContent = text;
     els.note.hidden = !text;
+  }
+
+  const isWriting = () => state.screen === 'write' || state.screen === 'practice';
+
+  // Slice 5O: the undo button shows on every writing screen, faint and still
+  // when there is nothing to undo (the game's canUndo(): nothing on the list,
+  // her finger down, Jugnu demonstrating, a reason or a reward showing, the
+  // tablet upright). Checked once a frame; the button changes only when that
+  // answer does. On a practice page that is done, the next-page tile takes its place.
+  let undoFrame = 0;
+  function watchUndo() {
+    if (!els.undo) return;
+    cancelAnimationFrame(undoFrame);
+    const tick = () => {
+      if (!isWriting()) {
+        els.undo.hidden = true;
+        els.undo.disabled = true;
+        return;
+      }
+      const hide = els.next ? !els.next.hidden : false;
+      if (els.undo.hidden !== hide) els.undo.hidden = hide;
+      const off = !(game?.canUndo?.() ?? false);
+      if (els.undo.disabled !== off) els.undo.disabled = off;
+      undoFrame = requestAnimationFrame(tick);
+    };
+    tick();
   }
 
   // ---- moving between screens ----
@@ -206,6 +237,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     setTune(tuneFor(screen));
 
     const writing = screen === 'write' || screen === 'practice';
+    watchUndo();
     els.area.hidden = !writing;
     els.shell.hidden = writing;
     if (screen === 'practice') return startPracticePage();

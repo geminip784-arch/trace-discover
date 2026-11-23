@@ -31,6 +31,11 @@
 // never snap her ink, and her whole name fades only after a failed copy, once
 // its reason has been shown. Nothing moves or plays while her finger is down.
 // Every tolerance keeps the 45 px floor (src/geometry.js withMinLeeway).
+//
+// Slice 5O: undo one stroke (src/undo.js; the shell's undo button calls undo()).
+// Screen 1: her last stroke that counted on the letter she traces now goes, with
+// what it scored; a letter that lit gold stays. Screens 2 and 3: her last stroke
+// goes and the judging wait is cancelled: nothing is judged until her next stroke.
 
 import {
   drawLines, drawStageTrack, createInk, createFx, letterToPx, pxToLetter, START_DOT_RADIUS, trackLook, markPath,
@@ -54,6 +59,7 @@ import { NAME_ID, nameWidth, placeLetters, NAME_DEMO_MS } from './name.js';
 import { nameCompareIds, assignStrokes } from './name-copy.js';
 import { refBox, POSITION_LINES } from './copy.js';
 import { DUE_MARK, NEXT_PAGE } from './art.js';
+import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
 
 const HOME = { x: 0.35, y: 0.65 };   // Jugnu's home, as in game.js
 const TRAIL_WIDTH = 0.16;            // Jugnu's trail when he draws on the lines, line units
@@ -106,6 +112,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   let letterInk = placed.map(() => []);
   let reversedStrokes = [];
   let goodStrokes = 0;
+  let undoList = EMPTY_UNDO;          // Slice 5O: her strokes she may take back, last on top
 
   // Screens 2 and 3.
   let copy = null;                    // { strokes, ids, hinted }
@@ -240,6 +247,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   // Never stuck: Jugnu draws stroke k of the letter himself.
   async function assist(k, letterDone) {
     phase = 'held';
+    undoList = EMPTY_UNDO; // a stroke Jugnu drew is never undone, nor anything before it
     speak('assist');
     const pts = markPath(planNow()[k].points);
     const trail = fx.trail(pts.map(toPx), TRAIL_WIDTH * layout.unit);
@@ -258,6 +266,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   // is traced again (once); otherwise it lights up and the next letter starts.
   async function endLetter() {
     phase = 'held';
+    undoList = EMPTY_UNDO; // a finished letter stays finished
     const i = np.letter;
     const assisted = progress.assisted;
     if (assisted) Object.assign(stats[i], { ok: false, helped: true });
@@ -313,6 +322,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   // Screen 3: it is already there; she writes at once.
   async function beginCopy() {
     copy = { strokes: [], ids: [], hinted: false };
+    undoList = EMPTY_UNDO;
     redraw();
     speak('copy');
     const demo = nameCardDemo(page.space);
@@ -363,6 +373,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     const id = ink.end();
     copy.strokes.push(attemptPoints);
     copy.ids.push(id);
+    undoList = pushUndo(undoList, { kind: 'copy', id });
     later(judgeName, NAME_WAIT_MS);
   }
 
@@ -410,6 +421,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     const result = scoreNameScreen(copy.strokes, placed, loaded, { othersOf });
     showNote(nameCopyNote(result, letters));
     if (result.reason === 'unfinished') return hintName(result);
+    undoList = EMPTY_UNDO; // a judged copy is never undone
     const r = judgeSpace(page, { ok: result.ok });
     const tryNo = r.fails + (result.ok ? 1 : 0);
     logAttempt(namePracticeLogEntry({ page: pageNo, space: k + 1, ok: result.ok, helped: r.helpedOut, done: r.spaceDone, attempt: tryNo, result }));
@@ -531,6 +543,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     copy = null;
     lastCopy = null;
     cardShow = null;
+    undoList = EMPTY_UNDO;
     ink.clear();
     fx.clear();
     showNote(null);
@@ -607,6 +620,8 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     if (counted && result.reason === 'wrong-start') stats[np.letter].wrongStarts += 1;
     if (counted && !result.ok) stats[np.letter].misses += 1;
     const variant = result.ok ? variantLabel(pick.variant) : 'none';
+    // What this stroke may change, as it was before it (an undo puts it back).
+    const snap = { progress, following, reversedStrokes: [...reversedStrokes], goodStrokes, reversed: result.reversed === true };
     let lift;
     if (result.ok) {
       following = advancePlans(a.points, letter, following, TRACE_STAGE, score);
@@ -628,6 +643,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
       chime();
       fx.sparkle(markPath(pick.variant.points).map(toPx), CONFIG.sparkleMs);
       if (lift.letterDone) return endLetter();
+      undoList = pushUndo(undoList, { kind: 'trace', id, snap });
       goodStrokes += 1;
       if (goodStrokes % CONFIG.goodEvery === 0) speak('good');
       redraw();
@@ -637,6 +653,39 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     ink.fade(id, CONFIG.fadeMs);
     if (lift.assist) return assist(current, lift.letterDone);
     react(result.reason, lift.demo, pick.variant.points);
+  }
+
+  // ---- undo one stroke (Slice 5O) ----
+
+  const undoAllowed = () => canUndo({
+    list: undoList, phase, drawing: attempt !== null || holding !== null, demoing: jugnu.demoing(), paused: turned !== null, alive,
+  });
+
+  // Her last stroke goes, with anything it scored.
+  function undo() {
+    if (!undoAllowed()) return false;
+    const { entry, list } = popUndo(undoList);
+    undoList = list;
+    cancelLater(); // the next stroke's demonstration, or the judging wait
+    hush();
+    fx.clear();
+    ink.remove(entry.id);
+    showNote(null);
+    const extra = { in: 'practice', of: NAME_ID, page: pageNo, space: page.space + 1 };
+    if (entry.kind === 'copy') {
+      copy.strokes.pop();
+      copy.ids.pop();
+      logAttempt(undoLogEntry({ char: NAME_ID, mode: 'copy', stroke: copy.strokes.length, extra }));
+      return true; // nothing is judged until her next stroke
+    }
+    const k = np.letter;
+    ({ progress, following, goodStrokes } = entry.snap);
+    reversedStrokes = entry.snap.reversedStrokes;
+    if (entry.snap.reversed) stats[k].reversed -= 1; // misses and wrong starts were real tries: they stay
+    letterInk[k] = letterInk[k].filter((id) => id !== entry.id);
+    logAttempt(undoLogEntry({ char: placed[k].id, mode: 'trace', stroke: undoList.length, extra: { ...extra, letter: k } }));
+    beginStroke();
+    return true;
   }
 
   const stopTracking = trackSinglePointer(els.area, {
@@ -723,6 +772,8 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   return {
     pause,
     resume,
+    undo,
+    canUndo: undoAllowed,
     stop() {
       if (!alive) return;
       alive = false;

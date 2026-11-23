@@ -140,6 +140,19 @@ Every game: per child, logged as `game` entries, laid out in board units, paused
 - [ ] Both Count levels play and earn their stars
 - [ ] One child's stars and unlocks never show for another
 
+### 5O — Fixes from testing with her
+Four pull requests, one at a time.
+
+1. **Undo one stroke (built), and two notes:** on every writing screen (tracing rounds 1 and 2, the copy round in reviews, the letter and name practice pages, her name's rounds) a big picture-only undo button (a curved arrow, 96 px) in the left column, where the games' "show me" sits. Each tap takes away her last stroke and what it scored: in tracing, her last stroke that counted (the stroke is to trace again, its start dot comes back); in a copy, her last stroke, and the judging wait is cancelled (nothing is judged until her next stroke; only the hint wait comes back). Faint and still when there is nothing to undo, while her finger is down, while Jugnu demonstrates, while a reason or a reward shows, and while the tablet is upright. Finished work is never undone: a finished round, a letter of her name that lit gold, a finished practice space, a judged copy, or a stroke Jugnu drew. A stroke that did not count fades by itself, so undo skips it. Each undo is an `undo` entry in the attempt log (the stroke's own entry stays). On a finished practice page the next-page tile takes its place. Notes in `docs/ideas.md` for after Slice 10: a front-end redesign and a General Knowledge section. Screenshots: `docs/screenshots/slice-5o/`.
+2. **Corrections always on top:** whenever a reason is shown (a glowing part, Jugnu drawing a missing stroke, a size outline), her ink fades to faint first and the correction is drawn above it.
+3. **Letter slots in name writing:** faint boxes on the lines, one per letter, sized from the model (her name's copy round and name practice screens 2 and 3). Strokes are given to letters by the slot that holds most of each stroke; a stroke with no slot holding at least 60% of it is unclear: if its letter fails it is tried with the other, and if neither works she rewrites the letter whose slot it started in. Slots by helper level: level 1 a faint fill and an outline, level 2 the outline, level 3 small ticks on the grass line; practice screens 2 and 3 the outline.
+4. **Rewrite only the wrong letter:** only that letter's slot glows and only its ink fades; the letters that passed stay and are locked. Wrong letters are shown one at a time, from the left. After 3 failed judgings Jugnu writes only the letters still open, in their slots.
+
+**Done when:**
+- [ ] Undo takes back her last stroke on every writing screen, and an undo in a copy cancels the judging wait
+- [ ] Every correction is drawn above her faint ink
+- [ ] In her name, a wrong letter glows only its own slot and only that letter is rewritten
+
 ### 8A — Children's profiles ✅
 One tablet, more than one child. Each child has a name (a to z, as the name book needs), one of 8 animal pictures and a color; up to 6 children. Two pull requests:
 
