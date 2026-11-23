@@ -384,3 +384,15 @@ test('a hint is not a failed copy: only a judged copy moves the count (finishCop
   assert.equal(two.fails, 2);
   assert.equal(two.again, true);
 });
+
+test('Slice 5O part 3: a straight up-and-down line judged as a wide letter fails kindly, wherever it stands', () => {
+  // Fitted by its height: a width of almost nothing must never blow the fit up.
+  for (const id of ['e', 'a', 'o', 'm', 'W']) {
+    const char = load(id);
+    for (const x of [0.3, 2.21, 5.549]) {
+      const line = Array.from({ length: 25 }, (_, i) => [x, i / 24]);
+      const r = scoreCopy([line], char);
+      assert.equal(r.ok, false, `${id} at ${x}`);
+    }
+  }
+});

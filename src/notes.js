@@ -118,6 +118,8 @@ export function nameCopyNote(result, ids) {
     case 'position-tall': return `Make the ${id} reach up high.`;
     case 'position-small': return `Keep the ${id} between the fence and the grass.`;
     case 'unrecognized': return `Let's watch Jugnu write the ${id}.`;
+    // Slice 5O part 3: a stroke between two boxes that fits neither letter.
+    case 'overlap': return `Let's write the ${id} again, inside its box.`;
     default: return "Let's watch Jugnu write it.";
   }
 }

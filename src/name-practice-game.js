@@ -39,7 +39,7 @@
 
 import {
   drawLines, drawStageTrack, createInk, createFx, letterToPx, pxToLetter, START_DOT_RADIUS, trackLook, markPath,
-  drawModelCard, CARD, INK,
+  drawModelCard, CARD, INK, drawNameSlots,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker, withMinLeeway } from './geometry.js';
@@ -55,8 +55,8 @@ import { logAttempt, readProfile, savePracticePage } from './storage.js';
 import { speak, unlock, hush, chime, letterChime, popSound, setProfile } from './audio.js';
 import { createJugnu, restingSpot } from './jugnu.js';
 import { loadChar, pauseAnimations } from './game.js';
-import { NAME_ID, nameWidth, placeLetters, NAME_DEMO_MS } from './name.js';
-import { nameCompareIds, assignStrokes } from './name-copy.js';
+import { NAME_ID, nameWidth, placeLetters, NAME_DEMO_MS, nameSlots, slotLook } from './name.js';
+import { nameCompareIds } from './name-copy.js';
 import { refBox, POSITION_LINES } from './copy.js';
 import { DUE_MARK, NEXT_PAGE } from './art.js';
 import { EMPTY_UNDO, pushUndo, popUndo, canUndo, undoLogEntry } from './undo.js';
@@ -82,6 +82,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   const byId = new Map((await Promise.all(compared.map(async (id) => [id, await loadChar(id, manifest)]))).filter(([, c]) => c));
   const othersOf = (id) => nameCompareIds(id).map((x) => byId.get(x)).filter(Boolean);
   const placed = placeLetters(loaded); // each letter in the name's units
+  const slots = nameSlots(placed);     // Slice 5O part 3: a box on the lines per letter, where it goes
   const width = nameWidth(loaded);
   const nameChar = { id: NAME_ID, width, strokes: placed.flatMap((c) => c.strokes) };
 
@@ -186,6 +187,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     drawLines(els.lines, layout);
     if (card) {
       drawModelCard(els.lines, layout, card, nameChar, placed);
+      drawNameSlots(els.lines, layout, layout.offset, slots, 'outline'); // Slice 5O part 3: no helper here
       // A screen Jugnu wrote (after 3 failed copies): his name stays on the lines, lit gold.
       const s = page.spaces[screen()];
       if (s.done && s.helped) placed.forEach((c) => drawStageTrack(els.lines, layout, c, layout.offset, { stage: TRACE_STAGE, done: allDone(c), markers: false }));
@@ -396,6 +398,13 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
   async function showWhy(result) {
     // Slice 5O part 2: her ink goes faint first, so the reason is always seen on top of it.
     if (!(await faintFirst())) return false;
+    // Slice 5O part 3: the slot of the letter it is about glows on the lines, over her faint ink.
+    if (result.letter !== null && slots[result.letter]) {
+      const sl = slots[result.letter];
+      const [x0, y0] = toPx([sl.x0, sl.y0]);
+      const [x1, y1] = toPx([sl.x1, sl.y1]);
+      fx.slotGlow({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, CONFIG.copyReasonMs);
+    }
     const how = result.reason;
     const paths = (result.show?.paths ?? []).map((p) => markPath(p));
     if (how === 'no-letter') return showOnCard(namePaths(), CONFIG.copySlowMs);
@@ -411,7 +420,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
         fx.partGlow([[layout.originX, py], [layout.lineEnd, py]], LINE_GLOW_WIDTH * layout.unit, CONFIG.copyReasonMs);
       }
     }
-    const hers = boxOfStrokes(assignStrokes(copy.strokes, placed).groups[k] ?? []);
+    const hers = boxOfStrokes(result.groups?.[k] ?? []);
     if ((how === 'too-small' || how === 'too-big' || how === 'wrong-case') && hers) {
       // A dashed outline the letter's own size, standing on the lines where her letter is.
       const model = refBox(loaded[k]);
@@ -427,7 +436,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     if (phase !== 'trace' || !copy || copy.strokes.length === 0) return;
     phase = 'held';
     const k = page.space;
-    const result = scoreNameScreen(copy.strokes, placed, loaded, { othersOf });
+    const result = scoreNameScreen(copy.strokes, placed, loaded, { othersOf, slots });
     showNote(nameCopyNote(result, letters));
     if (result.reason === 'unfinished') return hintName(result);
     undoList = EMPTY_UNDO; // a judged copy is never undone
@@ -437,7 +446,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     if (result.ok) {
       chime();
       for (const pts of copy.strokes) fx.sparkle(pts.map(toPx), CONFIG.sparkleMs);
-      lastCopy = copy.strokes;
+      lastCopy = result.groups; // her letters as they were judged (by the slots)
       await wait(CONFIG.sparkleMs);
       if (!alive) return;
       // Habits coach, never fail: Jugnu writes those letters the usual way on the card.
@@ -520,7 +529,7 @@ export async function startNamePractice(els, { letters, manifest = [] }) {
     savePracticePage(NAME_ID);
     redraw();
     speak('letterDone');
-    const groups = lastCopy ? assignStrokes(lastCopy, placed).groups : null;
+    const groups = lastCopy;
     placed.forEach((c, i) => {
       const lines = groups?.[i] ?? c.strokes.map((s) => markPath(s.points));
       later(() => fx.letterGlow(lines.map((pts) => pts.map(toPx)), LETTER_GLOW_WIDTH * layout.unit, CONFIG.letterGlowMs), i * NAME_GLOW_STEP_MS);

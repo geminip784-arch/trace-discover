@@ -19,6 +19,20 @@
 //    Jugnu shows the next letter on the card, as a hint, never a fail.
 // Habits (stroke order within a letter, the letters' order, a letter written
 // the other way round) are logged and coached, never failed.
+//
+// Slice 5O part 3: letter slots. With `slots` (src/name.js nameSlots: a box on
+// the lines per letter), her strokes are given to the letters by the slots:
+// each stroke to the slot that holds most of its length (assignBySlots). A
+// stroke that no slot holds at least NAME_SLOT_RULES.clear of (60%), or a tap
+// near the edge of its box, is unclear: if either letter fails, it is tried with
+// the other letter; if that makes both pass it moves. If its own letter fails
+// and moving it does not help, she is asked to rewrite the letter whose slot it
+// started in ('overlap'), and that slot glows. When most of her ink is not on
+// the slots at all (she wrote somewhere else on the lines), the strokes are
+// given by place and shape as before (assignStrokes). The slots' reading is
+// used unless the reading by place and shape makes letters that clearly look
+// more like hers (she wrote across the boxes, bigger or spread out): letters
+// written roughly in their boxes always go by the boxes.
 
 import {
   scoreCopy, recognize, usableStrokes, splitMarks, boxOf, compareIds, sameShape, isLower, COPY_MATCH,
@@ -144,6 +158,105 @@ export function assignStrokes(strokes, letters, rules = NAME_COPY, match = COPY_
   };
 }
 
+// ---------------------------------------------------------------------------
+// Letter slots (Slice 5O part 3)
+
+export const NAME_SLOT_RULES = {
+  clear: 0.6,   // a stroke is clearly a slot's when that slot holds at least this share of its length (approved)
+  onSlots: 0.6, // her strokes are judged by the slots when at least this share of her ink lies over them
+  prefer: 0.25, // the slots' reading stays unless the other's letters fit this much better ($P distance, summed)
+  tapNear: 0.08, // line units: a tap (a dot) this close to the edge of its box is unclear too (a slanted i's dot)
+};
+
+// How well groups of her strokes look like their letters: each letter's $P
+// distance (at most NAME_COPY.worst), NAME_COPY.skip for a letter with none.
+export function groupsFit(groups, chars, rules = NAME_COPY, match = COPY_MATCH) {
+  return groups.reduce((sum, g, k) => {
+    if (!g) return sum + rules.skip;
+    const { lines } = splitMarks(usableStrokes(g, chars[k]), chars[k], match);
+    if (lines.length === 0) return sum + rules.worst;
+    return sum + Math.min(rules.worst, recognize(lines, chars[k], [], match).best.distance);
+  }, 0);
+}
+
+// Where a stroke's length lies: its share over each letter's whole box (the
+// boxes touch: the gap drawn between two slots is only for her eyes). A tap is
+// all in the box it lands in. Ink outside every box (before the first or after
+// the last) counts for the nearest end box. Returns { shares, off }: shares[k]
+// the share over letter k (sums to 1), off the share outside every box.
+export function slotShares(pts, letters) {
+  const n = letters.length;
+  const shares = new Array(n).fill(0);
+  const left = letters[0].x;
+  const right = letters[n - 1].x + letters[n - 1].width;
+  const boxOfX = (x) => {
+    for (let k = 0; k < n; k++) if (x < letters[k].x + letters[k].width) return k;
+    return n - 1;
+  };
+  let total = 0;
+  let off = 0;
+  const add = (x, len) => {
+    shares[boxOfX(x)] += len;
+    if (x < left || x > right) off += len;
+    total += len;
+  };
+  for (let i = 1; i < pts.length; i++) {
+    const len = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (len > 0) add((pts[i][0] + pts[i - 1][0]) / 2, len);
+  }
+  if (total === 0) add(pts[0][0], 1); // a tap
+  return { shares: shares.map((v) => v / total), off: off / total };
+}
+
+// The letter whose box a point lies in (the nearest end box when outside them all).
+export function slotOf([x], letters) {
+  for (let k = 0; k < letters.length; k++) if (x < letters[k].x + letters[k].width) return k;
+  return letters.length - 1;
+}
+
+// Is her writing on the slots? At least `onSlots` of her ink lies over them.
+export function onSlots(strokes, letters, rules = NAME_SLOT_RULES) {
+  let total = 0;
+  let over = 0;
+  for (const pts of strokes) {
+    const len = Math.max(pathLen(pts), 1e-6);
+    total += len;
+    over += len * (1 - slotShares(pts, letters).off);
+  }
+  return total > 0 && over / total >= rules.onSlots;
+}
+const pathLen = (pts) => pts.reduce((sum, p, i) => (i === 0 ? 0 : sum + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1])), 0);
+
+// Her strokes given to the letters by the slots. Returns { groups, order,
+// strokes: [{ i, letter, share, start, second, unclear }] } (groups and order as
+// assignStrokes gives): each stroke's letter (the slot holding most of it), that
+// share, the letter whose slot it started in, the next most, and whether it is
+// unclear (share below `clear`).
+export function assignBySlots(strokes, letters, rules = NAME_SLOT_RULES) {
+  const groups = letters.map(() => []);
+  const info = strokes.map((pts, i) => {
+    const { shares } = slotShares(pts, letters);
+    const ranked = shares.map((v, k) => [v, k]).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+    const [share, letter] = ranked[0];
+    let second = ranked.length > 1 && ranked[1][0] > 0 ? ranked[1][1] : null;
+    let unclear = share < rules.clear && second !== null;
+    // A tap close to its box's edge (a dot drawn a little to one side): it may be the neighbour's.
+    if (pathLen(pts) === 0 || pts.length === 1) {
+      const box = letters[letter];
+      const x = pts[0][0];
+      if (letter > 0 && x - box.x < rules.tapNear) { second = letter - 1; unclear = true; }
+      else if (letter < letters.length - 1 && box.x + box.width - x < rules.tapNear) { second = letter + 1; unclear = true; }
+    }
+    groups[letter].push(i);
+    return { i, letter, share: Number(share.toFixed(4)), start: slotOf(pts[0], letters), second, unclear };
+  });
+  return {
+    groups: groups.map((g) => (g.length ? g.map((i) => strokes[i]) : null)),
+    order: groups.map((g) => (g.length ? Math.min(...g) : null)),
+    strokes: info,
+  };
+}
+
 // Shifted into the name: a part of a letter (letter units) as a part of the name.
 const shift = (pts, dx) => pts.map(([x, y]) => [x + dx, y]);
 
@@ -184,11 +297,15 @@ function nameReason(r, id) {
 // reason (null when ok): 'no-letter' (nothing written), 'unfinished' (the last
 // letters left out: a hint, not a fail), 'missing-letter', 'wrong-case', or any
 // reason src/copy.js gives for that letter.
-export function scoreName(strokes, letters, chars, { othersOf = () => [], rules = NAME_COPY, match = COPY_MATCH } = {}) {
-  const { groups, order } = assignStrokes(strokes, letters, rules, match);
-  const results = letters.map((letter, k) => {
-    const g = groups[k];
+export function scoreName(strokes, letters, chars, { othersOf = () => [], rules = NAME_COPY, match = COPY_MATCH, slots = null, slotRules = NAME_SLOT_RULES } = {}) {
+  // Slice 5O part 3: by the slots when her writing is on them; otherwise by place and shape.
+  const judgeLetter = (k, g) => {
+    const letter = letters[k];
     if (!g) return { id: letter.id, index: k, strokes: 0, ok: false, reason: 'missing-letter', lookalike: null, part: null, distance: null, mirrored: false, usual: true, result: null };
+    // Only taps or dots where a letter needs lines: not a letter yet.
+    if (splitMarks(usableStrokes(g, chars[k]), chars[k], match).lines.length === 0) {
+      return { id: letter.id, index: k, strokes: g.length, ok: false, reason: 'unrecognized', lookalike: null, part: null, distance: null, mirrored: false, usual: true, result: null };
+    }
     const r = scoreCopy(g, chars[k], { others: othersOf(letter.id), match });
     return {
       id: letter.id,
@@ -203,13 +320,58 @@ export function scoreName(strokes, letters, chars, { othersOf = () => [], rules 
       usual: r.habits?.usual !== false,
       result: r,
     };
+  };
+  const groupsOf = (owner) => letters.map((_, k) => {
+    const g = strokes.filter((_, j) => owner[j] === k);
+    return g.length ? g : null;
   });
+  const orderOf = (owner) => letters.map((_, k) => {
+    const js = owner.map((o, j) => (o === k ? j : -1)).filter((j) => j >= 0);
+    return js.length ? Math.min(...js) : null;
+  });
+  // The slots' reading, with the overlap rule: an unclear stroke whose letter (or
+  // the other one) fails is tried with the other letter; it moves if then both
+  // pass. Otherwise the letter whose slot it started in is the one to rewrite.
+  function readBySlots() {
+    const slotted = assignBySlots(strokes, letters, slotRules);
+    const owner = slotted.strokes.map((x) => x.letter);
+    let results = letters.map((_, k) => judgeLetter(k, slotted.groups[k]));
+    const overlap = [];
+    let rewrite = null;
+    for (const x of slotted.strokes.filter((t) => t.unclear)) {
+      const a = owner[x.i];
+      const b = a === x.second ? x.letter : x.second;
+      if (results[a].ok && results[b].ok) continue; // both letters good: it stays where it is
+      const entry = { stroke: x.i, share: x.share, slots: [a, b], start: x.start, moved: false, unclear: false };
+      overlap.push(entry);
+      const without = strokes.filter((_, j) => owner[j] === a && j !== x.i);
+      const ra = judgeLetter(a, without.length ? without : null);
+      const rb = judgeLetter(b, strokes.filter((_, j) => owner[j] === b || j === x.i));
+      if (ra.ok && rb.ok) {
+        owner[x.i] = b;
+        results = results.map((r, k) => (k === a ? ra : k === b ? rb : r));
+        entry.moved = true;
+      } else if (!results[a].ok && rewrite === null) {
+        // Its own letter fails with it, and the other cannot take it: rewrite the letter whose slot it started in.
+        entry.unclear = true;
+        rewrite = x.start;
+      }
+    }
+    return { groups: groupsOf(owner), order: orderOf(owner), results, overlap, rewrite, slots: true };
+  }
+  const byPlace = assignStrokes(strokes, letters, rules, match);
+  let reading = slots !== null && strokes.length > 0 && onSlots(strokes, letters, slotRules) ? readBySlots() : null;
+  // Letters that clearly look more like hers by place and shape: she wrote across the boxes.
+  if (reading && groupsFit(byPlace.groups, chars, rules, match) + slotRules.prefer < groupsFit(reading.groups, chars, rules, match)) reading = null;
+  reading ??= { groups: byPlace.groups, order: byPlace.order, results: letters.map((_, k) => judgeLetter(k, byPlace.groups[k])), overlap: [], rewrite: null, slots: false };
+  const { groups, order, results, overlap, rewrite } = reading;
+  const bySlots = reading.slots;
   const written = results.filter((x) => x.strokes > 0);
   const firstOrder = order.filter((o) => o !== null);
   const orderUsual = firstOrder.every((o, i) => i === 0 || o > firstOrder[i - 1]);
   const coach = results.filter((x) => x.ok && (x.mirrored || !x.usual)).map((x) => x.index);
   const habits = { order: orderUsual ? 'usual' : 'other', usual: orderUsual && coach.length === 0, coach: orderUsual ? coach : letters.map((_, k) => k) };
-  const out = { ok: false, reason: null, letter: null, lookalike: null, show: null, letters: results, mirrored: results.some((x) => x.mirrored), habits };
+  const out = { ok: false, reason: null, letter: null, lookalike: null, show: null, letters: results, mirrored: results.some((x) => x.mirrored), habits, groups, slots: bySlots, overlap };
   if (written.length === 0) return { ...out, reason: 'no-letter' };
   // The last letters not written yet: she stopped part way. A hint, never a fail,
   // whatever the letters before look like: she has not finished.
@@ -217,6 +379,10 @@ export function scoreName(strokes, letters, chars, { othersOf = () => [], rules 
   if (lastWritten < letters.length - 1) {
     const next = lastWritten + 1;
     return { ...out, reason: 'unfinished', letter: next, show: partToShow(null, letters[next], chars) };
+  }
+  // An unclear stroke that could not be settled: rewrite the letter whose slot it started in.
+  if (rewrite !== null && results.some((x) => !x.ok)) {
+    return { ...out, reason: 'overlap', letter: rewrite, show: partToShow(null, letters[rewrite], chars) };
   }
   const bad = results.find((x) => !x.ok);
   if (!bad) return { ...out, ok: true };
@@ -242,6 +408,8 @@ export function nameCopyLogEntry({ result, attempt, helper = null, helped = fals
     reason: result.reason,
     letter: result.letter,
     order: result.habits.order,
+    slots: result.slots === true, // Slice 5O part 3: strokes given by the letter slots
+    overlap: (result.overlap ?? []).map((o) => ({ ...o })),
     letters: result.letters.map((x) => ({
       letter: x.id,
       ok: x.ok,

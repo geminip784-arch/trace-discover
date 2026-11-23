@@ -156,3 +156,37 @@ export function nameLogEntry({ round, stage, letters, now = new Date() }) {
     })),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Letter slots (Slice 5O part 3): in her name's copy round and her name's
+// practice screens 2 and 3, a faint box on the lines for each letter, so she
+// can see where each one goes. Sized from the model: as wide as the letter's
+// box (a small gap between boxes), from the line its top reaches to the line
+// its bottom reaches (capitals and tall letters: sky to grass; small letters:
+// fence to grass; tails: fence to tail line; i and j: their dot reaches the sky).
+// Her strokes are given to the letters by these slots (src/name-copy.js).
+export const NAME_SLOTS = {
+  inset: 0.03,  // line units left free at each side of a slot (the gap between two slots is twice this)
+  tops: [0, 0.5],      // the lines a slot may start at
+  bottoms: [1, 1.5],   // the lines a slot may end at
+  slack: 0.03,  // a letter this close past a line still counts as reaching only that line
+};
+
+// The slots of placed letters (placeLetters), in the name's units:
+// [{ index, id, x0, x1, y0, y1 }].
+export function nameSlots(letters, rules = NAME_SLOTS) {
+  return letters.map((c) => {
+    const ys = c.strokes.flatMap((s) => s.points.map((p) => p[1]));
+    const top = Math.min(...ys);
+    const bottom = Math.max(...ys);
+    const y0 = [...rules.tops].reverse().find((t) => t <= top + rules.slack) ?? rules.tops[0];
+    const y1 = rules.bottoms.find((b) => b >= bottom - rules.slack) ?? rules.bottoms[rules.bottoms.length - 1];
+    return { index: c.index, id: c.id, x0: c.x + rules.inset, x1: c.x + c.width - rules.inset, y0, y1 };
+  });
+}
+
+// How the slots look at each fading-helper level (Slice 5O part 3, approved):
+// level 1 a faint fill and an outline, level 2 the outline, level 3 only small
+// ticks on the grass line where each letter begins and the last one ends. Her
+// name's practice screens 2 and 3 (no helper there) use the outline.
+export const slotLook = (level) => (level <= 1 ? 'fill' : level === 2 ? 'outline' : 'ticks');
