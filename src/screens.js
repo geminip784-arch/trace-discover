@@ -30,7 +30,7 @@ import { startGame, loadChar } from './game.js';
 import { startNameGame } from './name-game.js';
 import { startPractice } from './practice-game.js';
 import { startNamePractice } from './name-practice-game.js';
-import { NAME_ID, nameOf, nameWidth, nameFits } from './name.js';
+import { NAME_ID, nameOf, slotNameWidth, nameFits } from './name.js';
 import { HOUSE, DOOR, ICONS, ANIMAL_ART, GEAR, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt, namePageStickerArt } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
@@ -576,7 +576,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       Promise.all(n.letters.map((id) => loadChar(id, manifest))).then((chars) => {
         if (state !== mine) return;
         if (chars.some((c) => !c)) return; // a letter file is missing: stays faint
-        if (!nameFits(nameWidth(chars))) return say('too-long');
+        if (!nameFits(slotNameWidth(chars))) return say('too-long'); // as the copy screens write it (Slice 5O follow-up)
         ready = true;
         const t = nameTile({ ready, star: starred, practice });
         if (t.open) tile.classList.replace('faint', 'bright');

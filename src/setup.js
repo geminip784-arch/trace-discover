@@ -13,7 +13,7 @@ import {
   openProfiles, readChildren, addChildProfile, updateChildProfile, removeChildProfile, saveWelcomed,
 } from './storage.js';
 import { speak, setProfile, unlock } from './audio.js';
-import { nameOf, nameWidth, nameFits, NAME_ID } from './name.js';
+import { nameOf, slotNameWidth, nameFits, NAME_ID } from './name.js';
 import { charFile } from './session.js';
 import { CREDITS } from '../data/credits.js';
 import {
@@ -271,7 +271,8 @@ export function showSetup(doc = document) {
   }, doc);
 }
 
-// The name's width in line units, from the letters' own character files; null if one cannot be loaded.
+// The name's width in line units as the copy screens write it (in slots, Slice 5O follow-up),
+// from the letters' own character files; null if one cannot be loaded.
 async function nameWidthOf(letters) {
   try {
     const chars = await Promise.all([...new Set(letters)].map(async (id) => {
@@ -280,7 +281,7 @@ async function nameWidthOf(letters) {
     }));
     const byId = new Map(chars);
     if ([...byId.values()].some((c) => !Number.isFinite(c?.width))) return null;
-    return nameWidth(letters.map((id) => byId.get(id)));
+    return slotNameWidth(letters.map((id) => byId.get(id)));
   } catch {
     return null;
   }
