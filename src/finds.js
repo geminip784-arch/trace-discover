@@ -4,7 +4,7 @@
 // collection list and the attempt-log entry. scene.js draws and plays them.
 // Every random choice takes `rand` (Math.random by default) so tests can repeat it.
 
-import { OBJECTS, ROOMS, PLACES, THINGS, LOOKALIKES, RENAMED_FINDS } from '../data/finds.js';
+import { OBJECTS, ROOMS, PLACES, THINGS, LOOKALIKES, RENAMED_FINDS, URDU_OBJECTS, URDU_LOOKALIKES, SAME_SOUND } from '../data/finds.js';
 
 export const FINDS = 3;          // right objects in a letter scene, when the letter has 3 or more
 export const MIN_FINDS = 2;      // a letter with fewer find pictures than this has no scene
@@ -37,24 +37,37 @@ export const inScenes = (o) => o.finds !== false;
 // Slice 9A: a lowercase letter's scene is its capital's (the same pictures and places).
 export const sceneLetter = (letter) => (/^[a-z]$/.test(letter) ? letter.toUpperCase() : letter);
 
+// Slice 10E: an Urdu letter's pictures are the Urdu list (data/finds.js
+// URDU_OBJECTS): one word per letter, so she finds one picture among 7. The
+// other 6 come only from that list (their Urdu words are known), never a
+// letter that shares her letter's sound (SAME_SOUND), never two look-alikes (URDU_LOOKALIKES).
+export const isUrduLetter = (letter) => typeof letter === 'string' && letter.startsWith('ur-');
+export const libraryFor = (letter) => (isUrduLetter(letter) ? URDU_OBJECTS : OBJECTS);
+export const lookalikeGroupsFor = (letter) => (isUrduLetter(letter) ? URDU_LOOKALIKES : LOOKALIKES);
+export const URDU_MIN_FINDS = 1;
+// Letters that sound like `letter` (itself included).
+export const soundsLike = (letter) => SAME_SOUND.find((g) => g.includes(letter)) ?? [letter];
+// Every picture a find can be (the shelf keeps both): the library, then the Urdu pictures it does not hold.
+export const ALL_PICTURES = [...OBJECTS, ...URDU_OBJECTS.filter((u) => !OBJECTS.some((o) => o.id === u.id))];
+
 // Her letter's find pictures.
-export const objectsFor = (letter, objects = OBJECTS) => objects.filter((o) => o.letter === sceneLetter(letter) && inScenes(o));
+export const objectsFor = (letter, objects = libraryFor(letter)) => objects.filter((o) => o.letter === sceneLetter(letter) && inScenes(o));
 
-// How many right objects her letter's scene has: 3, or 2 when only 2 exist.
-export const targetsFor = (letter, objects = OBJECTS) => Math.min(FINDS, objectsFor(letter, objects).length);
+// How many right objects her letter's scene has: 3, or 2 when only 2 exist (Urdu: 1).
+export const targetsFor = (letter, objects = libraryFor(letter)) => Math.min(FINDS, objectsFor(letter, objects).length);
 
-// A letter has a scene when the library holds at least 2 of its pictures.
-export const hasLetterScene = (letter, objects = OBJECTS) => objectsFor(letter, objects).length >= MIN_FINDS;
+// A letter has a scene when the library holds at least 2 of its pictures (Urdu: 1).
+export const hasLetterScene = (letter, objects = libraryFor(letter)) => objectsFor(letter, objects).length >= (isUrduLetter(letter) ? URDU_MIN_FINDS : MIN_FINDS);
 
 // How many of her letter's pictures each place holds.
-export function roomCounts(letter, objects = OBJECTS) {
+export function roomCounts(letter, objects = libraryFor(letter)) {
   const counts = Object.fromEntries(Object.keys(PLACES).map((r) => [r, 0]));
   for (const o of objectsFor(letter, objects)) for (const r of o.places) counts[r] += 1;
   return counts;
 }
 
 // The place that holds the most of her letter's pictures; a tie is broken at random.
-export function roomFor(letter, rand = Math.random, objects = OBJECTS) {
+export function roomFor(letter, rand = Math.random, objects = libraryFor(letter)) {
   const counts = roomCounts(letter, objects);
   const most = Math.max(...Object.values(counts));
   return pick(Object.keys(counts).filter((r) => counts[r] === most), rand);
@@ -65,11 +78,11 @@ export function roomFor(letter, rand = Math.random, objects = OBJECTS) {
 export const looksAlike = (a, b, groups = LOOKALIKES) => a !== b && groups.some((g) => g.includes(a) && g.includes(b));
 // The ids of `list` in order, leaving out any that looks like one kept before
 // it (or like one of `taken`). key: an entry's id.
-export function withoutLookalikes(list, taken = [], key = (x) => x) {
+export function withoutLookalikes(list, taken = [], key = (x) => x, groups = LOOKALIKES) {
   const kept = [];
   for (const x of list) {
     const id = key(x);
-    if ([...taken, ...kept.map(key)].some((t) => looksAlike(t, id))) continue;
+    if ([...taken, ...kept.map(key)].some((t) => looksAlike(t, id, groups))) continue;
     kept.push(x);
   }
   return kept;
@@ -89,14 +102,17 @@ export function preferPlace(list, place, count, rand = Math.random) {
 // { room, targets, items }: `targets` (3, or 2) pictures that start with her
 // letter and others up to 7 that do not, each on its own spot of the place, in
 // random order. item: { ...object, right, spot }. null when the letter has no scene.
-export function letterScene(letter, rand = Math.random, objects = OBJECTS) {
+export function letterScene(letter, rand = Math.random, objects = libraryFor(letter)) {
   if (!hasLetterScene(letter, objects)) return null;
   const room = roomFor(letter, rand, objects);
   const targets = targetsFor(letter, objects);
-  const right = withoutLookalikes(preferPlace(objectsFor(letter, objects), room, Infinity, rand), [], (o) => o.id).slice(0, targets);
-  // No two pictures that look alike in one scene (Slice 5M part 3).
-  const candidates = preferPlace(objects.filter((o) => inScenes(o) && o.letter !== sceneLetter(letter)), room, Infinity, rand);
-  const others = withoutLookalikes(candidates, right.map((o) => o.id), (o) => o.id).slice(0, SPOTS - targets);
+  const groups = lookalikeGroupsFor(letter);
+  const right = withoutLookalikes(preferPlace(objectsFor(letter, objects), room, Infinity, rand), [], (o) => o.id, groups).slice(0, targets);
+  // No two pictures that look alike in one scene (Slice 5M part 3); for Urdu
+  // (Slice 10E) no picture of a letter that shares her letter's sound either.
+  const sounds = soundsLike(sceneLetter(letter));
+  const candidates = preferPlace(objects.filter((o) => inScenes(o) && o.letter !== sceneLetter(letter) && !sounds.includes(o.letter)), room, Infinity, rand);
+  const others = withoutLookalikes(candidates, right.map((o) => o.id), (o) => o.id, groups).slice(0, SPOTS - targets);
   const spots = shuffle(PLACES[room].spots, rand);
   const items = [...right.map((o) => ({ ...o, right: true })), ...others.map((o) => ({ ...o, right: false }))]
     .map((o, i) => ({ ...o, spot: spots[i] }));
@@ -147,7 +163,7 @@ export const frameCell = (i) => ({ frame: Math.floor(i / 10), row: Math.floor((i
 // ('openScene'), or, when it has none (a letter with fewer than 2 find
 // pictures, such as U and X, or 0), straight back to its board and its star ('letterDone').
 // The values are session.js navigate() event types.
-export const afterWriting = (id, objects = OBJECTS) =>
+export const afterWriting = (id, objects = libraryFor(id)) => // Urdu: its own pictures (Slice 10E)
   (hasLetterScene(id, objects) || hasNumberScene(id) ? 'openScene' : 'letterDone');
 
 // { room, n, groups, right, frames }: 3 placemats, one with n things
@@ -321,7 +337,7 @@ export function cleanFinds(list) {
   if (!Array.isArray(list)) return [];
   // A picture that was renamed (Slice 5M: toys became teddy) keeps its place on her shelf.
   return list.map((e) => (e && typeof e === 'object' && RENAMED_FINDS[e.o] ? { ...e, o: RENAMED_FINDS[e.o] } : e)).filter((e) => (e && typeof e === 'object')
-    && ((typeof e.o === 'string' && OBJECTS.some((o) => o.id === e.o))
+    && ((typeof e.o === 'string' && ALL_PICTURES.some((o) => o.id === e.o)) // Urdu pictures too (Slice 10E)
       || e.nm === 1 // her name card (Slice 9C part 2)
       || isPageSticker(e) // a page sticker (Slice 5L part 2)
       || (typeof e.g === 'string' && THINGS[e.g] && Number.isInteger(e.n) && e.n >= 1 && e.n <= 20))); // 10 to 20: Slice 9B
@@ -329,7 +345,7 @@ export function cleanFinds(list) {
 
 // The picture of one saved find on her shelf, or null. Pictures kept out of
 // find scenes (ice cream, eraser) still show, so nothing she found disappears.
-export function findArt(entry, objects = OBJECTS) {
+export function findArt(entry, objects = ALL_PICTURES) {
   if (entry?.g) return THINGS[entry.g] ? groupArt(entry.g, entry.n, entry.gold ? 0 : -1).svg : null;
   return objects.find((o) => o.id === entry?.o)?.art ?? null;
 }

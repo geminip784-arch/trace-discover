@@ -246,6 +246,73 @@ export const RENAMED_FINDS = { toys: 'teddy' };
 // (Slice 5M: Twemoji's apple and our tomato are both round and red).
 export const LOOKALIKES = [['apple', 'tomato']];
 
+// ---------------------------------------------------------------------------
+// Urdu (Slice 10E): one picture word per letter, approved with her qaida's
+// sounds in mind: the word starts with the letter (and its sound). `from`: a
+// picture of the library above, reused as it is (its art, places, animal and
+// move). The others are new: Twemoji (`emoji`, `move`) or our drawing (`art`).
+// `meaning`: the English word, for the parent's review page only.
+// They stand only in Urdu scenes: English scenes and games never see them.
+// The 12 letters with no word (ث ح ذ ڑ ژ ض ظ و ھ ء ی ے) have no scene.
+export const URDU_FINDS = [
+  { letter: 'ur-alif-madd', word: 'آم', meaning: 'mango', from: 'mango' },
+  { letter: 'ur-alif', id: 'pomegranate', word: 'انار', meaning: 'pomegranate', places: ['kitchen', 'garden'], art: ART.pomegranate, move: 'wobble' },
+  { letter: 'ur-be', word: 'بکری', meaning: 'goat', from: 'goat' },
+  { letter: 'ur-pe', word: 'پتنگ', meaning: 'kite', from: 'kite' },
+  { letter: 'ur-te', id: 'butterfly', word: 'تتلی', meaning: 'butterfly', places: ['garden'], animal: true, emoji: '1f98b', move: 'hop' },
+  { letter: 'ur-tte', id: 'cap', word: 'ٹوپی', meaning: 'cap', places: ['bedroom', 'living'], emoji: '1f9e2', move: 'swing' },
+  { letter: 'ur-jeem', id: 'airplane', word: 'جہاز', meaning: 'airplane', places: ['garden', 'bedroom'], emoji: '2708', move: 'swing' },
+  { letter: 'ur-che', word: 'چاند', meaning: 'moon', from: 'moon' },
+  { letter: 'ur-khe', word: 'خرگوش', meaning: 'rabbit', from: 'rabbit' },
+  { letter: 'ur-dal', id: 'door', word: 'دروازہ', meaning: 'door', places: ['living', 'bedroom'], emoji: '1f6aa', move: 'swing' },
+  { letter: 'ur-ddal', id: 'dhol', word: 'ڈھول', meaning: 'drum (a dhol)', places: ['living'], emoji: '1fa98', move: 'hop' },
+  { letter: 'ur-re', id: 'bear', word: 'ریچھ', meaning: 'bear', places: ['zoo'], animal: true, emoji: '1f43b', move: 'hop' },
+  { letter: 'ur-ze', id: 'giraffe', word: 'زرافہ', meaning: 'giraffe', places: ['zoo'], animal: true, emoji: '1f992', move: 'hop' },
+  { letter: 'ur-seen', word: 'سیب', meaning: 'apple', from: 'apple' },
+  { letter: 'ur-sheen', word: 'شیر', meaning: 'lion', from: 'lion' },
+  { letter: 'ur-suad', id: 'soap', word: 'صابن', meaning: 'soap', places: ['kitchen'], emoji: '1f9fc', move: 'wobble' },
+  { letter: 'ur-toe', word: 'طوطا', meaning: 'parrot', from: 'parrot' },
+  { letter: 'ur-ain', id: 'glasses', word: 'عینک', meaning: 'glasses', places: ['study', 'bedroom'], emoji: '1f453', move: 'swing' },
+  { letter: 'ur-ghain', id: 'balloon', word: 'غبارہ', meaning: 'balloon', places: ['living', 'bedroom'], emoji: '1f388', move: 'swing' },
+  { letter: 'ur-fe', word: 'فٹ بال', meaning: 'football', from: 'ball' },
+  { letter: 'ur-qaf', id: 'scissors', word: 'قینچی', meaning: 'scissors', places: ['study'], emoji: '2702', move: 'swing' },
+  { letter: 'ur-kaf', word: 'کیلا', meaning: 'banana', from: 'banana' },
+  { letter: 'ur-gaf', id: 'cow', word: 'گائے', meaning: 'cow', places: ['garden'], animal: true, emoji: '1f404', move: 'hop' },
+  { letter: 'ur-lam', word: 'لیموں', meaning: 'lemon', from: 'lemon' },
+  { letter: 'ur-meem', word: 'مچھلی', meaning: 'fish', from: 'fish' },
+  { letter: 'ur-noon', word: 'ناشپاتی', meaning: 'pear', from: 'pear' },
+  { letter: 'ur-chhoti-he', word: 'ہاتھی', meaning: 'elephant', from: 'elephant' },
+];
+
+// Every Urdu find picture as a scene object: { id, word, meaning, letter,
+// places, animal, art, emoji, reward }, in qaida order.
+export const URDU_OBJECTS = URDU_FINDS.map((f) => {
+  if (f.from) {
+    const o = OBJECTS.find((x) => x.id === f.from);
+    if (!o) throw new Error(`data/finds.js: no library picture ${f.from}`);
+    return { id: o.id, word: f.word, meaning: f.meaning, letter: f.letter, places: o.places, animal: o.animal === true, art: o.art, emoji: o.emoji ?? null, reward: o.reward };
+  }
+  return {
+    id: f.id, word: f.word, meaning: f.meaning, letter: f.letter, places: f.places, animal: f.animal === true,
+    art: f.emoji ? emojiObjectArt(f.emoji) : f.art, emoji: f.emoji ?? null, reward: f.move,
+  };
+});
+
+// Urdu letters that share a sound (Slice 10E): never in one scene, so a
+// picture whose word starts with the same sound is never one to leave alone.
+export const SAME_SOUND = [['ur-te', 'ur-toe'], ['ur-seen', 'ur-suad', 'ur-se'], ['ur-alif', 'ur-alif-madd'], ['ur-ze', 'ur-zal', 'ur-zuad', 'ur-zoe'], ['ur-bari-he', 'ur-chhoti-he']];
+
+// Urdu pictures too alike to share a scene (Slice 10E: by their main color and
+// their outline, tests/urdu-finds.test.js; the sheet is in docs/screenshots/slice-10e/).
+export const URDU_LOOKALIKES = [
+  ['apple', 'pomegranate', 'mango'], // round red fruit (same main color; outlines overlap 0.71 to 0.83)
+  ['apple', 'balloon'],              // round and red
+  ['mango', 'lemon'],                // an oval fruit with a leaf (outlines overlap 0.70)
+  ['moon', 'banana'],                // a yellow crescent
+  ['lion', 'bear'],                  // a round furry face (outlines overlap 0.87)
+  ['goat', 'cow'],                   // a white animal on four legs (outlines overlap 0.71)
+];
+
 // The four rooms. spots: where the 7 objects of a letter scene stand.
 // groups: where the 3 placemats of a number scene stand ({ x, bottom, maxW }).
 // pool: the small things a number scene counts there (mockup4's random pools).

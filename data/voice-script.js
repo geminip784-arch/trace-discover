@@ -13,7 +13,7 @@
 // has a public twin without the name (for the AI voice tool), and "Export
 // script" leaves private lines out.
 
-import { OBJECTS, THINGS } from './finds.js';
+import { OBJECTS, THINGS, URDU_OBJECTS } from './finds.js';
 import { GLYPHS, plansOf, URDU_GLYPHS } from './glyphs.js';
 import { TRACE_NOTES, COPY_NOTES, GAME_NOTES, ODD_NOTES, SET_NOTES, copyNote } from '../src/notes.js';
 import { LINES, fillLine } from '../src/audio.js';
@@ -197,6 +197,10 @@ function buildScript() {
   [...DIGITS, ...TEENS].forEach((d) => push({ id: `number-${d}`, words: NUMBER_WORDS[Number(d)], hint: `The number ${d}.`, category: 'numbers' }));
   for (const o of OBJECTS) {
     push({ id: `find-${o.id}`, words: o.word, hint: `Starts with the ${o.letter} sound. Just the word.`, category: 'finds' });
+  }
+  // Slice 10E: the Urdu find words, in Urdu (a picture the library also holds gets its own Urdu clip).
+  for (const o of URDU_OBJECTS) {
+    push({ id: `find-${o.letter}`, words: o.word, hint: `Urdu, for ${o.meaning}. Just the word.`, category: 'finds' });
   }
   for (const t of Object.values(THINGS)) {
     push({ id: `count-${slug(t.many)}`, words: t.many, hint: `More than one, as in "three ${t.many}". Just the word.`, category: 'counts' });

@@ -111,7 +111,9 @@ export function startScene(view, { char, color, lastKind = null, onDone = () => 
       Object.assign(el.style, { left: `${x - w / 2}px`, top: `${bottom - 1.2 * w}px`, width: `${w}px` });
       el.innerHTML = o.art;
       const label = document.createElement('div');
-      label.className = `sc-word${bottom > 560 ? ' above' : ''}`;
+      // Slice 10E: an Urdu picture's word is right to left, in the Naskh font.
+      label.className = `sc-word${bottom > 560 ? ' above' : ''}${o.letter?.startsWith('ur-') ? ' ur' : ''}`;
+      if (o.letter?.startsWith('ur-')) label.dir = 'rtl';
       el.appendChild(label);
       stage.appendChild(el);
       const it = { ...o, el, label, found: false, wordTimer: null };
