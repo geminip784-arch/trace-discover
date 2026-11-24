@@ -254,3 +254,10 @@ Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be pl
 - **[later]** A mark's dashed ring is fairly big (its reach is the stage's dot radius plus 0.08 line units), so a 4-year-old's rough ṭ counts. If it looks too generous on the tablet, `MARK.reach` in `src/variants.js` is the one place to change.
 - **[later]** In round 1 Jugnu demonstrates a mark by drawing its real shape; she may tap. If the shape confuses her, he could tap its middle instead (as he does for a dot).
 - **[10E]** Until the picture words are approved, every Urdu letter goes back to the board after its star (no find scene), as X does.
+
+## Slice 10E: Urdu picture words
+
+- **[later]** The 12 letters with no picture word (ث ح ذ ڑ ژ ض ظ و ھ ء ی ے) go straight back to the board. A word for some could come from her qaida or her teacher; ڑ and ں never start a word (a scene with the letter at the end would need its own rule).
+- **[later]** Check the words with her teacher, and that she knows each picture by its Urdu word: جہاز (airplane, also a ship), ڈھول (the long drum), and the bear and giraffe as faces.
+- **[later]** An Urdu scene has one picture to find (one word per letter). If she finds it too quickly, a second word for some letters would give the English two or three.
+- **[6B]** The Urdu find words are in the voice pack's script (`find-ur-…`), to record in Urdu with the rest.

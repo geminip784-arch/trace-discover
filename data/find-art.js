@@ -91,6 +91,11 @@ const octoArms = [40, 64, 88, 112, 136, 160].map((x, i) => `<path d="M${x} 130 q
 // Jellyfish arms.
 const jellyArms = [52, 76, 100, 124, 148].map((x) => `<path d="M${x} 126 q-10 20 0 40 q10 20 0 44" stroke="#FF8FD6" stroke-width="6" fill="none" stroke-linecap="round"/>`).join('');
 
+
+// Slice 10E: pomegranate seeds, ruby drops in rows, for the cut front of انار.
+const pomegranateSeeds = [[74, 150], [92, 144], [110, 146], [128, 152], [66, 170], [84, 166], [102, 166], [120, 168], [138, 174], [76, 190], [94, 188], [112, 188], [130, 192], [88, 208], [108, 208]]
+  .map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="8" ry="9.5" fill="#D6213F"/><ellipse cx="${x - 2.5}" cy="${y - 3}" rx="2.5" ry="3" fill="#fff" opacity=".55"/>`).join('');
+
 export const ART = {
   apple: art(`<path d="M100 92 C72 70 28 86 30 136 C32 190 66 224 100 210 C134 224 168 190 170 136 C172 86 128 70 100 92 Z" ${outline('#FF4D4D', '#D93636')}/>`
     + shine(64, 124, 12, 22, 20) + stem('M100 94 Q96 70 110 54') + leaf(132, 64, -25) + face(100, 146)),
@@ -437,6 +442,14 @@ export const ART = {
     + Array.from({ length: 8 }, (_, i) => `<rect x="${i % 2 ? 98 : 88}" y="${140 + i * 10}" width="16" height="9" rx="2" fill="#E7EBF0" stroke="#6F7B8A" stroke-width="1.5"/>`).join('')
     + '<path d="M84 118 H116 L110 150 H90 Z" fill="#9AA6B5" stroke="#6F7B8A" stroke-width="3" stroke-linejoin="round"/>'
     + '<rect x="90" y="146" width="20" height="56" rx="10" fill="#C9CED6" stroke="#6F7B8A" stroke-width="3"/><circle cx="100" cy="188" r="6" fill="#4D96FF"/>', { rx: 90 }),
+  // Slice 10E: انار (pomegranate, ا). Round and deep red, with its crown on top
+  // and its front cut open to show the seeds, so it is never taken for an apple.
+  pomegranate: art(`<path d="M86 62 L80 40 L92 50 L100 34 L108 50 L120 40 L114 62 Z" ${outline('#B5233A', '#8E1A2C')}/>`
+    + `<circle cx="100" cy="142" r="78" ${outline('#C8283F', '#9A1D31')}/>`
+    + shine(58, 108, 12, 24, 20)
+    + `<path d="M48 156 Q100 112 156 158 Q150 222 100 226 Q52 222 48 156 Z" fill="#FBE7D6" stroke="#9A1D31" stroke-width="4" stroke-linejoin="round"/>`
+    + pomegranateSeeds, { rx: 70 }),
+
 };
 
 // ---------------------------------------------------------------------------

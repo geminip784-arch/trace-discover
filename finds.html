@@ -6,6 +6,14 @@
   <meta name="theme-color" content="#f7f4ec">
   <title>Find pictures review</title>
   <style>
+    /* Slice 10E: the Urdu words, served from assets/fonts/ (licence: assets/fonts/OFL-noto-naskh-arabic.txt). */
+    @font-face {
+      font-family: 'Noto Naskh Arabic';
+      src: url('assets/fonts/noto-naskh-arabic-arabic-700-normal.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+      font-display: block;
+    }
     html, body {
       margin: 0;
       background: #f7f4ec;
@@ -17,7 +25,15 @@
     header p { margin: 0 0 6px; color: #555a70; max-width: 70em; }
     h2 { font-size: 16px; margin: 16px 20px 6px; color: #555a70; }
     #sheet { display: flex; flex-wrap: wrap; align-items: flex-start; padding: 0 10px; }
-    #sheet > h2, #sheet > .places { flex: 0 0 100%; }
+    #sheet > h2, #sheet > .places, #sheet > .urdu, #sheet > .rules { flex: 0 0 100%; }
+    .urdu { display: flex; flex-wrap: wrap; align-items: flex-start; }
+    .ug, .uw { font-family: 'Noto Naskh Arabic', serif; font-weight: 700; }
+    .cap b.ug { font-size: 40px; line-height: 1.4; }
+    /* A span, not b: b's ::first-letter colour would split a joined Urdu word. */
+    figcaption .uw { display: block; color: #2a2d3e; font-size: 22px; line-height: 1.5; }
+    .mean { display: block; color: #2a2d3e; font-size: 13px; }
+    .rules { padding: 0 20px 10px; color: #2a2d3e; }
+    .rules .ug { font-size: 20px; }
     .letter { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; margin: 0 4px 8px; border: 1px solid #e6e1d4; border-radius: 12px; background: #fbf9f3; }
     .cap { width: 64px; flex: none; text-align: center; }
     .cap b { display: block; font-size: 40px; line-height: 1.1; color: #1D2B8F; }
@@ -38,6 +54,7 @@
   <header>
     <h1>Find pictures (Slice 5G)</h1>
     <p>Every picture in the find library, by letter, with its word and the places it belongs in. Each letter's scene uses the place that holds the most of its pictures (the place in bold; a tie is picked at random). Pictures kept out of find scenes are at the end.</p>
+    <p>Urdu (Slice 10E), after the English letters: each letter's one picture with its Urdu word and its meaning. Its scene is in the picture's place (in bold); the other 6 pictures come from the Urdu pictures, never a look-alike or a letter that shares its sound.</p>
   </header>
   <main id="sheet"></main>
   <script type="module" src="src/finds-page.js"></script>
