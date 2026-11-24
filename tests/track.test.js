@@ -70,8 +70,8 @@ test('no track runs past the sky or grass line (tails: the tail line) by more th
           // Round line ends stick out by half the width beyond the points.
           const ys = stroke.points.map((p) => p[1]);
           const above = -(Math.min(...ys) - width / 2);
-          // Tails (g j p q y, Slice 9A) end on the tail line, 1.5.
-          const bottom = /^[gjpqy]$/.test(id) ? 1.5 : 1;
+          // Tails (g j p q y, Slice 9A) end on the tail line, 1.5; so may Urdu letters (tails, bowls, dots below; Slice 10D).
+          const bottom = /^[gjpqy]$/.test(id) || id.startsWith('ur-') ? 1.5 : 1;
           const below = Math.max(...ys) + width / 2 - bottom;
           assert.ok(above <= width / 2 + 1e-9, `${id} stage ${stage}: past the sky line`);
           assert.ok(below <= width / 2 + 1e-9, `${id} stage ${stage}: past the grass line`);

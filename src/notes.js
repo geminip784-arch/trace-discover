@@ -14,6 +14,8 @@ export const TRACE_NOTES = {
   reversed: 'That counts! Here is the usual way.',
   // Slice 9A: a tap that missed the dot of i or j.
   'off-target': 'Tap right on the dot.',
+  // Slice 10D: a tap or small stroke that missed an Urdu mark (the little ṭ, the madd).
+  'off-mark': 'Tap right on the mark.',
 };
 
 export const traceNote = (reason) => TRACE_NOTES[reason] ?? null;

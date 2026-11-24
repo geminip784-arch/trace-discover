@@ -41,7 +41,7 @@ const PLAIN = Object.keys(C).filter((id) => taps(id).length === 0 && marks(id).l
 // ---- the limits and families ----
 
 test('the Urdu limits live in one place each: dot and mark sizes, and the below-the-grass check', () => {
-  assert.deepEqual(URDU_DOTS, { dotSize: 0.18, markSize: 0.5, markShare: 0.6, near: 0.15 });
+  assert.deepEqual(URDU_DOTS, { dotSize: 0.18, markSize: 0.55, markShare: 0.75, near: 0.15 });
   assert.equal(POSITION.urduDipBelow, 0.15);
   assert.equal(POSITION.urduDipModel, 0.2);
   assert.equal(CONFIG.copyDotWaitMs, 4000);

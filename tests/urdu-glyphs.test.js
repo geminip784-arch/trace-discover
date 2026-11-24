@@ -6,7 +6,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { URDU_GLYPHS, URDU_FONT, MARGIN, curvePoints, plansOf, GLYPHS } from '../data/glyphs.js';
 import { STROKE_ORDER } from '../data/stroke-order.js';
 import { URDU } from '../src/session.js';
-import { strokePath, glyphCharacter, cornerIndexes } from '../src/glyph-points.js';
+import { strokePath, glyphCharacter, cornerIndexes, characterText } from '../src/glyph-points.js';
 import { scoreStroke, scoreDot, resample, dist } from '../src/geometry.js';
 import { scoreMark } from '../src/variants.js';
 
@@ -92,10 +92,11 @@ test('all 39 letters of the Urdu board, in qaida order, each with its letter', (
   for (const t of URDU) assert.equal(G(t.id).letter, t.glyph, t.id);
 });
 
-test('the Urdu letters are not in the app yet: no GLYPHS entry, no character file', () => {
+test('the Urdu letters are in the app (Slice 10D): in GLYPHS, each with its file, up to date (npm run glyphs)', () => {
   for (const id of IDS) {
-    assert.equal(GLYPHS[id], undefined, id);
-    assert.equal(existsSync(file(`data/chars/${id}.json`)), false, id);
+    assert.equal(GLYPHS[id], URDU_GLYPHS[id], id);
+    assert.ok(existsSync(file(`data/chars/${id}.json`)), id);
+    assert.equal(readFileSync(file(`data/chars/${id}.json`), 'utf8'), characterText(glyphCharacter(id, G(id))), id);
   }
 });
 

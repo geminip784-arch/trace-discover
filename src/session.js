@@ -112,7 +112,7 @@ export function boardTiles(book, manifest, stars = [], due = [], page = pagesOf(
 // off. In practice mode a starred tile shows a pencil badge and opens its
 // practice page; other tiles are faint and wiggle. Leaving the board ends
 // practice mode (it is part of the board's screen state only).
-export const PRACTICE_BOOKS = ['abc', 'num'];
+export const PRACTICE_BOOKS = ['abc', 'num', 'urdu']; // Slice 10D: Urdu too
 export const hasPencil = (book) => PRACTICE_BOOKS.includes(book);
 
 // Slice 5L part 3: her name's book has the same pencil tile, beside her name

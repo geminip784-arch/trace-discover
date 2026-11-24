@@ -69,13 +69,14 @@
 // A finished round, a judged copy and a stroke Jugnu drew are never undone.
 
 import {
-  computeLayout, drawLines, drawStageTrack, letterOffset, createInk, createFx, letterToPx, pxToLetter,
-  START_DOT_RADIUS, trackLook, modelCard, drawModelCard, CARD, drawCopyHelper, markPath, INK,
+  drawLines, drawStageTrack, createInk, createFx, letterToPx, pxToLetter, writingLayout,
+  START_DOT_RADIUS, trackLook, drawModelCard, CARD, drawCopyHelper, markPath, INK,
 } from './render.js';
 import { trackSinglePointer } from './input.js';
 import { DEFAULTS, dist, createLiveTracker } from './geometry.js';
 import {
   variantLabel, pickCandidate, planCandidates, advancePlans, startPlans, planStrokes, planChar, scoreMark,
+  spotOf, isMarkRef, markReach,
 } from './variants.js';
 import {
   CONFIG, ROUNDS, COPY_STAGE, initialState, applyLift, applyPlanPass, roundCount, stageForRound,
@@ -136,6 +137,7 @@ export function pauseAnimations() {
 // A character that cannot be loaded gives an empty screen; only the debug panel says why.
 export async function startGame(els, { charId, manifest = [], debugOn = false, review = false, onDone = () => {} }) {
   const char = await loadChar(charId, manifest);
+  const rtl = char.direction === 'rtl'; // an Urdu letter (Slice 10D): Jugnu perches to the right of start dots
   if (!char) {
     const panel = debugOn ? createDebugPanel(0) : null;
     panel?.message(canLoad(charId, manifest) ? `No file for ${charId}` : `${charId} is not in data/chars/index.json`);
@@ -150,7 +152,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   let layout = null;
   let offset = 0;
   const toPx = (p) => letterToPx(layout, offset)(p);
-  const jugnu = createJugnu(els.jugnu, (p) => (layout ? toPx(p) : [0, 0]));
+  const jugnu = createJugnu(els.jugnu, (p) => (layout ? toPx(p) : [0, 0]), { rtl });
   const debug = debugOn ? createDebugPanel(strokes.length) : null;
   const removeCopyButton = debugOn ? createCopyAttemptsButton(() => readAttempts()) : null;
 
@@ -193,7 +195,7 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   // The stroke Jugnu demonstrates: the first unfinished one of the shown plan.
   const ref = () => planNow()[progress.current].points;
   const startDot = () => ref()[0];
-  const home = () => restingSpot(layout, offset); // Slice 5O part 2: in the button column, under undo
+  const home = () => restingSpot(layout, offset, undefined, rtl); // Slice 5O part 2: in the button column, under undo
   const bandWidth = () => trackLook(progress.stage).band * layout.unit;
 
   // Delayed steps. While she traces, a touch-down cancels them all; while a
@@ -280,17 +282,10 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
   function applyLayout() {
     const w = els.area.clientWidth || window.innerWidth;
     const h = els.area.clientHeight || window.innerHeight;
-    const full = computeLayout(w, h, char.width); // a wide number gets smaller lines (Slice 9B)
-    if (isCopy()) {
-      // The writing lines stop short of the model card at their right end.
-      layout = { ...full, lineEnd: modelCard(full, 0, char).lineEnd };
-      offset = letterOffset(layout, char.width);
-      card = modelCard(full, offset, char);
-    } else {
-      layout = full;
-      offset = letterOffset(layout, char.width);
-      card = null;
-    }
+    // The lines (a wide character gets smaller ones), the letter's place and, in
+    // the copy round, the model card, with the writing lines stopping short of it
+    // (src/render.js writingLayout; tests/lights.test.js uses the same).
+    ({ layout, offset, card } = writingLayout(w, h, char, isCopy()));
     redraw();
     ink.resize(layout, offset);
     fx.resize(layout, offset);
@@ -652,12 +647,16 @@ export async function startGame(els, { charId, manifest = [], debugOn = false, r
       return;
     }
     const candidates = planCandidates(char, following);
+    // A dot or an Urdu mark (Slice 10D) is judged at one point: her ink is tracked
+    // and her start checked against it (a mark's middle, within its reach), never along its shape.
+    const refOf = (v) => (spotOf(v.points) ? [spotOf(v.points)] : v.points);
+    const reach = (v) => (isMarkRef(v.points) ? markReach(progress.stage) : stageCfg().startRadius);
     attempt = {
       candidates,
       // Each track both ways: going the other way along it counts too (Slice 5J part 2), so the glow stays.
-      trackers: candidates.flatMap((v) => [createLiveTracker(v.points, progress.stage), createLiveTracker([...v.points].reverse(), progress.stage)]),
+      trackers: candidates.flatMap((v) => [createLiveTracker(refOf(v), progress.stage), createLiveTracker([...refOf(v)].reverse(), progress.stage)]),
       // Touch-down check: too far from every start dot she may use (or the far end of its stroke) and this stroke will not count.
-      startOk: candidates.some((v) => dist(q, v.points[0]) <= stageCfg().startRadius || dist(q, v.points[v.points.length - 1]) <= stageCfg().startRadius),
+      startOk: candidates.some((v) => dist(q, refOf(v)[0]) <= reach(v) || dist(q, refOf(v)[refOf(v).length - 1]) <= reach(v)),
       wrongWay: false,
       points: [q],
     };

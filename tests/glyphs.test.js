@@ -214,6 +214,7 @@ const numberPlans = (id) => digitPlans(id[0]).flatMap((a) => digitPlans(id[1]).m
 
 test('the stroke plans are the agreed ones, and every other character has only its default', () => {
   for (const id of CHAR_IDS) {
+    if (id.startsWith('ur-')) continue; // Urdu: its approved plans are in tests/urdu-glyphs.test.js
     const plans = plansOf(GLYPHS[id]).map((p) => p.map((s) => s.part));
     if (NUMBER_IDS.includes(id)) assert.deepEqual(plans, numberPlans(id), id);
     else if (AGREED_PLANS[id]) assert.deepEqual(plans, AGREED_PLANS[id], id);
@@ -337,7 +338,9 @@ test('the character files carry the plans: same format, each stroke with its par
         assert.deepEqual(Object.keys(s), ['kind', 'part', 'points'], id);
         assert.equal(s.part, plans[p + 1][k].part, id);
         const n = isDot(plans[p + 1][k]) ? 1 : pointCount(pathLength(strokePath(plans[p + 1][k])));
-        assert.equal(s.points.length, n, `${id} plan ${p + 2} stroke ${k + 1}`);
+        // Urdu (Slice 10D): a stroke with corners close together may have a few more points.
+        if (id.startsWith('ur-')) assert.ok(s.points.length >= n && s.points.length <= n + 6, `${id} plan ${p + 2} stroke ${k + 1}`);
+        else assert.equal(s.points.length, n, `${id} plan ${p + 2} stroke ${k + 1}`);
       });
     });
   }
@@ -349,7 +352,8 @@ test('the files in data/chars/ are up to date with data/glyphs.js (run npm run g
   for (const id of GENERATED) assert.equal(read(`${charFile(id)}.json`), characterText(glyphCharacter(id, GLYPHS[id])), id);
 });
 
-test('data/chars/index.json lists all 73 characters: capitals, digits, lowercase, then 10 to 20', () => {
+test('data/chars/index.json lists all 112 characters: capitals, digits, lowercase, 10 to 20, then the 39 Urdu letters', () => {
+  assert.equal(CHAR_IDS.length, 112);
   assert.deepEqual(JSON.parse(read('index.json')), CHAR_IDS);
 });
 
@@ -359,9 +363,11 @@ test('the file format is the recorder\'s: same fields in the same order', () => 
   const digit = ['id', 'script', 'family', 'direction', 'width', 'strokes'];
   // Slice 9B: a number 10 to 20 also says which digits it is made of, before its strokes.
   const number = ['id', 'script', 'family', 'direction', 'width', 'digits', 'strokes'];
+  // Slice 10D: an Urdu letter has no case, and its letter after its script.
+  const urdu = ['id', 'script', 'letter', 'family', 'direction', 'width', 'strokes'];
   for (const id of GENERATED) {
     const keys = Object.keys(load(id)).filter((k) => k !== 'plans');
-    assert.deepEqual(keys, NUMBER_IDS.includes(id) ? number : /\d/.test(id) ? digit : letter, id);
+    assert.deepEqual(keys, id.startsWith('ur-') ? urdu : NUMBER_IDS.includes(id) ? number : /\d/.test(id) ? digit : letter, id);
     for (const s of load(id).strokes) assert.deepEqual(Object.keys(s), ['kind', 'part', 'points'], id);
   }
   assert.deepEqual(Object.keys(load('T')), ['id', 'script', 'case', 'family', 'direction', 'width', 'strokes', 'plans']);
@@ -374,9 +380,12 @@ test('at least 24 evenly spaced points per stroke, rounded to 3 decimals', () =>
     load(id).strokes.forEach((s, k) => {
       const where = `${id} stroke ${k + 1}`;
       if (s.kind === 'dot') return assert.equal(s.points.length, 1, where); // the dot of i and j
-      assert.equal(s.kind, 'line', where);
+      assert.ok(s.kind === 'line' || s.kind === 'mark', where); // a mark (Slice 10B) is spaced like a line
       assert.ok(s.points.length >= MIN_POINTS, `${where}: ${s.points.length} points`);
-      assert.equal(s.points.length, pointCount(pathLength(strokePath(GLYPHS[id].strokes[k]))), where);
+      // At least as many as the length needs; a stroke with corners close together (س, Slice 10D) may have a few more.
+      const want = pointCount(pathLength(strokePath(GLYPHS[id].strokes[k])));
+      if (id.startsWith('ur-')) assert.ok(s.points.length >= want && s.points.length <= want + 6, where);
+      else assert.equal(s.points.length, want, where);
       for (const p of s.points) for (const v of p) assert.equal(v, Math.round(v * 1000) / 1000, `${where}: ${v}`);
       const gaps = s.points.slice(1).map((p, i) => dist(p, s.points[i]));
       const most = Math.max(...gaps);

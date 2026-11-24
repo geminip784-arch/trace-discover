@@ -299,7 +299,7 @@ function play() {
 
 // ---- Character picker: a grid with one row per group, coloured by status ----
 const charButtons = {};
-for (const group of CHAR_GROUPS) {
+for (const group of CHAR_GROUPS.filter((g) => g.recorder !== false)) { // Urdu is not recorded here (Slice 10D)
   const row = document.createElement('div');
   row.className = 'group';
   const name = document.createElement('span');

@@ -19,8 +19,8 @@
 // Line units. Tune with her real `copy` log entries, never by guesswork.
 export const URDU_DOTS = {
   dotSize: 0.18,  // a stroke no wider or taller than this is a dot
-  markSize: 0.5,  // up to this wide or tall: a middling stroke (a mark, or a small part of the body)
-  markShare: 0.6, // ... and no bigger than this share of her biggest stroke
+  markSize: 0.55, // up to this wide or tall: a middling stroke (a mark, or a small part of the body)
+  markShare: 0.75, // ... and no bigger than this share of her biggest stroke (Slice 10D: a wide madd)
   near: 0.15,     // her body this close (left and right) to a dot decides its side
 };
 

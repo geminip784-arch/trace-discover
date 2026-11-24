@@ -18,8 +18,9 @@ export function joinsNext(strokes, k, gap = JOIN_GAP) {
 
 // Every reference that starts at stroke k: k alone first, then k..k+1, k..k+2 ...
 // for as long as each next pair joins. Each is { from, to, points }.
+// A mark (Slice 10D) never joins, and its points are tagged (markRef).
 export function variantsFrom(strokes, k, gap = JOIN_GAP) {
-  const out = [{ from: k, to: k, points: strokes[k].points }];
+  const out = [{ from: k, to: k, points: strokes[k].kind === 'mark' ? markRef(strokes[k].points) : strokes[k].points }];
   let points = strokes[k].points;
   for (let j = k; joinsNext(strokes, j, gap); j++) {
     points = [...points, ...strokes[j + 1].points];
@@ -55,7 +56,36 @@ export function scoreEitherWay(child, ref, stage = 1, cfg = DEFAULTS) {
 // The result has scoreStroke's fields, so the tracing round treats it alike.
 export const DOT_MAX = 0.2; // line units: longer than this is a line, not a dot
 
+// ---- Urdu marks (Slice 10D: the little ṭ on ٹ ڈ ڑ, the madd on آ) ----
+// A mark is shown in its shape, but judged by its place: a tap or any small
+// stroke (no wider or taller than MARK.size) whose middle lands within the
+// stage's dotRadius plus MARK.reach of the mark's middle counts. Anything else
+// is 'off-mark'. A mark's reference points carry a hidden `mark` tag
+// (markRef), so every scorer that is handed only points can tell.
+export const MARK = { size: 0.55, reach: 0.08 }; // line units
+export function markRef(points) {
+  const ref = [...points];
+  Object.defineProperty(ref, 'mark', { value: true });
+  return ref;
+}
+export const isMarkRef = (ref) => ref?.mark === true;
+export const markCentre = (pts) => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+// The point a dot or a mark is judged at (and her start is checked against), or null for a line.
+export const spotOf = (ref) => (isMarkRef(ref) ? markCentre(ref) : ref.length === 1 ? ref[0] : null);
+// The reach round a mark's middle at this stage.
+export const markReach = (stage = 1, cfg = DEFAULTS) => cfg.stages[stage].dotRadius + MARK.reach;
+const extentOf = (pts) => {
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+};
+
 export function scoreMark(child, ref, stage = 1, cfg = DEFAULTS, score = scoreEitherWay) {
+  if (isMarkRef(ref)) {
+    const error = child.length ? dist(markCentre(child), markCentre(ref)) : Infinity;
+    const ok = child.length > 0 && error <= markReach(stage, cfg) && extentOf(child) <= MARK.size;
+    return { ok, reason: ok ? null : 'off-mark', startOk: ok, directionOk: true, shapeOk: ok, error, reversed: false };
+  }
   if (ref.length !== 1) return score(child, ref, stage, cfg);
   const d = scoreDot(child, ref[0], stage, cfg);
   const ok = d.ok && pathLength(child) <= DOT_MAX;

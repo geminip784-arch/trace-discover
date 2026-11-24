@@ -153,7 +153,7 @@ async function main() {
     chars.set(id, await res.json());
   }));
   sets.textContent = '';
-  for (const group of CHAR_GROUPS) {
+  for (const group of CHAR_GROUPS.filter((g) => g.name !== 'Urdu')) { // Urdu: its own section below
     const ids = group.ids.filter((id) => chars.has(id));
     if (ids.length === 0) continue;
     const h = document.createElement('h2');
