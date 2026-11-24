@@ -86,9 +86,12 @@ export const gameNote = (kind) => GAME_NOTES[kind] ?? null;
 // the number is in Match, but she counts and taps instead of drawing a line).
 export const SET_NOTES = {
   count: 'Count them, then tap the number',
+  // Slice 10F: Dot Detective (from the Urdu board), levels 1 and 2, and level 3 (its own line).
+  detective: 'Pick the dots that finish the letter',
+  'detective-3': 'Tap the dots onto the letter',
 };
-// The line for one set: its own (by the part of its id before the level), or its kind's.
-export const setNote = (game, kind) => SET_NOTES[String(game).split('-')[0]] ?? gameNote(kind);
+// The line for one set: its own (by its whole id, then by the part before the level), or its kind's.
+export const setNote = (game, kind) => SET_NOTES[String(game)] ?? SET_NOTES[String(game).split('-')[0]] ?? gameNote(kind);
 
 // Odd one out (Slice 5M): one line per row, by its rule (src/games.js oddRule).
 // The kind line names what the three share; the odd one is what is not.

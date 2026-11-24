@@ -721,3 +721,30 @@ export function finishOldPractices(today, { nameId = 'name', store = activeStore
   }
   return done.map((d) => d.id);
 }
+
+// ---------------------------------------------------------------------------
+// Dot Detective (Slice 10F): finished plays per level, { [level]: count }, per
+// child. A level opens after 3 finished plays of the one before (src/detective.js).
+
+export const DETECTIVE_KEY = 'td.detective';
+
+export function readDetectivePlays(store = activeStore()) {
+  try {
+    const all = JSON.parse(store.getItem(DETECTIVE_KEY) ?? '{}');
+    if (!all || typeof all !== 'object' || Array.isArray(all)) return {};
+    return Object.fromEntries(Object.entries(all).filter(([, n]) => Number.isInteger(n) && n >= 0));
+  } catch {
+    return {};
+  }
+}
+
+export function addDetectivePlay(level, store = activeStore()) {
+  try {
+    const all = readDetectivePlays(store);
+    all[level] = (all[level] ?? 0) + 1;
+    store.setItem(DETECTIVE_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}

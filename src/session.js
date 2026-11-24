@@ -114,6 +114,10 @@ export function boardTiles(book, manifest, stars = [], due = [], page = pagesOf(
 // practice mode (it is part of the board's screen state only).
 export const PRACTICE_BOOKS = ['abc', 'num', 'urdu']; // Slice 10D: Urdu too
 export const hasPencil = (book) => PRACTICE_BOOKS.includes(book);
+// Slice 10F: the Urdu board's magnifying-glass tile, next to the pencil tile, opens Dot Detective.
+export const DETECTIVE_BOOKS = ['urdu'];
+export const hasDetective = (book) => DETECTIVE_BOOKS.includes(book);
+export const DETECTIVE_LEVELS = ['detective-1', 'detective-2', 'detective-3'];
 
 // Slice 5L part 3: her name's book has the same pencil tile, beside her name
 // tile. In practice mode her name tile shows the pencil badge and opens her
@@ -129,7 +133,7 @@ export function nameTile({ ready = false, star = false, practice = false } = {})
 // How many tiles a board page's grid holds: its characters, the page switch
 // (ABC) and the pencil tile (ABC and 123). Every one must be at least 88 px.
 export const boardTileCount = (book, page = pagesOf(book)[0]) =>
-  pageTiles(book, page).length + (pagesOf(book).length > 1 ? 1 : 0) + (hasPencil(book) ? 1 : 0);
+  pageTiles(book, page).length + (pagesOf(book).length > 1 ? 1 : 0) + (hasPencil(book) ? 1 : 0) + (hasDetective(book) ? 1 : 0);
 
 // The switch tile (Slice 9A): the page it turns to, and whether that page holds
 // one of today's due letters (then the switch glows too), or null for a book
@@ -395,7 +399,14 @@ export function navigate(state, event) {
     case 'openGame':
       return screen === 'games' && (Object.hasOwn(GAME_KINDS, state.kind ?? '') && GAME_KINDS[state.kind].includes(event.game)) ? { screen: 'play', game: event.game } : state;
     case 'gameDone':
+      if (screen === 'play' && DETECTIVE_LEVELS.includes(state.game)) return { screen: 'detective' }; // Slice 10F
       return screen === 'play' ? setsOf(state.game) : state;
+    // Slice 10F: Dot Detective, from the Urdu board's magnifying-glass tile: its
+    // three levels, then a level (`open`: the level is open, src/detective.js).
+    case 'openDetective':
+      return screen === 'board' && hasDetective(state.book) ? { screen: 'detective' } : state;
+    case 'openDetectiveLevel':
+      return screen === 'detective' && DETECTIVE_LEVELS.includes(event.game) && event.open === true ? { screen: 'play', game: event.game } : state;
     case 'openPicture':
       return screen === 'drawing' && DRAW_PICTURES[event.level]?.includes(event.picture)
         ? { screen: 'dots', level: event.level, picture: event.picture } : state;
@@ -404,6 +415,8 @@ export function navigate(state, event) {
     case 'pictureDone':
       return screen === 'dots' ? { screen: 'drawing' } : state;
     case 'back':
+      if (screen === 'play' && DETECTIVE_LEVELS.includes(state.game)) return { screen: 'detective' }; // Slice 10F
+      if (screen === 'detective') return boardState('urdu');
       if (screen === 'play') return setsOf(state.game);
       if (screen === 'games' && state.kind) return { screen: 'games' };
       if (screen === 'dots' || screen === 'paper') return { screen: 'drawing' };
@@ -418,7 +431,7 @@ export function navigate(state, event) {
 // Which background tune plays on a screen: none at the door; a calm, quiet one while she writes.
 export function tuneFor(screen) {
   if (screen === 'shelf' || screen === 'toys') return 'shelf';
-  if (['board', 'name', 'find', 'games', 'play', 'drawing', 'dots', 'paper'].includes(screen)) return 'board';
+  if (['board', 'name', 'find', 'games', 'play', 'drawing', 'dots', 'paper', 'detective'].includes(screen)) return 'board';
   if (screen === 'write' || screen === 'practice') return 'write';
   return null;
 }

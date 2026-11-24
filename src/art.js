@@ -166,6 +166,16 @@ export const PENCIL_TILE = `<svg ${NS} viewBox="0 0 80 80" aria-hidden="true">
   ${PENCIL_PATH}
 </svg>`;
 
+// Slice 10F: the Urdu board's Dot Detective tile: a magnifying glass over a
+// letter body (ب, without its dot), the dot glowing gold inside the lens.
+const DETECTIVE_BODY = '<path d="M60 30 Q64 48 56 54 Q42 60 24 56 Q14 52 16 40" fill="none" stroke="#1D2B8F" stroke-width="5" stroke-linecap="round"/>';
+const DETECTIVE_GLASS = '<circle cx="40" cy="66" r="13" fill="#FFF7D6" stroke="#5B3A12" stroke-width="4"/><circle cx="40" cy="66" r="4.5" fill="#FFB703"/>'
+  + '<path d="M49 75 L58 84" stroke="#5B3A12" stroke-width="6" stroke-linecap="round"/><path d="M34 60 q3 -3 7 -3" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>';
+export const DETECTIVE_TILE = `<svg ${NS} viewBox="0 0 80 90" aria-hidden="true">${DETECTIVE_BODY}${DETECTIVE_GLASS}</svg>`;
+// Its three levels' tiles: the same picture, with 1, 2 or 3 pips (as the Drawing book's levels).
+export const detectiveLevelArt = (level) => `<svg ${NS} viewBox="0 0 80 100" aria-hidden="true">${DETECTIVE_BODY}${DETECTIVE_GLASS}`
+  + Array.from({ length: level }, (_, i) => `<circle cx="${40 + (i - (level - 1) / 2) * 14}" cy="96" r="4.5" fill="#35D07F"/>`).join('') + '</svg>';
+
 // The badge a starred tile wears in practice mode.
 export const PENCIL_BADGE = `<svg ${NS} viewBox="0 0 80 80" aria-hidden="true">
   <circle cx="40" cy="40" r="36" fill="#fff" stroke="#E0B84A" stroke-width="4"/>
