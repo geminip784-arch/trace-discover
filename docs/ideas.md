@@ -261,3 +261,10 @@ Notes only (Slice 5O part 1). Neither is planned or built yet; both are to be pl
 - **[later]** Check the words with her teacher, and that she knows each picture by its Urdu word: جہاز (airplane, also a ship), ڈھول (the long drum), and the bear and giraffe as faces.
 - **[later]** An Urdu scene has one picture to find (one word per letter). If she finds it too quickly, a second word for some letters would give the English two or three.
 - **[6B]** The Urdu find words are in the voice pack's script (`find-ur-…`), to record in Urdu with the rest.
+
+## Slice 10F: Dot Detective
+
+- **[later]** The 9 families hold 26 letters (the 10F write-up said 25; all 26 are in). ف ق ن ی ے and the other letters with dots of their own could join level 1 with borrowed patterns, if she wants more.
+- **[later]** Level 2 and 3 clues are the find pictures, so ث ح ذ ڑ ژ ض ظ (no picture word yet) appear only in level 1. A word for them (10E's list) would bring them in.
+- **[6B]** With the voice pack, levels 2 and 3 could also say the letter's name with its picture (a clue she hears, not only sees).
+- **[8]** The parent zone could show Dot Detective's log entries (`letter`, what she gave and what was right): which dot patterns she still mixes up.

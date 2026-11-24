@@ -39,7 +39,7 @@ function trace(char, strokes, stage = 1) {
 
 test('every Urdu letter is on the board and in the manifest, in qaida order', () => {
   assert.deepEqual(MANIFEST.filter((id) => id.startsWith('ur-')), URDU_IDS);
-  assert.equal(boardTileCount('urdu'), 40); // and the pencil tile
+  assert.equal(boardTileCount('urdu'), 41); // and the pencil tile, and (Slice 10F) the magnifying glass
 });
 
 test('rounds 1 and 2: every letter traced in every plan, dots tapped and marks tapped, completes the letter', () => {

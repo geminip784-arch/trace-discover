@@ -441,9 +441,9 @@ test('with the pencil tile, every board tile is still at least 88 px on both scr
       assert.ok(size >= 88, `${book} ${page} ${w}x${h}: ${size} px`);
     }
   }
-  // The counts: 26 letters + "A a" + pencil; 21 numbers + pencil; 39 Urdu letters + pencil (Slice 10D).
+  // The counts: 26 letters + "A a" + pencil; 21 numbers + pencil; 39 Urdu letters + pencil (Slice 10D) + magnifying glass (Slice 10F).
   assert.equal(boardTileCount('abc', 'upper'), 28);
   assert.equal(boardTileCount('abc', 'lower'), 28);
   assert.equal(boardTileCount('num'), 22);
-  assert.equal(boardTileCount('urdu'), 40);
+  assert.equal(boardTileCount('urdu'), 41);
 });

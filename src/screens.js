@@ -10,11 +10,11 @@
 import {
   BOARDS, BOOKS, BOARD_BOX, boardTiles, boardSpace, boardGrid, localDay,
   startScreen, navigate, tuneFor, bookOf, tileColorOf, REVIEW_ORDER, booksWithDue, pageNow, pageSwitch, NAME_BOOK,
-  hasPencil, nameTile,
+  hasPencil, nameTile, hasDetective, DETECTIVE_LEVELS,
 } from './session.js';
 import {
   readLastVisit, saveLastVisit, readStars, saveStar, readMusic, saveMusic, readFinds,
-  readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds, readMemoryBoards,
+  readGameStars, saveGameStar, readDrawStars, saveDrawStar, readMissingRounds, readMemoryBoards, readDetectivePlays,
   readReviews, saveReviews, readPracticeMore, savePracticeMore, logAttempt, useStore, testStore, openProfiles, readProfile, saveNameCard, readPages,
   finishOldPractices, readChildren, chooseChild, currentChild, readWelcomed,
 } from './storage.js';
@@ -31,7 +31,7 @@ import { startNameGame } from './name-game.js';
 import { startPractice } from './practice-game.js';
 import { startNamePractice } from './name-practice-game.js';
 import { NAME_ID, nameOf, slotNameWidth, nameFits } from './name.js';
-import { HOUSE, DOOR, ICONS, ANIMAL_ART, GEAR, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt, namePageStickerArt } from './art.js';
+import { HOUSE, DOOR, ICONS, ANIMAL_ART, GEAR, STAR, TURN, DUE_MARK, PAGE_CURL, NAME_LINES, bookCover, nameCardArt, PENCIL_TILE, PENCIL_BADGE, pageStickerArt, namePageStickerArt, DETECTIVE_TILE, detectiveLevelArt } from './art.js';
 import { isUpright } from './render.js';
 import { startScene } from './scene.js';
 import { afterWriting, lastGroupKind, findArt, SHELF_SHOWS, isNameCard, isPageSticker, isNamePageSticker } from './finds.js';
@@ -46,6 +46,8 @@ import { playOdd } from './odd.js';
 import { playMissing } from './missing.js';
 import { playMemory } from './memory.js';
 import { playCount } from './count.js';
+import { playDetective } from './detective-game.js';
+import { detectiveLevelOpen, isDetective, detectiveLevel } from './detective.js';
 import { playDots } from './dots.js';
 import { playPaper } from './paper.js';
 import { LEVELS, levelPictures, levelOpen, pictureId } from './drawing.js';
@@ -183,7 +185,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     els.note.hidden = !text;
   }
 
-  const isWriting = () => state.screen === 'write' || state.screen === 'practice';
+  // Slice 10F: Dot Detective's level 3 (she taps the dots on herself) has undo too.
+  const isWriting = () => state.screen === 'write' || state.screen === 'practice' || (state.screen === 'play' && state.game === 'detective-3');
 
   // Slice 5O: the undo button shows on every writing screen, faint and still
   // when there is nothing to undo (the game's canUndo(): nothing on the list,
@@ -223,6 +226,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
   function render(extra = {}) {
     const { screen } = state;
     document.body.dataset.screen = screen;
+    document.body.dataset.game = screen === 'play' ? state.game : ''; // Slice 10F: level 3's undo sits under show me
     els.home.hidden = ['door', 'shelf', 'children'].includes(screen);
     if (els.switch) {
       els.switch.hidden = screen !== 'shelf';
@@ -230,7 +234,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       els.switch.innerHTML = me ? ANIMAL_ART[me.animal] : '';
       els.switch.style.background = me?.color ?? '';
     }
-    els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper', NAME_BOOK, 'practice'].includes(screen);
+    els.back.hidden = !['games', 'play', 'drawing', 'dots', 'paper', NAME_BOOK, 'practice', 'detective'].includes(screen);
     els.music.hidden = screen === 'door' || screen === 'children';
     if (els.showme) els.showme.hidden = screen !== 'play';
     showGameNote(screen === 'play' ? setNote(state.game, kindOf(state.game)) : null); // Slice 5N: a set may have its own line
@@ -253,6 +257,7 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     else if (screen === 'board') drawBoard(view, extra.newStar);
     else if (screen === NAME_BOOK) drawNameBook(view, extra.newStar);
     else if (screen === 'games') drawGames(view, extra.newGameStar);
+    else if (screen === 'detective') drawDetective(view, extra.newGameStar); // Slice 10F
     else if (screen === 'play') drawPlay(view);
     else if (screen === 'drawing') drawDrawingMenu(view, extra.newDrawStar);
     else if (screen === 'dots') drawDots(view);
@@ -465,6 +470,8 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     if (sw) grid.appendChild(switchTile(sw));
     // Slice 5L: the pencil tile, last (in the ABC book, just after the switch).
     if (hasPencil(state.book)) grid.appendChild(pencilTile(practice));
+    // Slice 10F: the Urdu board's magnifying-glass tile, after the pencil tile, opens Dot Detective.
+    if (hasDetective(state.book)) grid.appendChild(detectiveTile());
     if (turning) grid.classList.add(`turn-${turning}`);
     turning = null;
     sizeBoard();
@@ -482,6 +489,26 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       if (busy) return;
       popSound();
       go(navigate(state, { type: 'togglePractice' }));
+    });
+    return el;
+  }
+
+  // Slice 10F: Dot Detective's tile on the Urdu board: a magnifying glass over a letter body.
+  function detectiveTile() {
+    const el = document.createElement('div');
+    el.className = 'tile bright detective-tile';
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'dot detective');
+    el.innerHTML = DETECTIVE_TILE;
+    el.addEventListener('click', () => {
+      if (busy) return;
+      busy = true;
+      popSound();
+      el.classList.add('picked');
+      setTimeout(() => {
+        busy = false;
+        go(navigate(state, { type: 'openDetective' }));
+      }, TILE_PICK_MS);
     });
     return el;
   }
@@ -681,6 +708,47 @@ export function startShell(els, { manifest, params, now = new Date() }) {
     }
   }
 
+  // ---- Dot Detective's levels (Slice 10F) ----
+  // Three tiles, marked with 1, 2 or 3 pips. A level opens after 3 finished
+  // plays of the one before (td.detective); a locked tile is faint and wiggles.
+  // A finished level wears its star.
+  function drawDetective(view, newGameStar) {
+    view.innerHTML = `${JUGNU_IMG.replace('buddy', 'buddy at-left')}<div class="gm-menu dd-menu"></div>`;
+    const menu = view.querySelector('.gm-menu');
+    menu.style.setProperty('--n', DETECTIVE_LEVELS.length);
+    const stars = readGameStars();
+    const plays = readDetectivePlays();
+    for (const id of DETECTIVE_LEVELS) {
+      const level = detectiveLevel(id);
+      const open = detectiveLevelOpen(level, plays);
+      const el = document.createElement('div');
+      el.className = `gm-tile${open ? '' : ' locked'}`;
+      el.style.setProperty('--c', '#43A047');
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', id);
+      el.dataset.game = id;
+      el.innerHTML = detectiveLevelArt(level);
+      if (stars.includes(id)) {
+        const st = document.createElement('span');
+        st.className = `star${id === newGameStar ? ' new' : ''}`;
+        st.innerHTML = STAR;
+        el.appendChild(st);
+      }
+      el.addEventListener('click', () => {
+        if (busy) return;
+        if (!open) return wiggle(el, 'wig');
+        busy = true;
+        popSound();
+        el.classList.add('picked');
+        setTimeout(() => {
+          busy = false;
+          go(navigate(state, { type: 'openDetectiveLevel', game: id, open }));
+        }, TILE_PICK_MS);
+      });
+      menu.appendChild(el);
+    }
+  }
+
   // ---- the Drawing book ----
   // The menu: free drawing (always open), then a row per level, marked with
   // 1, 2 or 3 dots. A level opens after 3 pictures of the one before it;
@@ -766,8 +834,10 @@ export function startShell(els, { manifest, params, now = new Date() }) {
       go(navigate(state, { type: 'gameDone' }), { newGameStar: fresh ? id : null });
     };
     const play = COUNT_GAMES.includes(id) ? playCount // Slice 5N: in Match, but its own screen
-      : { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing, memory: playMemory }[kindOf(id)];
-    game = play(view, { game: id, onDone, onNote: showGameNote }); // onNote: Odd one out's line per row (Slice 5M)
+      : isDetective(id) ? playDetective // Slice 10F: from the Urdu board
+        : { path: playPath, sort: playSort, odd: playOdd, match: playMatch, missing: playMissing, memory: playMemory }[kindOf(id)];
+    // onNote: Odd one out's line per row (Slice 5M); Dot Detective's reason, then its own line again (noteLine).
+    game = play(view, { game: id, onDone, onNote: showGameNote, noteLine: setNote(id, kindOf(id)) });
     if (upright) game.pause();
   }
 
